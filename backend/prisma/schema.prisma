@@ -6,12 +6,13 @@ generator client {
 }
 
 datasource db {
-  provider = "mongodb"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model Student {
-  id                      String      @id @default(auto()) @map("_id") @db.ObjectId
+  id                      String      @id @default(uuid())
   // Personal
   name                    String
   gender                  String?     // Male, Female, Other
@@ -56,33 +57,33 @@ model Student {
 }
 
 model Building {
-  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  id          String   @id @default(uuid())
   name        String   @unique
   rooms       Room[]
 }
 
 model Room {
-  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  id          String   @id @default(uuid())
   roomNumber  String   @unique
   floor       String
-  buildingId  String   @db.ObjectId
+  buildingId  String
   building    Building @relation(fields: [buildingId], references: [id])
   beds        Bed[]
 }
 
 model Bed {
-  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  id          String   @id @default(uuid())
   bedNumber   Int
-  roomId      String   @db.ObjectId
+  roomId      String
   room        Room     @relation(fields: [roomId], references: [id])
-  studentId   String?  @db.ObjectId
+  studentId   String?
   student     Student? @relation(fields: [studentId], references: [id])
   status      String   @default("available") // available, occupied
 }
 
 model Fee {
-  id             String   @id @default(auto()) @map("_id") @db.ObjectId
-  studentId      String   @db.ObjectId
+  id             String   @id @default(uuid())
+  studentId      String
   student        Student  @relation(fields: [studentId], references: [id])
   month          String?   // Format: "2026-09" (YYYY-MM)
   amount         Float
@@ -94,14 +95,14 @@ model Fee {
 }
 
 model Complaint {
-  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  id          String   @id @default(uuid())
   title       String
   description String?
   priority    String   @default("medium") // low, medium, high
   status      String   @default("pending") // pending, in-progress, resolved
   date        DateTime @default(now())
   
-  studentId   String   @db.ObjectId
+  studentId   String
   student     Student  @relation(fields: [studentId], references: [id])
-  roomId      String?  @db.ObjectId
+  roomId      String?
 }

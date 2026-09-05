@@ -3,6 +3,7 @@ import cors from 'cors';
 import { PrismaClient } from '@prisma/client';
 import fs from 'fs';
 import path from 'path';
+import { initReminderScheduler, executeFeeReminderDispatch, getReminderScheduleSettings, updateReminderScheduleTime } from './services/reminderScheduler';
 
 const app = express();
 app.use(cors());
@@ -17,9 +18,13 @@ const currentMonth = () => {
 };
 
 // Helper: format month label
-const monthLabel = (m: string) => {
-  const [y, mo] = m.split('-');
+const monthLabel = (m?: string | null) => {
+  if (!m || typeof m !== 'string') return 'N/A';
+  const parts = m.split('-');
+  if (parts.length < 2) return m;
+  const [y, mo] = parts;
   const date = new Date(Number(y), Number(mo) - 1, 1);
+  if (isNaN(date.getTime())) return m;
   return date.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
 };
 
@@ -762,7 +767,41 @@ app.post('/api/fees/bulk-apply', async (req, res) => {
   }
 });
 
+// Fee Reminders API endpoints
+app.post('/api/reminders/trigger', async (req, res) => {
+  try {
+    const result = await executeFeeReminderDispatch();
+    res.json({ success: true, data: result });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.get('/api/reminders/settings', (req, res) => {
+  try {
+    const settings = getReminderScheduleSettings();
+    res.json({ success: true, settings });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/reminders/settings', (req, res) => {
+  try {
+    const { reminderTime } = req.body;
+    if (!reminderTime) {
+      return res.status(400).json({ success: false, error: 'reminderTime (HH:MM) is required' });
+    }
+    const newSettings = updateReminderScheduleTime(reminderTime);
+    res.json({ success: true, settings: newSettings });
+  } catch (err: any) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`API Server running on port ${PORT}`);
+  // Start background daily 19:00 IST cron scheduler
+  initReminderScheduler();
 });

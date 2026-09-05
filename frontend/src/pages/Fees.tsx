@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { CreditCard, DollarSign, TrendingUp, Clock, CheckCircle2, XCircle, IndianRupee, Calendar, Search, Printer, Banknote, Smartphone } from 'lucide-react';
+import { CreditCard, DollarSign, TrendingUp, Clock, CheckCircle2, XCircle, IndianRupee, Calendar, Search, Printer, Banknote, Smartphone, Bell, Send, MessageSquare, PhoneCall } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import Modal from '../components/Modal';
 import { useToast } from '../components/ToastContext';
@@ -267,6 +267,26 @@ export default function Fees() {
   const [feeFilter, setFeeFilter] = useState<'all' | 'Paid' | 'Pending'>('all');
   const [payingStudent, setPayingStudent] = useState<any>(null);
   const [viewingReceipt, setViewingReceipt] = useState<any>(null);
+  const [triggeringReminders, setTriggeringReminders] = useState(false);
+  const [reminderModalData, setReminderModalData] = useState<any>(null);
+
+  const handleSendReminders = async () => {
+    setTriggeringReminders(true);
+    try {
+      const res = await fetch('http://localhost:3001/api/reminders/trigger', { method: 'POST' });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        showToast(`Reminders sent successfully! (${data.data.totalPendingCount} pending students notified)`, 'success');
+        setReminderModalData(data.data);
+      } else {
+        showToast(data.error || 'Failed to dispatch fee reminders', 'error');
+      }
+    } catch (err: any) {
+      showToast(`Error: ${err.message}`, 'error');
+    } finally {
+      setTriggeringReminders(false);
+    }
+  };
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -316,6 +336,14 @@ export default function Fees() {
           <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>Monthly fee tracking · ₹{MONTHLY_FEE.toLocaleString()}/student</p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <button 
+            className="primary-btn" 
+            disabled={triggeringReminders}
+            onClick={handleSendReminders}
+            style={{ background: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)', boxShadow: '0 4px 14px rgba(249,115,22,0.3)', gap: '8px' }}>
+            {triggeringReminders ? <Clock size={16} className="animate-spin" /> : <Send size={16} />}
+            {triggeringReminders ? 'Sending Reminders…' : 'Send Fee Reminders Now (7 PM IST)'}
+          </button>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-dim)', borderRadius: 10, padding: '8px 12px' }}>
             <Calendar size={16} color="var(--primary)" />
             <select className="custom-select" style={{ background: 'transparent', border: 'none', padding: 0, color: 'var(--text-main)' }}
@@ -325,6 +353,48 @@ export default function Fees() {
           </div>
         </div>
       </div>
+
+      {/* Fee Reminder Results Modal */}
+      {reminderModalData && (
+        <Modal isOpen onClose={() => setReminderModalData(null)} title="Automated Fee Reminders Dispatch Report">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div style={{ background: 'rgba(249,115,22,0.08)', border: '1px solid rgba(249,115,22,0.2)', borderRadius: 12, padding: '12px 16px' }}>
+              <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--primary)' }}>📢 Fee Reminders Summary ({reminderModalData.monthLabel})</div>
+              <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: 4 }}>
+                {reminderModalData.summaryMessage}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '300px', overflowY: 'auto' }}>
+              {reminderModalData.results.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '1rem', color: 'var(--text-muted)' }}>No pending students found for this month. All clear!</div>
+              ) : reminderModalData.results.map((r: any) => (
+                <div key={r.studentId} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-dim)', borderRadius: 10, padding: '10px 12px', fontSize: '0.82rem' }}>
+                  <div style={{ fontWeight: 700, display: 'flex', justifyContent: 'space-between' }}>
+                    <span>👤 {r.studentName}</span>
+                    <span style={{ color: 'var(--text-muted)' }}>📞 {r.phone}</span>
+                  </div>
+                  <div style={{ display: 'flex', gap: '12px', marginTop: 6, fontSize: '0.75rem' }}>
+                    <span style={{ color: '#38bdf8', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                      <Send size={12} /> Telegram: {r.telegramStatus}
+                    </span>
+                    <span style={{ color: '#4ade80', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                      <MessageSquare size={12} /> WhatsApp: {r.whatsappStatus}
+                    </span>
+                    <span style={{ color: '#fbbf24', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                      <PhoneCall size={12} /> Voice: {r.voiceCallStatus}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ textAlign: 'right', marginTop: '0.5rem' }}>
+              <button className="primary-btn" onClick={() => setReminderModalData(null)}>Close</button>
+            </div>
+          </div>
+        </Modal>
+      )}
 
       {/* Stats row */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.25rem', marginBottom: '1.5rem' }}>
