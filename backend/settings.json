@@ -1,0 +1,14 @@
+{
+  "hostelName": "Koushik Hostel",
+  "hostelAddress": "",
+  "hostelPhone": "",
+  "hostelEmail": "",
+  "adminName": "Admin",
+  "monthlyFee": 5500,
+  "securityDeposit": 5000,
+  "lateFinePerDay": 50,
+  "dueDateDay": 10,
+  "currency": "INR",
+  "upiId": "",
+  "upiName": ""
+}

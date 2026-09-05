@@ -1,0 +1,107 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model Student {
+  id                      String      @id @default(auto()) @map("_id") @db.ObjectId
+  // Personal
+  name                    String
+  gender                  String?     // Male, Female, Other
+  dob                     DateTime?
+  phone                   String?
+  email                   String?
+  photoUrl                String?
+  // Academic
+  course                  String
+  branch                  String?
+  year                    String
+  rollNumber              String?
+  // Hostel
+  dateOfJoining           DateTime    @default(now())
+  // Address / ID
+  aadhar                  String?
+  address                 String?
+  pincode                 String?
+  state                   String?
+  // Parent / Guardian
+  parentName              String?
+  parentPhone             String?
+  parentRelationship      String?     // Father, Mother, Guardian
+  parentAltPhone          String?
+  parentAddress           String?
+  // Emergency
+  emergencyName           String?
+  emergencyPhone          String?
+  emergencyRelationship   String?
+  // Fee
+  securityDeposit         Float?
+  // Legacy field (kept for backward compat — actual fee status comes from Fee records)
+  feeStatus               String      @default("Pending") // Paid, Pending
+  status                  String      @default("Active")  // Active, On Leave
+
+  createdAt               DateTime    @default(now())
+  updatedAt               DateTime    @updatedAt
+
+  beds                    Bed[]
+  fees                    Fee[]
+  complaints              Complaint[]
+}
+
+model Building {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  name        String   @unique
+  rooms       Room[]
+}
+
+model Room {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  roomNumber  String   @unique
+  floor       String
+  buildingId  String   @db.ObjectId
+  building    Building @relation(fields: [buildingId], references: [id])
+  beds        Bed[]
+}
+
+model Bed {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  bedNumber   Int
+  roomId      String   @db.ObjectId
+  room        Room     @relation(fields: [roomId], references: [id])
+  studentId   String?  @db.ObjectId
+  student     Student? @relation(fields: [studentId], references: [id])
+  status      String   @default("available") // available, occupied
+}
+
+model Fee {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  studentId      String   @db.ObjectId
+  student        Student  @relation(fields: [studentId], references: [id])
+  month          String?   // Format: "2026-09" (YYYY-MM)
+  amount         Float
+  date           DateTime @default(now())  // Payment date
+  method         String   // "Cash" | "UPI"
+  upiProvider    String?  // "PhonePe" | "Google Pay" | "Paytm" | "Other UPI"
+  transactionRef String?  // UPI transaction/reference ID
+  status         String   @default("Completed") // Completed, Pending
+}
+
+model Complaint {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  title       String
+  description String?
+  priority    String   @default("medium") // low, medium, high
+  status      String   @default("pending") // pending, in-progress, resolved
+  date        DateTime @default(now())
+  
+  studentId   String   @db.ObjectId
+  student     Student  @relation(fields: [studentId], references: [id])
+  roomId      String?  @db.ObjectId
+}
