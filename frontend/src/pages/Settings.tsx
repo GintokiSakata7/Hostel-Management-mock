@@ -3,8 +3,8 @@ import {
   Settings, Building2, IndianRupee, Database,
   Save, Plus, Trash2, RefreshCw, Download,
   Layers3, FileText,
-  User, Phone, Mail, MapPin, Calendar, CreditCard, Wallet,
-  ChevronDown, ChevronRight, Home, AlertCircle, Clock
+  User, MapPin, Calendar,
+  ChevronDown, ChevronRight, Home, Clock
 } from 'lucide-react';
 import { useToast } from '../components/ToastContext';
 import { useSettings } from '../components/SettingsContext';

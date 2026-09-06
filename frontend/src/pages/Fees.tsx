@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
-  CreditCard, DollarSign, TrendingUp, TrendingDown, Clock, CheckCircle2, XCircle, IndianRupee, Calendar, Search, Printer, Banknote, Smartphone, Bell, Send, MessageSquare, PhoneCall
+  TrendingUp, TrendingDown, Clock, CheckCircle2, XCircle, IndianRupee, Calendar, Search, Printer, Banknote, Smartphone, Send, MessageSquare, PhoneCall
 } from 'lucide-react';
 import Modal from '../components/Modal';
 import { useToast } from '../components/ToastContext';
@@ -663,7 +663,6 @@ export default function Fees() {
                       <IndianRupee size={12} /> Pay
                     </button>
                   )}
-                </div>
                 </div>
               </div>
             ))}

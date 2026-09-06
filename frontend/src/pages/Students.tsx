@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   Search, UserPlus, Edit2, Trash2, X, IndianRupee, Calendar, Printer,
-  User, BedDouble, Phone, Mail, MapPin, Shield, ChevronDown, ChevronUp
+  User, BedDouble, Phone, Mail, MapPin, Shield, ChevronDown, ChevronUp, Clock
 } from 'lucide-react';
 import Modal from '../components/Modal';
 import { useToast } from '../components/ToastContext';
@@ -215,17 +215,6 @@ function StudentDetailCard({ student, selectedMonth, onClose, onRefresh, isMobil
 }
 
 // ─── Admission Form ───────────────────────────────────────────────────────────
-const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
-  <div style={{ marginBottom: '1.5rem' }}>
-    <div style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: 'var(--primary)', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
-      <div style={{ height: 1, flex: 1, background: 'var(--border-dim)' }} />
-      {title}
-      <div style={{ height: 1, flex: 1, background: 'var(--border-dim)' }} />
-    </div>
-    <div className="responsive-grid-2" style={{ gap: '0.85rem' }}>{children}</div>
-  </div>
-);
-
 const F = ({ label, col, children }: { label: string; col?: boolean; children: React.ReactNode }) => (
   <div className="form-group" style={col ? { gridColumn: '1/-1' } : {}}>
     <label style={{ fontSize: '0.8rem', marginBottom: 4 }}>{label}</label>
