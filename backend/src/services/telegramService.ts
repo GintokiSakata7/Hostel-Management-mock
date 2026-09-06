@@ -119,16 +119,18 @@ export async function sendTelegramVoiceNote(spokenText: string, destination?: st
   if (!target) return { success: false, message: 'No Telegram target specified' };
 
   try {
-    const audioUrl = googleTTS.getAudioUrl(spokenText, {
+    const audioResults = await googleTTS.getAllAudioBase64(spokenText, {
       lang: 'en',
       slow: false,
-      host: 'https://translate.google.com',
       timeout: 10000,
     });
 
-    const audioRes = await fetch(audioUrl);
-    const arrayBuffer = await audioRes.arrayBuffer();
-    const audioBuffer = Buffer.from(arrayBuffer);
+    if (!audioResults || audioResults.length === 0) {
+      return { success: false, message: 'Failed to generate TTS audio chunks' };
+    }
+
+    const audioBuffers = audioResults.map(chunk => Buffer.from(chunk.base64, 'base64'));
+    const audioBuffer = Buffer.concat(audioBuffers);
 
     // 1. Try Personal User Account Voice Note (MTProto) directly to Phone Number
     if (apiId && apiHash && sessionString) {
@@ -198,20 +200,29 @@ export function formatVoiceReminderScript(
   hostelName: string = 'Hostel Office'
 ): string {
   const count = pendingMonthsList.length;
+  const formattedAmount = totalAmount.toLocaleString('en-IN');
+
   if (count <= 1) {
     const month = pendingMonthsList[0] || 'the current month';
-    return `Hello ${studentName}. Friendly reminder from ${hostelName}: your fee for ${month} of ${totalAmount} rupees is pending. Your monthly due date is the ${dueDayLabel}. Please clear your dues. Thank you.`;
+    return `Hello ${studentName}. Friendly reminder from ${hostelName}: your hostel fee for ${month} of ${formattedAmount} rupees is pending. Your monthly due date is the ${dueDayLabel}. Please clear your dues at the office. Thank you.`;
   }
 
   if (count <= 3) {
-    const monthsSpoken = pendingMonthsList.map(m => m.replace(/\s\d{4}/, '')).join(' and ');
-    return `Hello ${studentName}. Important reminder from ${hostelName}: You have ${count} months of pending fees for ${monthsSpoken}, totaling ${totalAmount} rupees. Your monthly due date is the ${dueDayLabel} of every month. Please clear your accumulated dues at the management office. Thank you.`;
+    const cleanMonths = pendingMonthsList.map(m => m.replace(/\s\d{4}/, ''));
+    let monthsSpoken = cleanMonths[0];
+    if (cleanMonths.length === 2) {
+      monthsSpoken = `${cleanMonths[0]} and ${cleanMonths[1]}`;
+    } else if (cleanMonths.length === 3) {
+      monthsSpoken = `${cleanMonths[0]}, ${cleanMonths[1]}, and ${cleanMonths[2]}`;
+    }
+
+    return `Hello ${studentName}. Important reminder from ${hostelName}: You have ${count} months of pending fees for ${monthsSpoken}, totaling ${formattedAmount} rupees. Your regular due date is the ${dueDayLabel} of every month. Please clear your accumulated dues at the hostel office. Thank you.`;
   }
 
   // If more than 3 months overdue, speak a concise urgent summary
   const firstMonth = pendingMonthsList[0].replace(/\s\d{4}/, '');
   const lastMonth = pendingMonthsList[count - 1].replace(/\s\d{4}/, '');
-  return `Hello ${studentName}. Urgent notice from ${hostelName}: You have ${count} months of accumulated pending fees from ${firstMonth} to ${lastMonth}, totaling ${totalAmount} rupees. Your monthly due date is the ${dueDayLabel} of every month. Please visit the hostel office immediately to clear your dues. Thank you.`;
+  return `Hello ${studentName}. Urgent notice from ${hostelName}: You have ${count} months of accumulated pending fees from ${firstMonth} to ${lastMonth}, totaling ${formattedAmount} rupees. Your regular due date is the ${dueDayLabel} of every month. Please visit the hostel office immediately to clear your dues. Thank you.`;
 }
 
 

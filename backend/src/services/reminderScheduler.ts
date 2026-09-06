@@ -115,6 +115,7 @@ export async function executeFeeReminderDispatch(): Promise<{
       s.dueDayLabel,
       hostelName
     );
+    console.log(`[Fee Reminder Service]: Voice script for ${s.studentName} (${s.pendingMonthsCount} mos): "${voiceScript}"`);
     const tgVoiceRes = await sendTelegramVoiceNote(voiceScript, studentTarget);
 
     // 3. Trigger WhatsApp Reminder
