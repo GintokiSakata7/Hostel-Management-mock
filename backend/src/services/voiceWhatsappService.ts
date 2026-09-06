@@ -13,11 +13,18 @@ export interface ReminderNotificationResult {
   studentId: string;
   studentName: string;
   phone: string;
+  roomName?: string;
+  pendingMonthsCount?: number;
+  pendingMonthsList?: string[];
+  totalAmount?: number;
+  dueDayLabel?: string;
+  nextDueDate?: string;
   telegramStatus: string;
   telegramVoiceStatus?: string;
   whatsappStatus: string;
   voiceCallStatus: string;
 }
+
 
 /**
  * Execute WhatsApp message via Meta Cloud API or Twilio API

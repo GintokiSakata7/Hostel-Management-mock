@@ -2,7 +2,8 @@ import cron from 'node-cron';
 import fs from 'fs';
 import path from 'path';
 import { PrismaClient } from '@prisma/client';
-import { sendTelegramMessage, sendTelegramVoiceNote, formatFeeReminderMessage } from './telegramService';
+import { calculateStudentDueStatus, formatMonthLabel, toMonthString } from './billingHelper';
+import { sendTelegramMessage, sendTelegramVoiceNote, formatFeeReminderMessage, formatVoiceReminderScript } from './telegramService';
 import { sendWhatsAppReminder, triggerVoiceCallReminder, ReminderNotificationResult } from './voiceWhatsappService';
 
 const prisma = new PrismaClient();
@@ -32,107 +33,118 @@ function writeSettingsFile(data: any) {
   }
 }
 
-// Helper to get YYYY-MM
-const getCurrentMonth = () => {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-};
-
-// Helper for month label
-const getMonthLabel = (m: string) => {
-  const [y, mo] = m.split('-');
-  const date = new Date(Number(y), Number(mo) - 1, 1);
-  return date.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
-};
-
 /**
- * Core function to query students with pending fee for current month and dispatch reminders
+ * Core function to query all active students, audit all unpaid/backlog cycles, and dispatch reminders
  */
 export async function executeFeeReminderDispatch(): Promise<{
   month: string;
   monthLabel: string;
   totalPendingCount: number;
+  totalPendingAmount: number;
   results: ReminderNotificationResult[];
   summaryMessage: string;
 }> {
-  const currentM = getCurrentMonth();
-  const label = getMonthLabel(currentM);
+  const currentMonthStr = toMonthString(new Date());
+  const currentMonthName = formatMonthLabel(currentMonthStr);
+  const settings = readSettingsFile();
+  const hostelName = settings.hostelName || 'VMR Hostel';
+  const standardFee = settings.monthlyFee || 5500;
 
-  console.log(`[Fee Reminder Service]: Scanning active students for pending fee (${label})...`);
+  console.log(`[Fee Reminder Service]: Scanning active students for pending fee backlog and dynamic due dates (${currentMonthName})...`);
 
-  // Query active students
+  // Query all active students with beds and all historical fee records
   const activeStudents = await prisma.student.findMany({
     where: { status: 'Active' },
     include: {
       beds: { include: { room: { include: { building: true } } } },
-      fees: { where: { month: currentM } }
+      fees: true
     }
   });
 
-  // Filter students whose month fee is NOT completed
-  const pendingStudents = activeStudents.filter(s => {
-    const feeRec = s.fees.find(f => f.month === currentM);
-    return !feeRec || feeRec.status !== 'Completed';
-  });
+  // Calculate dynamic due status for each student across all elapsed cycles
+  const studentStatuses = activeStudents.map(s => calculateStudentDueStatus(s, standardFee));
+
+  // Filter students who have at least 1 unpaid month
+  const pendingStatuses = studentStatuses.filter(s => s.pendingMonthsCount > 0);
+  const totalArrears = pendingStatuses.reduce((sum, s) => sum + s.totalPendingAmount, 0);
 
   const results: ReminderNotificationResult[] = [];
 
-  if (pendingStudents.length === 0) {
-    const msg = `✅ All students have paid their fees for ${label}. No reminder messages needed today.`;
+  if (pendingStatuses.length === 0) {
+    const msg = `✅ All students are fully up to date with their fees as of ${currentMonthName}. No reminder messages needed today.`;
     console.log(`[Fee Reminder Service]: ${msg}`);
     await sendTelegramMessage(`<b>🎉 FEE REMINDER UPDATE</b>\n\n${msg}`);
     return {
-      month: currentM,
-      monthLabel: label,
+      month: currentMonthStr,
+      monthLabel: currentMonthName,
       totalPendingCount: 0,
+      totalPendingAmount: 0,
       results: [],
       summaryMessage: msg
     };
   }
 
-  // Send individual reminders & summary
-  let summaryText = `<b>📢 AUTOMATED FEE REMINDER BATCH (${label})</b>\n`;
-  summaryText += `Found <b>${pendingStudents.length}</b> student(s) with pending fees.\n\n`;
+  // Build Admin summary digest
+  let summaryText = `<b>📢 AUTOMATED FEE REMINDER BATCH (${currentMonthName})</b>\n`;
+  summaryText += `Found <b>${pendingStatuses.length}</b> student(s) with pending dues totaling <b>₹${totalArrears.toLocaleString('en-IN')}</b>.\n\n`;
 
-  for (let i = 0; i < pendingStudents.length; i++) {
-    const student = pendingStudents[i];
-    const bed = student.beds.length > 0 ? student.beds[0] : null;
-    const roomName = bed ? `${bed.room.roomNumber} (${bed.room.building?.name || ''})` : 'Unallocated';
-    const amount = 5500; // Standard monthly fee amount
+  for (let i = 0; i < pendingStatuses.length; i++) {
+    const s = pendingStatuses[i];
+    const studentTarget = s.phone || undefined;
+    const monthsList = s.pendingMonths.map(p => p.monthLabel);
 
     // 1. Format & Send Telegram Text Alert directly to student's phone
-    const studentTarget = student.phone || undefined;
     const telegramMsg = formatFeeReminderMessage(
-      student.name,
-      student.course,
-      roomName,
-      label,
-      amount,
-      student.phone || undefined
+      s.studentName,
+      s.course,
+      s.roomName,
+      monthsList,
+      s.totalPendingAmount,
+      s.dueDayLabel,
+      s.nextDueDate,
+      s.phone || undefined,
+      hostelName
     );
     const tgRes = await sendTelegramMessage(telegramMsg, studentTarget);
 
     // 2. Generate and Send Telegram Voice Note Audio Message directly to student's phone
-    const voiceScript = `Hello ${student.name}. Friendly reminder from Hostel Office: your fee of ${amount} rupees for ${label} is pending. Please clear your dues. Thank you.`;
+    const voiceScript = formatVoiceReminderScript(
+      s.studentName,
+      monthsList,
+      s.totalPendingAmount,
+      s.dueDayLabel,
+      hostelName
+    );
     const tgVoiceRes = await sendTelegramVoiceNote(voiceScript, studentTarget);
 
     // 3. Trigger WhatsApp Reminder
-    const waRes = await sendWhatsAppReminder(student.name, student.phone || '9999999999', amount, label);
+    const waLabel = monthsList.length > 1 ? `${monthsList.length} Months (${monthsList.join(', ')})` : monthsList[0];
+    const waRes = await sendWhatsAppReminder(s.studentName, s.phone || '9999999999', s.totalPendingAmount, waLabel);
 
     // 4. Trigger Voice Call Reminder
-    const voiceRes = await triggerVoiceCallReminder(student.name, student.phone || '9999999999', amount, label);
+    const voiceRes = await triggerVoiceCallReminder(s.studentName, s.phone || '9999999999', s.totalPendingAmount, waLabel);
 
     results.push({
-      studentId: student.id,
-      studentName: student.name,
-      phone: student.phone || 'N/A',
+      studentId: s.studentId,
+      studentName: s.studentName,
+      phone: s.phone || 'N/A',
+      roomName: s.roomName,
+      pendingMonthsCount: s.pendingMonthsCount,
+      pendingMonthsList: monthsList,
+      totalAmount: s.totalPendingAmount,
+      dueDayLabel: s.dueDayLabel,
+      nextDueDate: s.nextDueDate,
       telegramStatus: tgRes.message,
       telegramVoiceStatus: tgVoiceRes.message,
       whatsappStatus: waRes,
       voiceCallStatus: voiceRes
     });
 
-    summaryText += `${i + 1}. 👤 <b>${student.name}</b> (${student.phone || 'No phone'})\n   Room: ${roomName} | Dues: ₹${amount}\n\n`;
+    const monthStrSummary = monthsList.join(', ');
+    summaryText += `${i + 1}. 👤 <b>${s.studentName}</b> (${s.phone || 'No phone'})\n` +
+                   `   Room: ${s.roomName} | Due Day: ${s.dueDayLabel}\n` +
+                   `   Overdue: ${s.pendingMonthsCount} Month(s) (${monthStrSummary})\n` +
+                   `   Total Dues: <b>₹${s.totalPendingAmount.toLocaleString('en-IN')}</b>\n\n`;
   }
 
   // Send summary digest ONLY to the Hostel Admin / Owner Chat ID
@@ -142,13 +154,15 @@ export async function executeFeeReminderDispatch(): Promise<{
   }
 
   return {
-    month: currentM,
-    monthLabel: label,
-    totalPendingCount: pendingStudents.length,
+    month: currentMonthStr,
+    monthLabel: currentMonthName,
+    totalPendingCount: pendingStatuses.length,
+    totalPendingAmount: totalArrears,
     results,
-    summaryMessage: `Successfully dispatched text & voice reminders to ${pendingStudents.length} student(s) for ${label}.`
+    summaryMessage: `Dispatched text & voice reminders to ${pendingStatuses.length} student(s) with total outstanding dues of ₹${totalArrears.toLocaleString('en-IN')}.`
   };
 }
+
 
 /**
  * Get current reminder schedule status & settings

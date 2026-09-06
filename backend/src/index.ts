@@ -4,6 +4,7 @@ import { PrismaClient } from '@prisma/client';
 import fs from 'fs';
 import path from 'path';
 import { initReminderScheduler, executeFeeReminderDispatch, getReminderScheduleSettings, updateReminderScheduleTime } from './services/reminderScheduler';
+import { calculateStudentDueStatus, getOrdinal } from './services/billingHelper';
 
 const app = express();
 app.use(cors());
@@ -81,6 +82,7 @@ app.get('/api/students', async (req, res) => {
     // Get fee record for specified month
     const feeRecord = s.fees.find(f => f.month === m);
     const bed = s.beds.length > 0 ? s.beds[0] : null;
+    const dueStatus = calculateStudentDueStatus(s, 5500);
 
     return {
       id: s.id,
@@ -95,6 +97,12 @@ app.get('/api/students', async (req, res) => {
       year: s.year,
       rollNumber: s.rollNumber,
       dateOfJoining: s.dateOfJoining,
+      dueDayOfMonth: dueStatus.dueDayOfMonth,
+      dueDayLabel: dueStatus.dueDayLabel,
+      nextDueDate: dueStatus.nextDueDate,
+      pendingMonthsCount: dueStatus.pendingMonthsCount,
+      pendingMonths: dueStatus.pendingMonths,
+      totalPendingAmount: dueStatus.totalPendingAmount,
       aadhar: s.aadhar,
       phone: s.phone,
       parentName: s.parentName,
@@ -134,6 +142,18 @@ app.get('/api/students', async (req, res) => {
       }))
     };
   }));
+
+  // Sort: Pending students to top, ordered by highest pending months count desc
+  formatted.sort((a, b) => {
+    if (a.feeStatus !== b.feeStatus) {
+      return a.feeStatus === 'Pending' ? -1 : 1;
+    }
+    if (b.pendingMonthsCount !== a.pendingMonthsCount) {
+      return b.pendingMonthsCount - a.pendingMonthsCount;
+    }
+    return a.name.localeCompare(b.name);
+  });
+
   res.json(formatted);
 });
 
@@ -419,13 +439,15 @@ app.get('/api/fees/monthly-status', async (req, res) => {
   const students = await prisma.student.findMany({
     include: {
       beds: { include: { room: true } },
-      fees: { where: { month: m } }
+      fees: true
     }
   });
 
-  res.json(students.map(s => {
-    const feeRecord = s.fees[0] || null;
+  const mapped = students.map(s => {
+    const feeRecord = s.fees.find(f => f.month === m) || null;
     const bed = s.beds[0] || null;
+    const dueStatus = calculateStudentDueStatus(s, 5500);
+
     return {
       studentId: s.id,
       name: s.name,
@@ -435,15 +457,35 @@ app.get('/api/fees/monthly-status', async (req, res) => {
       bedNumber: bed ? bed.bedNumber : null,
       month: m,
       monthLabel: monthLabel(m),
+      dateOfJoining: s.dateOfJoining,
+      dueDayOfMonth: dueStatus.dueDayOfMonth,
+      dueDayLabel: dueStatus.dueDayLabel,
+      nextDueDate: dueStatus.nextDueDate,
+      pendingMonthsCount: dueStatus.pendingMonthsCount,
+      pendingMonthsList: dueStatus.pendingMonths.map(p => p.monthLabel),
+      totalPendingAmount: dueStatus.totalPendingAmount,
       feeStatus: feeRecord && feeRecord.status === 'Completed' ? 'Paid' : 'Pending',
       amount: feeRecord?.amount || 5500,
-      paymentDate: feeRecord ? feeRecord.date.toISOString().split('T')[0] : null,
+      paymentDate: feeRecord && feeRecord.status === 'Completed' ? feeRecord.date.toISOString().split('T')[0] : null,
       method: feeRecord?.method || null,
       upiProvider: feeRecord?.upiProvider || null,
       transactionRef: feeRecord?.transactionRef || null,
       feeRecordId: feeRecord?.id || null
     };
-  }));
+  });
+
+  // Sort: Pending students to top, ordered by highest pending months count desc
+  mapped.sort((a, b) => {
+    if (a.feeStatus !== b.feeStatus) {
+      return a.feeStatus === 'Pending' ? -1 : 1;
+    }
+    if (b.pendingMonthsCount !== a.pendingMonthsCount) {
+      return b.pendingMonthsCount - a.pendingMonthsCount;
+    }
+    return a.name.localeCompare(b.name);
+  });
+
+  res.json(mapped);
 });
 
 // Reports: Fee report for a month

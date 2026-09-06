@@ -188,19 +188,70 @@ export async function sendTelegramVoiceNote(spokenText: string, destination?: st
 }
 
 /**
+ * Format a natural spoken script for Text-to-Speech voice notes
+ */
+export function formatVoiceReminderScript(
+  studentName: string,
+  pendingMonthsList: string[],
+  totalAmount: number,
+  dueDayLabel: string,
+  hostelName: string = 'Hostel Office'
+): string {
+  const count = pendingMonthsList.length;
+  if (count <= 1) {
+    const month = pendingMonthsList[0] || 'the current month';
+    return `Hello ${studentName}. Friendly reminder from ${hostelName}: your fee for ${month} of ${totalAmount} rupees is pending. Your monthly due date is the ${dueDayLabel}. Please clear your dues. Thank you.`;
+  }
+
+  if (count <= 3) {
+    const monthsSpoken = pendingMonthsList.map(m => m.replace(/\s\d{4}/, '')).join(' and ');
+    return `Hello ${studentName}. Important reminder from ${hostelName}: You have ${count} months of pending fees for ${monthsSpoken}, totaling ${totalAmount} rupees. Your monthly due date is the ${dueDayLabel} of every month. Please clear your accumulated dues at the management office. Thank you.`;
+  }
+
+  // If more than 3 months overdue, speak a concise urgent summary
+  const firstMonth = pendingMonthsList[0].replace(/\s\d{4}/, '');
+  const lastMonth = pendingMonthsList[count - 1].replace(/\s\d{4}/, '');
+  return `Hello ${studentName}. Urgent notice from ${hostelName}: You have ${count} months of accumulated pending fees from ${firstMonth} to ${lastMonth}, totaling ${totalAmount} rupees. Your monthly due date is the ${dueDayLabel} of every month. Please visit the hostel office immediately to clear your dues. Thank you.`;
+}
+
+
+/**
  * Format a warm, personal message directly from the Hostel Warden / Management Office
  */
-export function formatFeeReminderMessage(studentName: string, course: string, room: string, monthLabel: string, amount: number, phone?: string): string {
-  return `<b>👋 Hello ${studentName},</b>\n\n` +
-         `This is a personal message from the <b>Hostel Management Office (VMR Hostel)</b>.\n\n` +
-         `We hope you are doing well! This is a friendly reminder regarding your hostel fee for <b>${monthLabel}</b>:\n\n` +
+export function formatFeeReminderMessage(
+  studentName: string,
+  course: string,
+  room: string,
+  pendingMonthsList: string[],
+  totalAmount: number,
+  dueDayLabel: string,
+  nextDueDate: string,
+  phone?: string,
+  hostelName: string = 'VMR Hostel'
+): string {
+  const isMultiMonth = pendingMonthsList.length > 1;
+  const monthText = isMultiMonth 
+    ? `${pendingMonthsList.length} Months (${pendingMonthsList.join(', ')})`
+    : (pendingMonthsList[0] || 'Current Month');
+
+  const headline = isMultiMonth
+    ? `⚠️ <b>URGENT FEE DUES NOTICE</b>`
+    : `📢 <b>MONTHLY FEE REMINDER</b>`;
+
+  return `${headline}\n\n` +
+         `<b>👋 Hello ${studentName},</b>\n\n` +
+         `This is a personal message from the <b>Hostel Management Office (${hostelName})</b>.\n\n` +
+         `Please find the details of your pending hostel dues below:\n\n` +
          `🏡 <b>Room:</b> ${room}\n` +
          `🎓 <b>Course:</b> ${course}\n` +
-         `💰 <b>Pending Fee:</b> ₹${amount}\n` +
-         (phone ? `📞 <b>Contact Registered:</b> ${phone}\n` : '') +
+         `📅 <b>Pending Period:</b> ${monthText}\n` +
+         `🗓️ <b>Monthly Due Date:</b> ${dueDayLabel} of every month (${nextDueDate})\n` +
+         `💰 <b>Total Outstanding Dues:</b> ₹${totalAmount.toLocaleString('en-IN')}\n` +
+         (phone ? `📞 <b>Registered Phone:</b> ${phone}\n` : '') +
          `\n` +
-         `Please clear your dues at the hostel management office or pay via UPI at your earliest convenience.\n\n` +
+         `Please clear your dues at the hostel office or via UPI at your earliest convenience.\n\n` +
          `If you have already paid or need any assistance, feel free to reply directly or visit the warden's desk.\n\n` +
          `<i>Best regards,</i>\n` +
          `<b>Hostel Administration Desk</b>`;
 }
+

@@ -319,6 +319,16 @@ export default function Fees() {
     const matchSearch = s.name.toLowerCase().includes(search.toLowerCase()) || s.room.toLowerCase().includes(search.toLowerCase());
     const matchFee = feeFilter === 'all' || s.feeStatus === feeFilter;
     return matchSearch && matchFee;
+  }).sort((a, b) => {
+    if (a.feeStatus !== b.feeStatus) {
+      return a.feeStatus === 'Pending' ? -1 : 1;
+    }
+    const countA = a.pendingMonthsCount || 0;
+    const countB = b.pendingMonthsCount || 0;
+    if (countB !== countA) {
+      return countB - countA;
+    }
+    return a.name.localeCompare(b.name);
   });
 
   const paidCount = monthlyStatus.filter(s => s.feeStatus === 'Paid').length;
@@ -365,24 +375,35 @@ export default function Fees() {
               </div>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '300px', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '360px', overflowY: 'auto' }}>
               {reminderModalData.results.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '1rem', color: 'var(--text-muted)' }}>No pending students found for this month. All clear!</div>
+                <div style={{ textAlign: 'center', padding: '1rem', color: 'var(--text-muted)' }}>No pending students found. All student fees are up to date!</div>
               ) : reminderModalData.results.map((r: any) => (
-                <div key={r.studentId} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-dim)', borderRadius: 10, padding: '10px 12px', fontSize: '0.82rem' }}>
-                  <div style={{ fontWeight: 700, display: 'flex', justifyContent: 'space-between' }}>
-                    <span>👤 {r.studentName}</span>
-                    <span style={{ color: 'var(--text-muted)' }}>📞 {r.phone}</span>
+                <div key={r.studentId} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-dim)', borderRadius: 10, padding: '12px 14px', fontSize: '0.82rem' }}>
+                  <div style={{ fontWeight: 700, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '0.9rem' }}>👤 {r.studentName} {r.roomName ? `· ${r.roomName}` : ''}</span>
+                    <span style={{ color: 'var(--warning)', fontWeight: 800 }}>₹{Number(r.totalAmount || 5500).toLocaleString('en-IN')}</span>
                   </div>
-                  <div style={{ display: 'flex', gap: '12px', marginTop: 6, fontSize: '0.75rem' }}>
+                  
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: 4, color: 'var(--text-muted)', fontSize: '0.75rem' }}>
+                    <span>📞 {r.phone}</span>
+                    <span>•</span>
+                    <span>🗓️ Due Day: <strong>{r.dueDayLabel || '10th'}</strong> of every month</span>
+                    <span>•</span>
+                    <span style={{ color: r.pendingMonthsCount > 1 ? '#f87171' : 'var(--text-muted)' }}>
+                      Backlog: <strong>{r.pendingMonthsCount || 1} Month(s)</strong> {r.pendingMonthsList ? `(${r.pendingMonthsList.join(', ')})` : ''}
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '12px', marginTop: 8, fontSize: '0.75rem', paddingTop: 6, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
                     <span style={{ color: '#38bdf8', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                       <Send size={12} /> Telegram: {r.telegramStatus}
                     </span>
+                    <span style={{ color: '#fbbf24', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                      <PhoneCall size={12} /> Voice Note: {r.telegramVoiceStatus}
+                    </span>
                     <span style={{ color: '#4ade80', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                       <MessageSquare size={12} /> WhatsApp: {r.whatsappStatus}
-                    </span>
-                    <span style={{ color: '#fbbf24', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                      <PhoneCall size={12} /> Voice: {r.voiceCallStatus}
                     </span>
                   </div>
                 </div>
@@ -458,7 +479,19 @@ export default function Fees() {
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight: 600, fontSize: '0.9rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.name}</div>
-                  <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>{s.course}{s.branch ? ` · ${s.branch}` : ''} · {s.room}</div>
+                  <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                    <span>{s.course}{s.branch ? ` · ${s.branch}` : ''} · {s.room}</span>
+                    {s.dueDayLabel && (
+                      <span style={{ background: 'rgba(249,115,22,0.12)', color: 'var(--primary)', padding: '1px 6px', borderRadius: 4, fontSize: '0.7rem', fontWeight: 600 }}>
+                        Due: {s.dueDayLabel}
+                      </span>
+                    )}
+                    {s.pendingMonthsCount > 1 && (
+                      <span style={{ background: 'rgba(239,68,68,0.15)', color: '#f87171', padding: '1px 6px', borderRadius: 4, fontSize: '0.7rem', fontWeight: 700 }}>
+                        {s.pendingMonthsCount} Mos Overdue (₹{s.totalPendingAmount?.toLocaleString('en-IN')})
+                      </span>
+                    )}
+                  </div>
                 </div>
                 {/* Fee status badge */}
                 <span style={{
@@ -487,6 +520,7 @@ export default function Fees() {
             ))}
           </div>
         </div>
+
 
         {/* Right: Chart + Monthly transactions */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>

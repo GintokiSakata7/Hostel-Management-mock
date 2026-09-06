@@ -265,6 +265,7 @@ function StudentDetailCard({ student, selectedMonth, onClose, onRefresh }: { stu
               { icon: Mail, label: 'Email', value: student.email || '—' },
               { icon: BedDouble, label: 'Room', value: student.room },
               { icon: Calendar, label: 'Joined', value: student.dateOfJoining ? new Date(student.dateOfJoining).toLocaleDateString('en-IN') : '—' },
+              { icon: Clock, label: 'Monthly Due Day', value: student.dueDayLabel ? `${student.dueDayLabel} of every month` : '10th of every month' },
               { icon: User, label: 'Parent', value: student.parentName || '—' },
               { icon: Phone, label: 'Parent Ph.', value: student.parentPhone || '—' },
               { icon: MapPin, label: 'State', value: student.state || '—' },
@@ -278,6 +279,7 @@ function StudentDetailCard({ student, selectedMonth, onClose, onRefresh }: { stu
               </div>
             ))}
           </div>
+
 
           {/* Payment history toggle */}
           <button onClick={() => setShowHistory(!showHistory)} style={{ width: '100%', padding: '10px', background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border-dim)', borderRadius: 10, cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontSize: '0.85rem' }}>
@@ -485,6 +487,16 @@ export default function Students() {
     const matchCourse = courseFilter === 'all' || s.course.toLowerCase().includes(courseFilter.toLowerCase());
     const matchFee = feeFilter === 'all' || s.feeStatus === feeFilter;
     return matchSearch && matchCourse && matchFee;
+  }).sort((a, b) => {
+    if (a.feeStatus !== b.feeStatus) {
+      return a.feeStatus === 'Pending' ? -1 : 1;
+    }
+    const countA = a.pendingMonthsCount || 0;
+    const countB = b.pendingMonthsCount || 0;
+    if (countB !== countA) {
+      return countB - countA;
+    }
+    return a.name.localeCompare(b.name);
   });
 
   const paidCount = students.filter(s => s.feeStatus === 'Paid').length;
