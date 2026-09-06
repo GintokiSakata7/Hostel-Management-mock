@@ -3,7 +3,7 @@ import cors from 'cors';
 import { PrismaClient } from '@prisma/client';
 import fs from 'fs';
 import path from 'path';
-import { initReminderScheduler, executeFeeReminderDispatch, getReminderScheduleSettings, updateReminderScheduleTime } from './services/reminderScheduler';
+import { initReminderScheduler, executeFeeReminderDispatch, executeSingleStudentReminder, getReminderScheduleSettings, updateReminderScheduleTime } from './services/reminderScheduler';
 import { calculateStudentDueStatus, getOrdinal } from './services/billingHelper';
 
 const app = express();
@@ -829,6 +829,36 @@ app.post('/api/reminders/trigger', async (req, res) => {
   try {
     const result = await executeFeeReminderDispatch();
     res.json({ success: true, data: result });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Individual Student Reminder endpoint
+app.post('/api/reminders/student/:studentId', async (req, res) => {
+  try {
+    const { studentId } = req.params;
+    const result = await executeSingleStudentReminder(studentId);
+    if (!result.success) {
+      return res.status(404).json(result);
+    }
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/reminders/send-individual', async (req, res) => {
+  try {
+    const { studentId } = req.body;
+    if (!studentId) {
+      return res.status(400).json({ success: false, error: 'studentId is required' });
+    }
+    const result = await executeSingleStudentReminder(studentId);
+    if (!result.success) {
+      return res.status(404).json(result);
+    }
+    res.json(result);
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
   }

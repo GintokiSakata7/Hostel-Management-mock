@@ -377,6 +377,7 @@ export default function Fees() {
   const [payingStudent, setPayingStudent] = useState<any>(null);
   const [viewingReceipt, setViewingReceipt] = useState<any>(null);
   const [triggeringReminders, setTriggeringReminders] = useState(false);
+  const [sendingReminderId, setSendingReminderId] = useState<string | null>(null);
   const [reminderModalData, setReminderModalData] = useState<any>(null);
   const [serialSearch, setSerialSearch] = useState('');
 
@@ -389,6 +390,32 @@ export default function Fees() {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  const handleSendIndividualReminder = async (student: any) => {
+    const studentId = student.studentId || student.dbId || student.id;
+    if (!studentId) return;
+    setSendingReminderId(studentId);
+    try {
+      const res = await fetch(`http://localhost:3001/api/reminders/student/${studentId}`, { method: 'POST' });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        showToast(`🎙️ Voice & Text reminder sent to ${student.name}!`, 'success');
+        setReminderModalData({
+          monthLabel: MONTHS.find(m => m.value === selectedMonth)?.label || selectedMonth,
+          totalPendingCount: 1,
+          totalPendingAmount: data.result.totalAmount,
+          summaryMessage: `Personal fee reminder successfully delivered to ${student.name}.`,
+          results: [data.result]
+        });
+      } else {
+        showToast(data.message || data.error || 'Failed to send reminder', 'error');
+      }
+    } catch (err: any) {
+      showToast(`Error: ${err.message}`, 'error');
+    } finally {
+      setSendingReminderId(null);
+    }
+  };
 
   const handleSendReminders = async () => {
     setTriggeringReminders(true);
@@ -652,17 +679,28 @@ export default function Fees() {
                     {s.feeStatus === 'Paid' ? <><CheckCircle2 size={12} /> PAID</> : <><Clock size={12} /> PENDING</>}
                   </span>
                   {/* Actions */}
-                  {s.feeStatus === 'Paid' ? (
-                    <button className="icon-btn-small" title="Print Receipt"
-                      onClick={() => setViewingReceipt(s)}>
-                      <Printer size={14} />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <button
+                      className="icon-btn-small"
+                      title={`Send Personal Voice & Text Reminder to ${s.name}`}
+                      disabled={sendingReminderId === s.studentId}
+                      onClick={() => handleSendIndividualReminder(s)}
+                      style={{ color: 'var(--primary)', border: '1px solid rgba(249,115,22,0.25)', background: 'rgba(249,115,22,0.08)' }}
+                    >
+                      {sendingReminderId === s.studentId ? <Clock size={13} className="animate-spin" /> : <Send size={13} />}
                     </button>
-                  ) : (
-                    <button className="primary-btn" style={{ padding: '5px 12px', fontSize: '0.75rem', minHeight: 32, flexShrink: 0 }}
-                      onClick={() => setPayingStudent(s)}>
-                      <IndianRupee size={12} /> Pay
-                    </button>
-                  )}
+                    {s.feeStatus === 'Paid' ? (
+                      <button className="icon-btn-small" title="Print Receipt"
+                        onClick={() => setViewingReceipt(s)}>
+                        <Printer size={14} />
+                      </button>
+                    ) : (
+                      <button className="primary-btn" style={{ padding: '5px 12px', fontSize: '0.75rem', minHeight: 32, flexShrink: 0 }}
+                        onClick={() => setPayingStudent(s)}>
+                        <IndianRupee size={12} /> Pay
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}

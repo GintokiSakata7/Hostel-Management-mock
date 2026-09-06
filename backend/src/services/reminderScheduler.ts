@@ -164,6 +164,92 @@ export async function executeFeeReminderDispatch(): Promise<{
   };
 }
 
+/**
+ * Dispatch personalized text and voice reminder to a single student on-demand
+ */
+export async function executeSingleStudentReminder(studentId: string): Promise<{
+  success: boolean;
+  message: string;
+  result?: ReminderNotificationResult;
+}> {
+  const student = await prisma.student.findUnique({
+    where: { id: studentId },
+    include: {
+      beds: { include: { room: { include: { building: true } } } },
+      fees: true
+    }
+  });
+
+  if (!student) {
+    return { success: false, message: 'Student not found' };
+  }
+
+  const settings = readSettingsFile();
+  const hostelName = settings.hostelName || 'VMR Hostel';
+  const standardFee = settings.monthlyFee || 5500;
+
+  const dueStatus = calculateStudentDueStatus(student, standardFee);
+  const studentTarget = dueStatus.phone || undefined;
+  const monthsList = dueStatus.pendingMonths.length > 0
+    ? dueStatus.pendingMonths.map(p => p.monthLabel)
+    : [formatMonthLabel(toMonthString(new Date()))];
+
+  const totalAmt = dueStatus.totalPendingAmount > 0 ? dueStatus.totalPendingAmount : standardFee;
+
+  // 1. Telegram Text
+  const telegramMsg = formatFeeReminderMessage(
+    dueStatus.studentName,
+    dueStatus.course,
+    dueStatus.roomName,
+    monthsList,
+    totalAmt,
+    dueStatus.dueDayLabel,
+    dueStatus.nextDueDate,
+    dueStatus.phone || undefined,
+    hostelName
+  );
+  const tgRes = await sendTelegramMessage(telegramMsg, studentTarget);
+
+  // 2. Telegram Voice Note
+  const voiceScript = formatVoiceReminderScript(
+    dueStatus.studentName,
+    monthsList,
+    totalAmt,
+    dueStatus.dueDayLabel,
+    hostelName
+  );
+  const tgVoiceRes = await sendTelegramVoiceNote(voiceScript, studentTarget);
+
+  // 3. WhatsApp
+  const waLabel = monthsList.length > 1 ? `${monthsList.length} Months (${monthsList.join(', ')})` : monthsList[0];
+  const waRes = await sendWhatsAppReminder(dueStatus.studentName, dueStatus.phone || '9999999999', totalAmt, waLabel);
+
+  // 4. Voice Call
+  const voiceRes = await triggerVoiceCallReminder(dueStatus.studentName, dueStatus.phone || '9999999999', totalAmt, waLabel);
+
+  const result: ReminderNotificationResult = {
+    studentId: dueStatus.studentId,
+    studentName: dueStatus.studentName,
+    phone: dueStatus.phone || 'N/A',
+    roomName: dueStatus.roomName,
+    pendingMonthsCount: dueStatus.pendingMonthsCount,
+    pendingMonthsList: monthsList,
+    totalAmount: totalAmt,
+    dueDayLabel: dueStatus.dueDayLabel,
+    nextDueDate: dueStatus.nextDueDate,
+    telegramStatus: tgRes.message,
+    telegramVoiceStatus: tgVoiceRes.message,
+    whatsappStatus: waRes,
+    voiceCallStatus: voiceRes
+  };
+
+  return {
+    success: true,
+    message: `Individual reminder successfully sent to ${dueStatus.studentName}`,
+    result
+  };
+}
+
 
 /**
  * Get current reminder schedule status & settings

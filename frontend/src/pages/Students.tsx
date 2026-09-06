@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   Search, UserPlus, Edit2, Trash2, X, IndianRupee, Calendar, Printer,
-  User, BedDouble, Phone, Mail, MapPin, Shield, ChevronDown, ChevronUp, Clock
+  User, BedDouble, Phone, Mail, MapPin, Shield, ChevronDown, ChevronUp, Clock, Send, MessageSquare, PhoneCall
 } from 'lucide-react';
 import Modal from '../components/Modal';
 import { useToast } from '../components/ToastContext';
@@ -102,7 +102,7 @@ function PaymentModal({ student, selectedMonth, onClose, onSuccess }: { student:
   );
 }
 
-function StudentDetailCard({ student, selectedMonth, onClose, onRefresh, isMobile }: { student: any; selectedMonth: string; onClose: () => void; onRefresh: () => void; isMobile: boolean }) {
+function StudentDetailCard({ student, selectedMonth, onClose, onRefresh, isMobile, onSendReminder }: { student: any; selectedMonth: string; onClose: () => void; onRefresh: () => void; isMobile: boolean; onSendReminder?: (student: any) => void }) {
   const [showHistory, setShowHistory] = useState(false);
   const { settings } = useSettings();
   const monthlyFee = settings?.monthlyFee || 5500;
@@ -152,9 +152,16 @@ function StudentDetailCard({ student, selectedMonth, onClose, onRefresh, isMobil
               {isPaidThisMonth ? (
                 <button className="icon-btn-small" title="Print Receipt" onClick={() => setShowReceipt(true)}><Printer size={16} /></button>
               ) : (
-                <button className="primary-btn" style={{ padding: '5px 14px', fontSize: '0.8rem' }} onClick={() => setShowPayment(true)}>
-                  <IndianRupee size={13} /> Pay Now
-                </button>
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  {onSendReminder && (
+                    <button className="icon-btn-small" title="Send Personal Fee Reminder (Voice & Text)" onClick={() => onSendReminder(student)} style={{ color: 'var(--primary)' }}>
+                      <Send size={15} />
+                    </button>
+                  )}
+                  <button className="primary-btn" style={{ padding: '5px 14px', fontSize: '0.8rem' }} onClick={() => setShowPayment(true)}>
+                    <IndianRupee size={13} /> Pay Now
+                  </button>
+                </div>
               )}
             </div>
           </div>
@@ -371,7 +378,9 @@ export default function Students() {
   const [editingStudent, setEditingStudent] = useState<any>(null);
   const [viewingStudent, setViewingStudent] = useState<any>(null);
   const [payingStudent, setPayingStudent] = useState<any>(null);
-  
+  const [sendingReminderId, setSendingReminderId] = useState<string | null>(null);
+  const [reminderResultModal, setReminderResultModal] = useState<any | null>(null);
+
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth <= 768);
@@ -389,6 +398,26 @@ export default function Students() {
   }, [selectedMonth]);
 
   useEffect(() => { fetchStudents(); }, [fetchStudents]);
+
+  const handleSendIndividualReminder = async (student: any) => {
+    const studentId = student.dbId || student.id;
+    if (!studentId) return;
+    setSendingReminderId(studentId);
+    try {
+      const res = await fetch(`http://localhost:3001/api/reminders/student/${studentId}`, { method: 'POST' });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        showToast(`🎙️ Voice & Text reminder sent to ${student.name}!`, 'success');
+        setReminderResultModal(data.result);
+      } else {
+        showToast(data.message || data.error || 'Failed to send reminder', 'error');
+      }
+    } catch (err: any) {
+      showToast(`Error: ${err.message}`, 'error');
+    } finally {
+      setSendingReminderId(null);
+    }
+  };
 
   const handleDelete = async (dbId: string) => {
     if (!confirm('Delete this student permanently?')) return;
@@ -499,6 +528,43 @@ export default function Students() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                       <div className="avatar-small">{student.name.charAt(0)}</div>
                       <button className="student-name-btn" onClick={() => setViewingStudent(student)}>{student.name}</button>
+                      
+                      {/* Individual Reminder Trigger Button beside Student Name */}
+                      <button
+                        type="button"
+                        className="reminder-tag-btn"
+                        title={`Send Personal Voice & Text Fee Reminder to ${student.name}`}
+                        disabled={sendingReminderId === student.dbId}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleSendIndividualReminder(student);
+                        }}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          padding: '3px 8px',
+                          borderRadius: '6px',
+                          background: sendingReminderId === student.dbId ? 'rgba(249,115,22,0.25)' : 'rgba(249,115,22,0.1)',
+                          border: '1px solid rgba(249,115,22,0.3)',
+                          color: 'var(--primary)',
+                          fontSize: '0.72rem',
+                          fontWeight: 600,
+                          cursor: sendingReminderId === student.dbId ? 'not-allowed' : 'pointer',
+                          transition: 'all 0.2s',
+                          marginLeft: 2,
+                          flexShrink: 0
+                        }}
+                        onMouseOver={(e) => e.currentTarget.style.background = 'rgba(249,115,22,0.22)'}
+                        onMouseOut={(e) => e.currentTarget.style.background = sendingReminderId === student.dbId ? 'rgba(249,115,22,0.25)' : 'rgba(249,115,22,0.1)'}
+                      >
+                        {sendingReminderId === student.dbId ? (
+                          <Clock size={12} className="animate-spin" />
+                        ) : (
+                          <Send size={11} />
+                        )}
+                        <span>{sendingReminderId === student.dbId ? 'Sending…' : 'Remind'}</span>
+                      </button>
                     </div>
                   </td>
                   <td data-label="Course · Branch">
@@ -514,7 +580,16 @@ export default function Students() {
                     </span>
                   </td>
                   <td data-label="Actions">
-                    <div style={{ display: 'flex', gap: '4px' }}>
+                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                      <button 
+                        className="icon-btn-small" 
+                        title={`Send Voice & Text Reminder to ${student.name}`}
+                        disabled={sendingReminderId === student.dbId}
+                        onClick={() => handleSendIndividualReminder(student)}
+                        style={{ color: 'var(--primary)' }}
+                      >
+                        {sendingReminderId === student.dbId ? <Clock size={15} className="animate-spin" /> : <Send size={15} />}
+                      </button>
                       <button className="icon-btn-small" title="Edit" onClick={() => { setEditingStudent(student); setShowForm(true); }}><Edit2 size={16} /></button>
                       <button className="icon-btn-small delete" title="Delete" onClick={() => handleDelete(student.dbId)}><Trash2 size={16} /></button>
                     </div>
@@ -536,8 +611,33 @@ export default function Students() {
             ) : filtered.map(student => (
               <div key={student.dbId} className="glass" style={{ padding: '1rem', borderRadius: 12, marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '1rem', animation: 'slideInUp 0.3s ease-out', cursor: 'pointer' }} onClick={() => setViewingStudent(student)}>
                 <div className="avatar-small" style={{ width: 40, height: 40, fontSize: '1.1rem' }}>{student.name.charAt(0)}</div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 600 }}>{student.name}</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                    <div style={{ fontWeight: 600 }}>{student.name}</div>
+                    <button
+                      type="button"
+                      disabled={sendingReminderId === student.dbId}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleSendIndividualReminder(student);
+                      }}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '3px',
+                        padding: '2px 7px',
+                        borderRadius: '4px',
+                        background: 'rgba(249,115,22,0.15)',
+                        border: '1px solid rgba(249,115,22,0.3)',
+                        color: 'var(--primary)',
+                        fontSize: '0.7rem',
+                        fontWeight: 600,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      {sendingReminderId === student.dbId ? <Clock size={10} className="animate-spin" /> : <Send size={10} />} Remind
+                    </button>
+                  </div>
                   <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{student.course} · Room {student.room}</div>
                 </div>
                 <span className={student.feeStatus === 'Paid' ? 'status-badge badge-paid' : student.feeStatus === 'Pending' ? 'status-badge badge-pending' : 'status-badge'}>
@@ -556,6 +656,45 @@ export default function Students() {
         </button>
       )}
 
+      {/* Individual Reminder Dispatch Report Modal */}
+      {reminderResultModal && (
+        <Modal isOpen onClose={() => setReminderResultModal(null)} title="Personal Fee Reminder Dispatch Report">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div style={{ background: 'rgba(249,115,22,0.08)', border: '1px solid rgba(249,115,22,0.2)', borderRadius: 12, padding: '14px 16px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ fontWeight: 700, fontSize: '1.05rem', color: 'var(--primary)' }}>👤 {reminderResultModal.studentName}</div>
+                <div style={{ fontWeight: 800, color: 'var(--warning)', fontSize: '1.1rem' }}>₹{Number(reminderResultModal.totalAmount || 5500).toLocaleString('en-IN')}</div>
+              </div>
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: 6, display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                <span>🏡 {reminderResultModal.roomName}</span>
+                <span>•</span>
+                <span>📞 {reminderResultModal.phone}</span>
+                <span>•</span>
+                <span>🗓️ Due Day: {reminderResultModal.dueDayLabel || '10th'}</span>
+                <span>•</span>
+                <span>Overdue: <strong>{reminderResultModal.pendingMonthsCount || 1} Month(s)</strong> {reminderResultModal.pendingMonthsList ? `(${reminderResultModal.pendingMonthsList.join(', ')})` : ''}</span>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div style={{ padding: '10px 14px', borderRadius: 8, background: 'rgba(56,189,248,0.08)', border: '1px solid rgba(56,189,248,0.25)', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.82rem', color: '#38bdf8' }}>
+                <Send size={15} /> <strong>Telegram Text:</strong> {reminderResultModal.telegramStatus}
+              </div>
+              <div style={{ padding: '10px 14px', borderRadius: 8, background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.25)', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.82rem', color: '#fbbf24' }}>
+                <PhoneCall size={15} /> <strong>Voice Note Audio:</strong> {reminderResultModal.telegramVoiceStatus}
+              </div>
+              <div style={{ padding: '10px 14px', borderRadius: 8, background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.25)', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.82rem', color: '#4ade80' }}>
+                <MessageSquare size={15} /> <strong>WhatsApp:</strong> {reminderResultModal.whatsappStatus}
+              </div>
+            </div>
+
+            <div style={{ textAlign: 'right', marginTop: '0.5rem' }}>
+              <button className="primary-btn" onClick={() => setReminderResultModal(null)}>Close</button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
       {/* Modals */}
       {viewingStudent && (
         <StudentDetailCard 
@@ -564,6 +703,7 @@ export default function Students() {
           isMobile={isMobile}
           onClose={() => setViewingStudent(null)} 
           onRefresh={() => { fetchStudents(); setViewingStudent(null); }} 
+          onSendReminder={handleSendIndividualReminder}
         />
       )}
       {showForm && (
