@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
-import { CreditCard, DollarSign, TrendingUp, Clock, CheckCircle2, XCircle, IndianRupee, Calendar, Search, Printer, Banknote, Smartphone, Bell, Send, MessageSquare, PhoneCall } from 'lucide-react';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import {
+  CreditCard, DollarSign, TrendingUp, TrendingDown, Clock, CheckCircle2, XCircle, IndianRupee, Calendar, Search, Printer, Banknote, Smartphone, Bell, Send, MessageSquare, PhoneCall
+} from 'lucide-react';
 import Modal from '../components/Modal';
 import { useToast } from '../components/ToastContext';
-
-const MONTHLY_FEE = 5500;
+import { useSettings } from '../components/SettingsContext';
 
 const MONTHS = Array.from({ length: 12 }, (_, i) => {
   const d = new Date();
@@ -18,8 +18,10 @@ function PaymentModal({ student, selectedMonth, onClose, onSuccess }: {
   student: any; selectedMonth: string; onClose: () => void; onSuccess: () => void;
 }) {
   const { showToast } = useToast();
+  const { settings } = useSettings();
+  const monthlyFee = settings?.monthlyFee || 5500;
   const [form, setForm] = useState({
-    amount: MONTHLY_FEE,
+    amount: monthlyFee,
     method: 'Cash',
     upiProvider: 'PhonePe',
     transactionRef: '',
@@ -136,120 +138,226 @@ function PaymentModal({ student, selectedMonth, onClose, onSuccess }: {
   );
 }
 
-function PrintReceiptModal({ record, onClose }: { record: any; onClose: () => void }) {
+export function PrintReceiptModal({ record, onClose }: { record: any; onClose: () => void }) {
+  const [alignMode, setAlignMode] = useState(false);
+  const [coords, setCoords] = useState({
+    sno: { top: 26.9, left: 12.0, size: 2.7 },
+    date: { top: 25.3, left: 80.1, size: 3.6 },
+    paidStamp: { top: 87.0, left: 76.9, size: 3.2 },
+    name: { top: 32.7, left: 31.1, size: 4.0 },
+    address: { top: 40.2, left: 12.0, size: 2.5 },
+    candCell: { top: 52.4, left: 18.0, size: 2.2 },
+    parCell: { top: 51.9, left: 64.1, size: 2.6 },
+    advRs: { top: 58.5, left: 15.0, size: 2.8 },
+    advTowards: { top: 58.5, left: 52.0, size: 2.5 },
+    feesRs: { top: 64.0, left: 14.0, size: 3.3 },
+    feesTowards: { top: 64.3, left: 54.0, size: 3.0 },
+    checkCash: { top: 70.6, left: 23.3, size: 3.7 },
+    checkUpi: { top: 70.6, left: 38.3, size: 3.8 },
+    checkTransfer: { top: 70.6, left: 73.5, size: 3.6 },
+    amountBox: { top: 79.5, left: 10.0, size: 4.0 },
+    room: { top: 79.5, left: 42.0, size: 3.5 }
+  });
+
+  const [activeField, setActiveField] = useState<keyof typeof coords>('name');
+
+  const updateCoord = (axis: 'top' | 'left' | 'size', value: number) => {
+    setCoords(prev => ({ ...prev, [activeField]: { ...prev[activeField], [axis]: value } }));
+  };
+
   const handlePrint = () => {
-    const win = window.open('', '', 'width=700,height=900');
+    const win = window.open('', '_blank');
     if (!win) return;
+    
+    const dateStr = record.paymentDate || new Date().toISOString().split('T')[0];
+    const [dYear, dMonth, dDay] = dateStr.split('-');
+    const formattedDate = `${dDay}/${dMonth}/${dYear}`;
+
+
     win.document.write(`
-      <html><head><title>Fee Receipt</title>
-      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+      <html><head><title>Print Receipt</title>
       <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'Inter', sans-serif; background: #fff; padding: 2cm; color: #1a1a1a; }
-        .header { text-align: center; border-bottom: 3px solid #f97316; padding-bottom: 1.2rem; margin-bottom: 1.5rem; }
-        .header h1 { font-size: 1.6rem; font-weight: 800; color: #f97316; display: flex; align-items: center; justify-content: center; }
-        .header p { color: #666; font-size: 0.8rem; margin-top: 4px; }
-        .receipt-id { background: #fff7ed; border: 1px solid #fed7aa; border-radius: 8px; padding: 6px 14px; display: inline-block; font-size: 0.78rem; color: #ea580c; font-weight: 700; margin-top: 8px; }
-        .section { margin: 1.2rem 0 0.5rem 0; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #999; }
-        .row { display: flex; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid #f5f5f5; font-size: 0.88rem; }
-        .label { color: #666; }
-        .val { font-weight: 600; }
-        .total { background: #fff7ed; border: 2px solid #f97316; border-radius: 12px; padding: 1rem; display: flex; justify-content: space-between; margin-top: 1.2rem; align-items: center; }
-        .paid-stamp { text-align: center; margin: 1.5rem 0; }
-        .paid-stamp span { border: 3px solid #16a34a; color: #16a34a; padding: 6px 24px; border-radius: 8px; font-weight: 800; font-size: 1.1rem; letter-spacing: 3px; transform: rotate(-2deg); display: inline-flex; align-items: center; }
-        .sig { display: flex; justify-content: space-between; margin-top: 2rem; font-size: 0.75rem; color: #999; }
-        .sig-box { text-align: center; border-top: 1px solid #ccc; padding-top: 8px; width: 180px; }
-        .footer { text-align: center; margin-top: 1.5rem; font-size: 0.7rem; color: #aaa; border-top: 1px dashed #ddd; padding-top: 1rem; }
+        * { box-sizing: border-box; }
+        body { margin: 0; padding: 0; font-family: 'Arial', sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; background: #fff; }
+        .receipt-container { position: relative; width: 100%; max-width: 800px; margin: 0 auto; user-select: none; -webkit-user-select: none; pointer-events: none; container-type: inline-size; }
+        .receipt-container img.bg { width: 100%; height: auto; display: block; }
+        .overlay-text { position: absolute; color: #00257a; font-weight: bold; font-family: 'Bodoni MT', serif; opacity: 0.75; filter: blur(0.5px); mix-blend-mode: multiply; }
+        .sno { top: ${coords.sno.top}%; left: ${coords.sno.left}%; font-size: ${coords.sno.size}cqw; color: #e51e25; }
+        .date { top: ${coords.date.top}%; left: ${coords.date.left}%; font-size: ${coords.date.size}cqw; }
+        .name { top: ${coords.name.top}%; left: ${coords.name.left}%; font-size: ${coords.name.size}cqw; color: #000; }
+        .address { top: ${coords.address.top}%; left: ${coords.address.left}%; font-size: ${coords.address.size}cqw; color: #000; }
+        .candCell { top: ${coords.candCell.top}%; left: ${coords.candCell.left}%; font-size: ${coords.candCell.size}cqw; color: #000; }
+        .parCell { top: ${coords.parCell.top}%; left: ${coords.parCell.left}%; font-size: ${coords.parCell.size}cqw; color: #000; }
+        .advRs { top: ${coords.advRs.top}%; left: ${coords.advRs.left}%; font-size: ${coords.advRs.size}cqw; color: #000; }
+        .advTowards { top: ${coords.advTowards.top}%; left: ${coords.advTowards.left}%; font-size: ${coords.advTowards.size}cqw; color: #000; }
+        .fees-rs { top: ${coords.feesRs.top}%; left: ${coords.feesRs.left}%; font-size: ${coords.feesRs.size}cqw; color: #000; }
+        .fees-towards { top: ${coords.feesTowards.top}%; left: ${coords.feesTowards.left}%; font-size: ${coords.feesTowards.size}cqw; color: #000; }
+        .check-cash { top: ${coords.checkCash.top}%; left: ${coords.checkCash.left}%; font-size: ${coords.checkCash.size}cqw; }
+        .check-upi { top: ${coords.checkUpi.top}%; left: ${coords.checkUpi.left}%; font-size: ${coords.checkUpi.size}cqw; }
+        .check-transfer { top: ${coords.checkTransfer.top}%; left: ${coords.checkTransfer.left}%; font-size: ${coords.checkTransfer.size}cqw; }
+        .amount-box { top: ${coords.amountBox.top}%; left: ${coords.amountBox.left}%; font-size: ${coords.amountBox.size}cqw; color: #000; width: 16%; text-align: center; }
+        .room-no { top: ${coords.room.top}%; left: ${coords.room.left}%; font-size: ${coords.room.size}cqw; color: #000; }
+        .paidStamp { position: absolute; top: ${coords.paidStamp.top}%; left: ${coords.paidStamp.left}%; font-size: ${coords.paidStamp.size}cqw; color: rgba(220, 20, 60, 0.7); border: 0.4cqw solid rgba(220, 20, 60, 0.7); border-radius: 0.5cqw; font-family: 'Arial Black', sans-serif; font-weight: 900; text-transform: uppercase; transform: rotate(-15deg); padding: 0.5cqw 1.5cqw; letter-spacing: 0.2cqw; filter: blur(0.6px); mix-blend-mode: multiply; }
+        @media print {
+          /* Add any print specific scaling if necessary */
+        }
       </style></head><body>
-      <div class="header">
-        <h1>
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#f97316" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
-          VMR Hostel
-        </h1>
-        <p>Official Fee Receipt — ${record.monthLabel}</p>
-        <div class="receipt-id">Receipt #VMR-${Date.now().toString().slice(-6)}</div>
-      </div>
-      <div class="section">Student Details</div>
-      <div class="row"><span class="label">Student Name</span><span class="val">${record.name}</span></div>
-      <div class="row"><span class="label">Course / Branch</span><span class="val">${record.course}${record.branch ? ' — ' + record.branch : ''}</span></div>
-      <div class="row"><span class="label">Room Number</span><span class="val">${record.room}</span></div>
-      <div class="row"><span class="label">Bed Number</span><span class="val">${record.bedNumber || '—'}</span></div>
-      <div class="section">Fee Details</div>
-      <div class="row"><span class="label">Fee Month</span><span class="val">${record.monthLabel}</span></div>
-      <div class="row"><span class="label">Payment Date</span><span class="val">${record.paymentDate || '—'}</span></div>
-      <div class="row"><span class="label">Payment Mode</span><span class="val">${record.method}${record.upiProvider ? ' (' + record.upiProvider + ')' : ''}</span></div>
-      ${record.transactionRef ? `<div class="row"><span class="label">Transaction Ref</span><span class="val">${record.transactionRef}</span></div>` : ''}
-      <div class="total">
-        <span style="font-weight:700;color:#ea580c;">Total Amount Paid</span>
-        <span style="font-size:1.5rem;font-weight:800;color:#f97316;">₹${Number(record.amount).toLocaleString('en-IN')}</span>
-      </div>
-      <div class="paid-stamp">
-        <span>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-          PAID
-        </span>
-      </div>
-      <div class="sig">
-        <div class="sig-box">Admin / Authorized Signatory</div>
-        <div class="sig-box">Student Signature</div>
-      </div>
-      <div class="footer">VMR Hostel Management System · Computer-generated receipt. No signature required.</div>
-      </body></html>
+      <div class="receipt-container">
+        <img class="bg" src="${window.location.origin}/receipt-template.jpg" onload="window.print()" />
+        <div class="overlay-text sno">${record.receiptNo || '-----'}</div>
+        <div class="overlay-text date">${formattedDate}</div>
+        <div class="overlay-text name">${record.name}</div>
+        <div class="overlay-text address">${record.address ? record.address.split(',').pop()?.trim() : ''}</div>
+        <div class="overlay-text candCell">${record.phone || ''}</div>
+        <div class="overlay-text parCell">${record.parentPhone || ''}</div>
+        <div class="overlay-text advRs"></div>
+        <div class="overlay-text advTowards"></div>
+        <div class="overlay-text fees-rs">${record.amount}</div>
+        <div class="overlay-text fees-towards">${record.monthLabel}</div>
+        ${record.method === 'Cash' ? '<div class="overlay-text check-cash">✔</div>' : ''}
+        ${record.method === 'UPI' ? '<div class="overlay-text check-upi">✔</div>' : ''}
+        ${record.method === 'Transfer' ? '<div class="overlay-text check-transfer">✔</div>' : ''}
+        <div class="overlay-text amount-box">${record.amount}</div>
+        <div class="overlay-text room-no">${record.room}</div>
+        <div class="paidStamp">PAID</div>
+      </div></body></html>
     `);
     win.document.close();
-    win.focus();
-    setTimeout(() => { win.print(); win.close(); }, 500);
   };
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3000 }}
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3000, padding: '1rem' }}
       onClick={onClose}>
-      <div style={{ width: '100%', maxWidth: 540, padding: '1.5rem', position: 'relative' }} onClick={e => e.stopPropagation()}>
-        <div style={{ background: '#fff', color: '#1a1a1a', borderRadius: 20, overflow: 'hidden', boxShadow: '0 24px 64px rgba(0,0,0,0.5)' }}>
-          <div style={{ background: '#fff7ed', borderBottom: '3px solid #f97316', padding: '1.5rem', textAlign: 'center' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem', fontWeight: 800, color: '#f97316' }}>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#f97316" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 8 }}><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
-              VMR Hostel
-            </div>
-            <div style={{ color: '#9a3412', fontSize: '0.8rem' }}>Official Fee Receipt — {record.monthLabel}</div>
-            <div style={{ display: 'inline-block', background: '#fff', border: '1px solid #fed7aa', borderRadius: 8, padding: '4px 12px', fontSize: '0.72rem', color: '#ea580c', fontWeight: 600, marginTop: 8 }}>
-              Receipt #VMR-{Date.now().toString().slice(-6)}
-            </div>
-          </div>
-
-          <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {[
-              { label: 'Student', value: record.name },
-              { label: 'Course', value: `${record.course}${record.branch ? ' — ' + record.branch : ''}` },
-              { label: 'Room', value: record.room }, { label: 'Bed', value: record.bedNumber || '—' },
-              { label: 'Fee Month', value: record.monthLabel },
-              { label: 'Payment Date', value: record.paymentDate },
-              { label: 'Payment Mode', value: `${record.method}${record.upiProvider ? ' (' + record.upiProvider + ')' : ''}` },
-              ...(record.transactionRef ? [{ label: 'Transaction Ref', value: record.transactionRef }] : []),
-            ].map(({ label, value }) => (
-              <div key={label} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f5f5f5', fontSize: '0.85rem' }}>
-                <span style={{ color: '#666' }}>{label}</span>
-                <span style={{ fontWeight: 600 }}>{value}</span>
+      <div style={{ width: '100%', maxWidth: '900px', maxHeight: '95vh', display: 'flex', flexDirection: 'column', background: '#000', borderRadius: '12px', overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
+        
+        {/* Scrollable Receipt Area */}
+        <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center', overflowY: 'auto', background: '#fff', flex: 1 }}>
+          
+          {alignMode && (
+            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', background: '#f8f9fa', padding: '16px', border: '1px solid #ccc', borderRadius: '8px', width: '100%', maxWidth: '800px', marginBottom: '20px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', width: '100%' }}>
+                <strong style={{ color: '#0055a5' }}>Alignment Mode Active</strong>
+                <p style={{ margin: 0, fontSize: '0.85rem', color: '#666' }}>Tweak the sliders to perfectly align any missing fields, or resize the text. When done, copy the coordinates at the bottom!</p>
               </div>
-            ))}
-            <div style={{ background: '#fff7ed', border: '2px solid #f97316', borderRadius: 12, padding: '1rem', display: 'flex', justifyContent: 'space-between', marginTop: '0.5rem' }}>
-              <span style={{ fontWeight: 700, color: '#ea580c' }}>Total Paid</span>
-              <span style={{ fontWeight: 800, fontSize: '1.3rem', color: '#f97316' }}>₹{Number(record.amount).toLocaleString('en-IN')}</span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <label style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>Select Field:</label>
+                <select value={activeField} onChange={e => setActiveField(e.target.value as any)} style={{ padding: '6px', borderRadius: '4px', border: '1px solid #aaa' }}>
+                  {Object.keys(coords).map(k => <option key={k} value={k}>{k}</option>)}
+                </select>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1, minWidth: '150px' }}>
+                <label style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>Top (%): {coords[activeField].top.toFixed(1)}%</label>
+                <input type="range" min="0" max="100" step="0.1" value={coords[activeField].top} onChange={e => updateCoord('top', parseFloat(e.target.value))} />
+              </div>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1, minWidth: '150px' }}>
+                <label style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>Left (%): {coords[activeField].left.toFixed(1)}%</label>
+                <input type="range" min="0" max="100" step="0.1" value={coords[activeField].left} onChange={e => updateCoord('left', parseFloat(e.target.value))} />
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1, minWidth: '150px' }}>
+                <label style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>Size (vw): {coords[activeField].size.toFixed(1)}</label>
+                <input type="range" min="0.5" max="4" step="0.1" value={coords[activeField].size} onChange={e => updateCoord('size', parseFloat(e.target.value))} />
+              </div>
             </div>
-            <div style={{ textAlign: 'center', marginTop: '1rem' }}>
-              <span style={{ border: '2px dashed #16a34a', color: '#16a34a', padding: '6px 20px', borderRadius: 8, fontWeight: 800, fontSize: '0.9rem', letterSpacing: 2, display: 'inline-flex', alignItems: 'center', transform: 'rotate(-2deg)' }}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 6 }}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                PAID
-              </span>
+          )}
+
+          <div style={{ width: '100%', maxWidth: '800px', display: 'flex', flexDirection: 'column', gap: '1rem', userSelect: 'none', WebkitUserSelect: 'none', pointerEvents: 'none' }} onClick={e => e.stopPropagation()}>
+            <div style={{ position: 'relative', width: '100%', margin: '0 auto', overflow: 'hidden', fontFamily: '"Bodoni MT", serif', containerType: 'inline-size' }}>
+              <img src="/receipt-template.jpg" alt="Receipt Background" style={{ width: '100%', display: 'block' }} />
+
+              <div style={{ position: 'absolute', inset: 0, opacity: 0.75, filter: 'blur(0.5px)', mixBlendMode: 'multiply' }}>
+                <div style={{ position: 'absolute', top: `${coords.sno.top}%`, left: `${coords.sno.left}%`, color: '#e51e25', fontWeight: 'bold', fontSize: `${coords.sno.size}cqw`, ...(activeField === 'sno' && alignMode ? {boxShadow: '0 0 0 4px yellow'} : {}) }}>
+                  {record.receiptNo || '-----'}
+                </div>
+                <div style={{ position: 'absolute', top: `${coords.date.top}%`, left: `${coords.date.left}%`, color: '#00257a', fontWeight: 'bold', fontSize: `${coords.date.size}cqw`, ...(activeField === 'date' && alignMode ? {background: 'rgba(255,255,0,0.5)'} : {}) }}>
+                  {(() => {
+                    const dStr = record.paymentDate || new Date().toISOString().split('T')[0];
+                    const [y, m, d] = dStr.split('-');
+                    return `${d}/${m}/${y}`;
+                  })()}
+                </div>
+                
+                <div style={{ position: 'absolute', top: `${coords.name.top}%`, left: `${coords.name.left}%`, color: '#000', fontWeight: 'bold', fontSize: `${coords.name.size}cqw`, ...(activeField === 'name' && alignMode ? {background: 'rgba(255,255,0,0.5)'} : {}) }}>
+                  {record.name}
+                </div>
+
+                <div style={{ position: 'absolute', top: `${coords.address.top}%`, left: `${coords.address.left}%`, color: '#000', fontWeight: 'bold', fontSize: `${coords.address.size}cqw`, ...(activeField === 'address' && alignMode ? {background: 'rgba(255,255,0,0.5)'} : {}) }}>
+                  {(record.address ? record.address.split(',').pop()?.trim() : '') || (alignMode ? '[Address Placeholder]' : '')}
+                </div>
+                <div style={{ position: 'absolute', top: `${coords.candCell.top}%`, left: `${coords.candCell.left}%`, color: '#000', fontWeight: 'bold', fontSize: `${coords.candCell.size}cqw`, ...(activeField === 'candCell' && alignMode ? {background: 'rgba(255,255,0,0.5)'} : {}) }}>
+                  {record.phone || (alignMode ? '[Candidate Cell]' : '')}
+                </div>
+                <div style={{ position: 'absolute', top: `${coords.parCell.top}%`, left: `${coords.parCell.left}%`, color: '#000', fontWeight: 'bold', fontSize: `${coords.parCell.size}cqw`, ...(activeField === 'parCell' && alignMode ? {background: 'rgba(255,255,0,0.5)'} : {}) }}>
+                  {record.parentPhone || (alignMode ? '[Parents Cell]' : '')}
+                </div>
+                
+                {alignMode && <div style={{ position: 'absolute', top: `${coords.advRs.top}%`, left: `${coords.advRs.left}%`, color: '#000', fontWeight: 'bold', fontSize: `${coords.advRs.size}cqw`, background: activeField === 'advRs' ? 'rgba(255,255,0,0.5)' : 'transparent' }}>[Adv Rs]</div>}
+                {alignMode && <div style={{ position: 'absolute', top: `${coords.advTowards.top}%`, left: `${coords.advTowards.left}%`, color: '#000', fontWeight: 'bold', fontSize: `${coords.advTowards.size}cqw`, background: activeField === 'advTowards' ? 'rgba(255,255,0,0.5)' : 'transparent' }}>[Adv Towards]</div>}
+
+                <div style={{ position: 'absolute', top: `${coords.feesRs.top}%`, left: `${coords.feesRs.left}%`, color: '#000', fontWeight: 'bold', fontSize: `${coords.feesRs.size}cqw`, ...(activeField === 'feesRs' && alignMode ? {background: 'rgba(255,255,0,0.5)'} : {}) }}>
+                  {record.amount}
+                </div>
+                <div style={{ position: 'absolute', top: `${coords.feesTowards.top}%`, left: `${coords.feesTowards.left}%`, color: '#000', fontWeight: 'bold', fontSize: `${coords.feesTowards.size}cqw`, ...(activeField === 'feesTowards' && alignMode ? {background: 'rgba(255,255,0,0.5)'} : {}) }}>
+                  {record.monthLabel}
+                </div>
+
+                {(record.method === 'Cash' || alignMode) && <div style={{ position: 'absolute', top: `${coords.checkCash.top}%`, left: `${coords.checkCash.left}%`, color: '#00257a', fontWeight: '900', fontSize: `${coords.checkCash.size}cqw`, ...(activeField === 'checkCash' && alignMode ? {background: 'rgba(255,255,0,0.5)'} : {}) }}>✔</div>}
+                {(record.method === 'UPI' || alignMode) && <div style={{ position: 'absolute', top: `${coords.checkUpi.top}%`, left: `${coords.checkUpi.left}%`, color: '#00257a', fontWeight: '900', fontSize: `${coords.checkUpi.size}cqw`, ...(activeField === 'checkUpi' && alignMode ? {background: 'rgba(255,255,0,0.5)'} : {}) }}>✔</div>}
+                {(record.method === 'Transfer' || alignMode) && <div style={{ position: 'absolute', top: `${coords.checkTransfer.top}%`, left: `${coords.checkTransfer.left}%`, color: '#00257a', fontWeight: '900', fontSize: `${coords.checkTransfer.size}cqw`, ...(activeField === 'checkTransfer' && alignMode ? {background: 'rgba(255,255,0,0.5)'} : {}) }}>✔</div>}
+    
+                <div style={{ position: 'absolute', top: `${coords.amountBox.top}%`, left: `${coords.amountBox.left}%`, color: '#000', fontWeight: 'bold', fontSize: `${coords.amountBox.size}cqw`, width: '16%', textAlign: 'center', ...(activeField === 'amountBox' && alignMode ? {background: 'rgba(255,255,0,0.5)'} : {}) }}>
+                  {record.amount}
+                </div>
+                <div style={{ position: 'absolute', top: `${coords.room.top}%`, left: `${coords.room.left}%`, color: '#000', fontWeight: 'bold', fontSize: `${coords.room.size}cqw`, ...(activeField === 'room' && alignMode ? {background: 'rgba(255,255,0,0.5)'} : {}) }}>
+                  {record.room}
+                </div>
+
+                <div style={{ position: 'absolute', top: `${coords.paidStamp.top}%`, left: `${coords.paidStamp.left}%`, color: 'rgba(220, 20, 60, 0.7)', border: '0.4cqw solid rgba(220, 20, 60, 0.7)', borderRadius: '0.5cqw', fontFamily: '"Arial Black", sans-serif', fontWeight: 900, textTransform: 'uppercase', transform: 'rotate(-15deg)', padding: '0.5cqw 1.5cqw', letterSpacing: '0.2cqw', filter: 'blur(0.6px)', mixBlendMode: 'multiply', fontSize: `${coords.paidStamp.size}cqw`, ...(activeField === 'paidStamp' && alignMode ? {boxShadow: '0 0 0 4px yellow'} : {}) }}>
+                  PAID
+                </div>
+              </div>
             </div>
+            
+            {alignMode && (
+              <div style={{ background: '#111', color: '#fff', padding: '16px', borderRadius: '8px', width: '100%', fontSize: '0.85rem' }}>
+                <strong style={{ color: '#4ade80' }}>Updated Coordinates Array:</strong><br/><br/>
+                <code style={{ whiteSpace: 'pre-wrap', color: '#a3a3a3' }}>
+                  {JSON.stringify(coords, null, 2)}
+                </code>
+              </div>
+            )}
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
-          <button className="custom-select" style={{ flex: 1 }} onClick={onClose}>Close</button>
-          <button className="primary-btn" style={{ flex: 1, justifyContent: 'center' }} onClick={handlePrint}>
-            <Printer size={16} /> Print Receipt
+        {/* Dark Modal Footer */}
+        <div style={{ padding: '16px 24px', background: '#111', borderTop: '1px solid rgba(255,255,255,0.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <button 
+            onClick={() => setAlignMode(!alignMode)}
+            style={{ background: 'transparent', color: '#a3a3a3', border: '1px solid rgba(255,255,255,0.1)', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontSize: '0.85rem' }}
+          >
+            {alignMode ? 'Disable Alignment Mode' : 'Tune Alignment'}
           </button>
+          
+          <div style={{ display: 'flex', gap: '12px' }}>
+            <button 
+              onClick={onClose} 
+              style={{ background: '#000', color: '#fff', border: '1px solid rgba(255,255,255,0.15)', padding: '10px 24px', borderRadius: '12px', cursor: 'pointer', fontWeight: '500', fontSize: '0.95rem', transition: 'all 0.2s' }}
+              onMouseOver={(e) => e.currentTarget.style.background = '#1a1a1a'}
+              onMouseOut={(e) => e.currentTarget.style.background = '#000'}
+            >
+              Close
+            </button>
+            <button 
+              onClick={handlePrint} 
+              style={{ background: 'var(--primary)', color: '#fff', border: 'none', padding: '10px 24px', borderRadius: '12px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.2s', boxShadow: '0 4px 12px rgba(249, 115, 22, 0.3)' }}
+              onMouseOver={(e) => e.currentTarget.style.opacity = '0.9'}
+              onMouseOut={(e) => e.currentTarget.style.opacity = '1'}
+            >
+              <Printer size={18} /> Print Receipt
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -258,10 +366,11 @@ function PrintReceiptModal({ record, onClose }: { record: any; onClose: () => vo
 
 export default function Fees() {
   const { showToast } = useToast();
+  const { settings } = useSettings();
+  const monthlyFee = settings?.monthlyFee || 5500;
   const [selectedMonth, setSelectedMonth] = useState(MONTHS[0].value);
   const [monthlyStatus, setMonthlyStatus] = useState<any[]>([]);
   const [transactions, setTransactions] = useState<any[]>([]);
-  const [chartData, setChartData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [feeFilter, setFeeFilter] = useState<'all' | 'Paid' | 'Pending'>('all');
@@ -269,6 +378,17 @@ export default function Fees() {
   const [viewingReceipt, setViewingReceipt] = useState<any>(null);
   const [triggeringReminders, setTriggeringReminders] = useState(false);
   const [reminderModalData, setReminderModalData] = useState<any>(null);
+  const [serialSearch, setSerialSearch] = useState('');
+
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  const [mobileTab, setMobileTab] = useState<'status' | 'transactions'>('status');
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const handleSendReminders = async () => {
     setTriggeringReminders(true);
@@ -296,16 +416,7 @@ export default function Fees() {
         fetch(`http://localhost:3001/api/fees/transactions`)
       ]);
       if (statusRes.ok) setMonthlyStatus(await statusRes.json());
-      if (txRes.ok) {
-        const txData = await txRes.json();
-        setTransactions(txData);
-        // Build chart: last 6 months
-        const last6 = MONTHS.slice(0, 6).reverse();
-        setChartData(last6.map(m => {
-          const total = txData.filter((t: any) => t.month === m.value).reduce((s: number, t: any) => s + t.amount, 0);
-          return { name: m.label.split(' ')[0], amount: total };
-        }));
-      }
+      if (txRes.ok) setTransactions(await txRes.json());
     } catch (e) {
       showToast('Failed to load fee data', 'error');
     } finally {
@@ -335,15 +446,30 @@ export default function Fees() {
   const pendingCount = monthlyStatus.filter(s => s.feeStatus === 'Pending').length;
   const totalCollected = monthlyStatus.filter(s => s.feeStatus === 'Paid').reduce((sum, s) => sum + s.amount, 0);
 
-  const monthTx = transactions.slice(0, 50); // Show recent 50 transactions across all months
+  // Fee statistics derived from transactions
+  const totalRevenue = transactions.reduce((s: number, t: any) => s + t.amount, 0);
+  const thisMonthTx = transactions.filter((t: any) => t.month === selectedMonth);
+  const thisMonthRevenue = thisMonthTx.reduce((s: number, t: any) => s + t.amount, 0);
+  const lastMonth = MONTHS[1]?.value;
+  const lastMonthRevenue = transactions.filter((t: any) => t.month === lastMonth).reduce((s: number, t: any) => s + t.amount, 0);
+  const revTrend = lastMonthRevenue > 0 ? Math.round(((thisMonthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100) : 0;
+
+  const methodBreakdown = thisMonthTx.reduce((acc: any, t: any) => {
+    acc[t.method] = (acc[t.method] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+
+  const monthTx = serialSearch.trim()
+    ? transactions.filter((t: any) => t.receiptNo && t.receiptNo.toLowerCase().includes(serialSearch.toLowerCase()))
+    : transactions.slice(0, 50);
 
   return (
     <div className="animate-fade-in">
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem' }}>
         <div>
           <h1 className="page-title" style={{ margin: '0 0 4px 0' }}>Fees Management</h1>
-          <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>Monthly fee tracking · ₹{MONTHLY_FEE.toLocaleString()}/student</p>
+          <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>Monthly fee tracking · ₹{monthlyFee.toLocaleString()}/student</p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
           <button 
@@ -418,10 +544,10 @@ export default function Fees() {
       )}
 
       {/* Stats row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.25rem', marginBottom: '1.5rem' }}>
+      <div className="responsive-grid-3" style={{ marginBottom: '1.5rem' }}>
         {[
           { icon: CheckCircle2, label: 'Paid', value: paidCount, sub: `₹${totalCollected.toLocaleString()}`, color: 'var(--success)', bg: 'rgba(34,197,94,0.1)' },
-          { icon: XCircle, label: 'Pending', value: pendingCount, sub: `₹${(pendingCount * MONTHLY_FEE).toLocaleString()} due`, color: 'var(--warning)', bg: 'rgba(234,179,8,0.1)' },
+          { icon: XCircle, label: 'Pending', value: pendingCount, sub: `₹${(pendingCount * monthlyFee).toLocaleString()} due`, color: 'var(--warning)', bg: 'rgba(234,179,8,0.1)' },
           { icon: TrendingUp, label: 'Collection Rate', value: monthlyStatus.length > 0 ? `${Math.round(paidCount / monthlyStatus.length * 100)}%` : '0%', sub: `${MONTHS.find(m => m.value === selectedMonth)?.label}`, color: 'var(--primary)', bg: 'rgba(249,115,22,0.1)' },
         ].map(({ icon: Icon, label, value, sub, color, bg }) => (
           <div key={label} className="glass-panel" style={{ padding: '1.25rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -437,14 +563,30 @@ export default function Fees() {
         ))}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '3fr 2fr', gap: '1.5rem' }}>
+      <div className="responsive-grid-1-1">
+        
+        {/* Mobile Tabs */}
+        {isMobile && (
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '1rem', background: 'rgba(255,255,255,0.05)', padding: '6px', borderRadius: 12 }}>
+            <button onClick={() => setMobileTab('status')} style={{ flex: 1, padding: '10px', borderRadius: 8, border: 'none', background: mobileTab === 'status' ? 'var(--primary)' : 'transparent', color: mobileTab === 'status' ? '#fff' : 'var(--text-muted)', fontWeight: 600, fontSize: '0.85rem' }}>Student Status</button>
+            <button onClick={() => setMobileTab('transactions')} style={{ flex: 1, padding: '10px', borderRadius: 8, border: 'none', background: mobileTab === 'transactions' ? 'var(--primary)' : 'transparent', color: mobileTab === 'transactions' ? '#fff' : 'var(--text-muted)', fontWeight: 600, fontSize: '0.85rem' }}>Recent Txns</button>
+          </div>
+        )}
+
         {/* Left: Student fee status table */}
-        <div className="glass-panel" style={{ padding: '1.5rem' }}>
+        {(!isMobile || mobileTab === 'status') && (
+        <div className="glass-panel" style={{ padding: '1.5rem', position: 'relative' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
             <h3 style={{ margin: 0 }}>Student Fee Status — {MONTHS.find(m => m.value === selectedMonth)?.label}</h3>
+            {isMobile && (
+              <button className="icon-btn-small" onClick={() => setShowMobileFilters(true)}>
+                <Search size={16} /> Filters
+              </button>
+            )}
           </div>
 
-          {/* Filters */}
+          {/* Filters (Desktop) */}
+          {!isMobile && (
           <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1rem' }}>
             <div className="search-bar" style={{ flex: 1 }}>
               <Search size={14} color="var(--text-muted)" />
@@ -460,6 +602,7 @@ export default function Fees() {
               </button>
             ))}
           </div>
+          )}
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '520px', overflowY: 'auto' }}>
             {loading ? (
@@ -468,106 +611,189 @@ export default function Fees() {
               <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>No students found.</div>
             ) : filtered.map(s => (
               <div key={s.studentId} style={{
-                display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 14px',
+                display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'stretch' : 'center', gap: '12px', padding: '12px 14px',
                 background: 'rgba(0,0,0,0.15)', borderRadius: 12,
                 border: `1px solid ${s.feeStatus === 'Paid' ? 'rgba(34,197,94,0.2)' : 'rgba(234,179,8,0.15)'}`,
                 transition: 'all 0.2s', animation: 'slideInUp 0.3s ease-out'
               }}>
-                {/* Avatar */}
-                <div style={{ width: 38, height: 38, borderRadius: 10, background: 'linear-gradient(135deg, var(--primary), var(--accent))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: '#fff', flexShrink: 0 }}>
-                  {s.name.charAt(0)}
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 600, fontSize: '0.9rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.name}</div>
-                  <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                    <span>{s.course}{s.branch ? ` · ${s.branch}` : ''} · {s.room}</span>
-                    {s.dueDayLabel && (
-                      <span style={{ background: 'rgba(249,115,22,0.12)', color: 'var(--primary)', padding: '1px 6px', borderRadius: 4, fontSize: '0.7rem', fontWeight: 600 }}>
-                        Due: {s.dueDayLabel}
-                      </span>
-                    )}
-                    {s.pendingMonthsCount > 1 && (
-                      <span style={{ background: 'rgba(239,68,68,0.15)', color: '#f87171', padding: '1px 6px', borderRadius: 4, fontSize: '0.7rem', fontWeight: 700 }}>
-                        {s.pendingMonthsCount} Mos Overdue (₹{s.totalPendingAmount?.toLocaleString('en-IN')})
-                      </span>
-                    )}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: 0 }}>
+                  {/* Avatar */}
+                  <div style={{ width: 38, height: 38, borderRadius: 10, background: 'linear-gradient(135deg, var(--primary), var(--accent))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: '#fff', flexShrink: 0 }}>
+                    {s.name.charAt(0)}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 600, fontSize: '0.9rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.name}</div>
+                    <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                      <span>{s.course}{s.branch ? ` · ${s.branch}` : ''} · {s.room}</span>
+                      {s.dueDayLabel && (
+                        <span style={{ background: 'rgba(249,115,22,0.12)', color: 'var(--primary)', padding: '1px 6px', borderRadius: 4, fontSize: '0.7rem', fontWeight: 600 }}>
+                          Due: {s.dueDayLabel}
+                        </span>
+                      )}
+                      {s.pendingMonthsCount > 1 && (
+                        <span style={{ background: 'rgba(239,68,68,0.15)', color: '#f87171', padding: '1px 6px', borderRadius: 4, fontSize: '0.7rem', fontWeight: 700 }}>
+                          {s.pendingMonthsCount} Mos Overdue (₹{s.totalPendingAmount?.toLocaleString('en-IN')})
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
-                {/* Fee status badge */}
-                <span style={{
-                  fontSize: '0.72rem', fontWeight: 700, padding: '4px 10px', borderRadius: 20,
-                  background: s.feeStatus === 'Paid' ? 'rgba(34,197,94,0.15)' : 'rgba(234,179,8,0.15)',
-                  color: s.feeStatus === 'Paid' ? 'var(--success)' : 'var(--warning)',
-                  border: `1px solid ${s.feeStatus === 'Paid' ? 'rgba(34,197,94,0.3)' : 'rgba(234,179,8,0.3)'}`,
-                  flexShrink: 0,
-                  display: 'flex', alignItems: 'center', gap: '4px'
-                }}>
-                  {s.feeStatus === 'Paid' ? <><CheckCircle2 size={12} /> PAID</> : <><Clock size={12} /> PENDING</>}
-                </span>
-                {/* Actions */}
-                {s.feeStatus === 'Paid' ? (
-                  <button className="icon-btn-small" title="Print Receipt"
-                    onClick={() => setViewingReceipt(s)}>
-                    <Printer size={14} />
-                  </button>
-                ) : (
-                  <button className="primary-btn" style={{ padding: '5px 12px', fontSize: '0.75rem', minHeight: 32, flexShrink: 0 }}
-                    onClick={() => setPayingStudent(s)}>
-                    <IndianRupee size={12} /> Pay
-                  </button>
-                )}
+                
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: isMobile ? 'space-between' : 'flex-end', gap: '12px', marginTop: isMobile ? '4px' : 0, paddingTop: isMobile ? '8px' : 0, borderTop: isMobile ? '1px dashed rgba(255,255,255,0.05)' : 'none' }}>
+                  {/* Fee status badge */}
+                  <span style={{
+                    fontSize: '0.72rem', fontWeight: 700, padding: '4px 10px', borderRadius: 20,
+                    background: s.feeStatus === 'Paid' ? 'rgba(34,197,94,0.15)' : 'rgba(234,179,8,0.15)',
+                    color: s.feeStatus === 'Paid' ? 'var(--success)' : 'var(--warning)',
+                    border: `1px solid ${s.feeStatus === 'Paid' ? 'rgba(34,197,94,0.3)' : 'rgba(234,179,8,0.3)'}`,
+                    flexShrink: 0,
+                    display: 'flex', alignItems: 'center', gap: '4px'
+                  }}>
+                    {s.feeStatus === 'Paid' ? <><CheckCircle2 size={12} /> PAID</> : <><Clock size={12} /> PENDING</>}
+                  </span>
+                  {/* Actions */}
+                  {s.feeStatus === 'Paid' ? (
+                    <button className="icon-btn-small" title="Print Receipt"
+                      onClick={() => setViewingReceipt(s)}>
+                      <Printer size={14} />
+                    </button>
+                  ) : (
+                    <button className="primary-btn" style={{ padding: '5px 12px', fontSize: '0.75rem', minHeight: 32, flexShrink: 0 }}
+                      onClick={() => setPayingStudent(s)}>
+                      <IndianRupee size={12} /> Pay
+                    </button>
+                  )}
+                </div>
+                </div>
               </div>
             ))}
           </div>
         </div>
+        )}
 
 
         {/* Right: Chart + Monthly transactions */}
+        {(!isMobile || mobileTab === 'transactions') && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          {/* Fee statistics panel */}
           <div className="glass-panel" style={{ padding: '1.5rem' }}>
-            <h3 style={{ marginBottom: '1rem' }}>Collection Trend</h3>
-            <div style={{ height: 160 }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={chartData}>
-                  <defs>
-                    <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="var(--success)" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="var(--success)" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
-                  <XAxis dataKey="name" stroke="var(--text-muted)" tick={{ fill: 'var(--text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} />
-                  <YAxis stroke="var(--text-muted)" tick={{ fill: 'var(--text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} />
-                  <Tooltip contentStyle={{ background: 'rgba(15,17,26,0.95)', border: '1px solid var(--border)', borderRadius: 8 }}
-                    itemStyle={{ color: 'var(--text-main)' }} />
-                  <Area type="monotone" dataKey="amount" stroke="var(--success)" strokeWidth={2.5} fillOpacity={1} fill="url(#areaGrad)" />
-                </AreaChart>
-              </ResponsiveContainer>
+            <h3 style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <TrendingUp size={18} color="var(--primary)" /> Fee Statistics
+            </h3>
+            <div className="responsive-grid-2" style={{ gap: '0.875rem', marginBottom: '1rem' }}>
+              {[
+                { label: 'This Month', value: `₹${thisMonthRevenue.toLocaleString()}`, color: 'var(--success)', icon: IndianRupee, sub: `${thisMonthTx.length} payments` },
+                { label: 'vs Last Month', value: `${revTrend >= 0 ? '+' : ''}${revTrend}%`, color: revTrend >= 0 ? 'var(--success)' : 'var(--danger)', icon: revTrend >= 0 ? TrendingUp : TrendingDown, sub: `₹${lastMonthRevenue.toLocaleString()}` },
+                { label: 'All-Time Total', value: `₹${totalRevenue.toLocaleString()}`, color: 'var(--primary)', icon: IndianRupee, sub: `${transactions.length} transactions` },
+                { label: 'Avg Per Student', value: transactions.length > 0 ? `₹${Math.round(totalRevenue / transactions.length).toLocaleString()}` : '—', color: 'var(--accent)', icon: IndianRupee, sub: 'per payment' },
+              ].map(({ label, value, color, icon: Icon, sub }) => (
+                <div key={label} style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 12, padding: '0.875rem', border: '1px solid rgba(255,255,255,0.06)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: 4 }}>
+                    <Icon size={13} color={color} />
+                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{label}</span>
+                  </div>
+                  <div style={{ fontSize: '1.15rem', fontWeight: 800, color }}>{value}</div>
+                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: 2 }}>{sub}</div>
+                </div>
+              ))}
+            </div>
+            {/* Payment method breakdown */}
+            <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '0.875rem' }}>
+              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '0.625rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>Payment Methods (This Month)</div>
+              <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                {Object.entries(methodBreakdown).length === 0
+                  ? <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>No data yet</div>
+                  : Object.entries(methodBreakdown).map(([method, count]: [string, any]) => (
+                    <div key={method} style={{ background: 'rgba(249,115,22,0.1)', border: '1px solid rgba(249,115,22,0.2)', borderRadius: 8, padding: '4px 12px', fontSize: '0.78rem', fontWeight: 700, color: 'var(--primary)' }}>
+                      {method}: {count}
+                    </div>
+                  ))
+                }
+              </div>
             </div>
           </div>
 
           {/* This month's transaction list */}
           <div className="glass-panel" style={{ padding: '1.5rem', flex: 1, overflow: 'hidden' }}>
-            <h3 style={{ marginBottom: '1rem' }}>Recent Transactions</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: 300, overflowY: 'auto' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+            <h3 style={{ margin: 0 }}>Recent Transactions</h3>
+          </div>
+          {/* Serial number search */}
+          <div className="search-bar" style={{ marginBottom: '1rem' }}>
+            <Search size={14} color="var(--text-muted)" />
+            <input
+              placeholder="Search by S.No (e.g. 2609-001)…"
+              value={serialSearch}
+              onChange={e => setSerialSearch(e.target.value)}
+            />
+            {serialSearch && (
+              <button onClick={() => setSerialSearch('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '0 4px' }}>✕</button>
+            )}
+          </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '520px', overflowY: 'auto' }}>
               {monthTx.length === 0 ? (
-                <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', textAlign: 'center', padding: '1rem' }}>No transactions this month.</div>
+                <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', textAlign: 'center', padding: '1rem' }}>
+                  {serialSearch ? `No receipt found for "${serialSearch}"` : 'No transactions found.'}
+                </div>
               ) : monthTx.map(tx => (
-                <div key={tx.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', background: 'rgba(0,0,0,0.15)', borderRadius: 10 }}>
-                  <div>
-                    <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>{tx.student}</div>
-                    <div style={{ color: 'var(--text-muted)', fontSize: '0.72rem' }}>{tx.monthLabel} · {tx.date} · {tx.method}{tx.upiProvider ? ` (${tx.upiProvider})` : ''}</div>
+                <div key={tx.id} style={{
+                  display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 14px',
+                  background: 'rgba(0,0,0,0.15)', borderRadius: 12,
+                  border: serialSearch && tx.receiptNo?.toLowerCase().includes(serialSearch.toLowerCase()) ? '1px solid rgba(249,115,22,0.5)' : '1px solid rgba(34,197,94,0.2)',
+                  transition: 'all 0.2s', animation: 'slideInUp 0.3s ease-out'
+                }}>
+                  {/* Avatar */}
+                  <div style={{ width: 38, height: 38, borderRadius: 10, background: 'linear-gradient(135deg, var(--primary), var(--accent))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: '#fff', flexShrink: 0 }}>
+                    {tx.student.charAt(0)}
                   </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontWeight: 700, color: 'var(--success)' }}>₹{Number(tx.amount).toLocaleString()}</div>
-                    <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{tx.transactionRef || ''}</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 600, fontSize: '0.9rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{tx.student}</div>
+                    <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
+                      {tx.monthLabel} · {tx.date}
+                    </div>
                   </div>
+                  <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+                    <div style={{ fontWeight: 700, color: 'var(--success)', fontSize: '0.9rem' }}>₹{Number(tx.amount).toLocaleString()}</div>
+                    {tx.receiptNo && <div style={{ color: 'var(--primary)', fontSize: '0.7rem', fontWeight: 700 }}>S.No: {tx.receiptNo}</div>}
+                  </div>
+                  <button className="icon-btn-small" style={{ marginLeft: '4px' }} title="Print Receipt" onClick={() => setViewingReceipt({ ...tx, name: tx.student, room: tx.room, paymentDate: tx.date })}>
+                    <Printer size={14} />
+                  </button>
                 </div>
               ))}
             </div>
           </div>
         </div>
+        )}
       </div>
+
+      {/* Mobile Filters Bottom Sheet */}
+      {isMobile && showMobileFilters && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 2000 }}
+          onClick={() => setShowMobileFilters(false)}>
+          <div className="bottom-sheet" onClick={e => e.stopPropagation()}>
+            <div className="bottom-sheet-handle" />
+            <h3 style={{ margin: '0 0 1rem 0' }}>Filters</h3>
+            <div className="search-bar" style={{ marginBottom: '1rem', width: '100%' }}>
+              <Search size={14} color="var(--text-muted)" />
+              <input placeholder="Search student or room…" value={search} onChange={e => setSearch(e.target.value)} />
+            </div>
+            <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '8px', display: 'block' }}>Fee Status</label>
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '1.5rem' }}>
+              {(['all', 'Paid', 'Pending'] as const).map(f => (
+                <button key={f} onClick={() => { setFeeFilter(f); setShowMobileFilters(false); }}
+                  style={{ flex: 1, padding: '10px', borderRadius: 8, border: '1px solid', fontSize: '0.9rem', cursor: 'pointer',
+                    borderColor: feeFilter === f ? 'var(--primary)' : 'var(--border-dim)',
+                    background: feeFilter === f ? 'rgba(249,115,22,0.1)' : 'transparent',
+                    color: feeFilter === f ? 'var(--primary)' : 'var(--text-muted)' }}>
+                  {f === 'all' ? 'All' : f}
+                </button>
+              ))}
+            </div>
+            <button className="primary-btn" style={{ width: '100%', justifyContent: 'center', padding: '12px' }} onClick={() => setShowMobileFilters(false)}>Apply Filters</button>
+          </div>
+        </div>
+      )}
 
       {payingStudent && (
         <PaymentModal student={payingStudent} selectedMonth={selectedMonth}

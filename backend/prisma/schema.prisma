@@ -92,6 +92,7 @@ model Fee {
   upiProvider    String?  // "PhonePe" | "Google Pay" | "Paytm" | "Other UPI"
   transactionRef String?  // UPI transaction/reference ID
   status         String   @default("Completed") // Completed, Pending
+  receiptNo      String?  // Format: YYMM-XXX (e.g. 2609-001)
 }
 
 model Complaint {

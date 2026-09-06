@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, NavLink } from 'react-router-dom';
 import {
   LayoutDashboard, Users, AlertCircle, FileText, Building2,
-  BedDouble, LogOut, Bell, Download, ChevronRight, Sun, Moon, Settings
+  BedDouble, LogOut, Bell, Download, ChevronRight, Sun, Moon, Settings, Menu
 } from 'lucide-react';
 import Dashboard from './pages/Dashboard';
 import Students from './pages/Students';
@@ -12,6 +12,7 @@ import Complaints from './pages/Complaints';
 import Reports from './pages/Reports';
 import SettingsPage from './pages/Settings';
 import { ToastProvider } from './components/ToastContext';
+import { SettingsProvider, useSettings } from './components/SettingsContext';
 
 const navItems = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard', end: true },
@@ -23,9 +24,22 @@ const navItems = [
   { to: '/settings', icon: Settings, label: 'Settings' },
 ];
 
+function SettingsTitle() {
+  const { settings } = useSettings();
+  return <>{settings?.hostelName || 'VMR Hostel'} Admin</>;
+}
+
 function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isLightMode, setIsLightMode] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     if (isLightMode) {
@@ -37,10 +51,15 @@ function App() {
 
   return (
     <Router>
-      <div className="app-wrapper">
+      <ToastProvider>
+        <SettingsProvider>
+          <div className="app-wrapper">
+            {/* Mobile Overlay */}
+        {mobileMenuOpen && <div className="mobile-overlay" onClick={() => setMobileMenuOpen(false)} />}
+        
         {/* Animated Sidebar */}
         <aside
-          className={`sidebar-pill glass-heavy ${sidebarOpen ? 'sidebar-expanded' : ''}`}
+          className={`sidebar-pill glass-heavy ${sidebarOpen ? 'sidebar-expanded' : ''} ${mobileMenuOpen ? 'mobile-open' : ''}`}
           onMouseEnter={() => setSidebarOpen(true)}
           onMouseLeave={() => setSidebarOpen(false)}
         >
@@ -61,6 +80,7 @@ function App() {
                 end={end}
                 className={({ isActive }) => `nav-item-icon ${isActive ? 'active' : ''}`}
                 title={label}
+                onClick={() => setMobileMenuOpen(false)}
               >
                 <div className="nav-icon-wrap"><Icon size={20} /></div>
                 <span className="nav-label">{label}</span>
@@ -82,13 +102,16 @@ function App() {
         <div className="main-panel glass-heavy">
           <header className="top-header">
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <button className="icon-btn mobile-menu-btn" onClick={() => setMobileMenuOpen(true)}>
+                <Menu size={20} />
+              </button>
               <div className="header-dot-group">
                 <div className="hdot red" />
                 <div className="hdot yellow" />
                 <div className="hdot green" />
               </div>
               <h2 style={{ margin: 0, fontSize: '1rem', fontWeight: 600, color: 'var(--text-main)' }}>
-                VMR Hostel Admin
+                <SettingsTitle />
               </h2>
             </div>
             <div className="header-actions">
@@ -107,7 +130,6 @@ function App() {
           </header>
 
           <main className="page-content">
-            <ToastProvider>
               <Routes>
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/students" element={<Students />} />
@@ -117,10 +139,12 @@ function App() {
                 <Route path="/reports" element={<Reports />} />
                 <Route path="/settings" element={<SettingsPage />} />
               </Routes>
-            </ToastProvider>
           </main>
+          
         </div>
       </div>
+        </SettingsProvider>
+      </ToastProvider>
     </Router>
   );
 }
