@@ -1,12 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   Search, UserPlus, Edit2, Trash2, X, IndianRupee, Calendar, Printer,
-  User, BookOpen, BedDouble, Phone, Mail, MapPin, Shield, ChevronDown, ChevronUp
+  User, BedDouble, Phone, Mail, MapPin, Shield, ChevronDown, ChevronUp
 } from 'lucide-react';
 import Modal from '../components/Modal';
 import { useToast } from '../components/ToastContext';
+import { PrintReceiptModal } from './Fees';
 
-const MONTHLY_FEE = 5500;
+import { useSettings } from '../components/SettingsContext';
 
 const MONTHS = Array.from({ length: 12 }, (_, i) => {
   const d = new Date();
@@ -41,114 +42,12 @@ const EMPTY_FORM = {
   securityDeposit: '', feeStatus: 'Pending', status: 'Active'
 };
 
-function PrintReceiptModal({ student, feeRecord, onClose }: { student: any; feeRecord: any; onClose: () => void }) {
-  const handlePrint = () => {
-    const win = window.open('', '', 'width=700,height=900');
-    if (!win) return;
-    win.document.write(`
-      <html><head><title>Fee Receipt — ${student.name}</title>
-      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
-      <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'Inter', sans-serif; background: #fff; padding: 2cm; color: #1a1a1a; }
-        .header { text-align: center; border-bottom: 3px solid #f97316; padding-bottom: 1.2rem; margin-bottom: 1.5rem; }
-        .header h1 { font-size: 1.6rem; font-weight: 800; color: #f97316; display: flex; align-items: center; justify-content: center; }
-        .header p { color: #666; font-size: 0.8rem; margin-top: 4px; }
-        .receipt-id { background: #fff7ed; border: 1px solid #fed7aa; border-radius: 8px; padding: 6px 14px; display: inline-block; font-size: 0.78rem; color: #ea580c; font-weight: 700; margin-top: 8px; }
-        .section { margin: 1.2rem 0 0.5rem 0; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #999; }
-        .row { display: flex; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid #f5f5f5; font-size: 0.88rem; }
-        .label { color: #666; }
-        .val { font-weight: 600; }
-        .total { background: #fff7ed; border: 2px solid #f97316; border-radius: 12px; padding: 1rem; display: flex; justify-content: space-between; margin-top: 1.2rem; align-items: center; }
-        .paid-stamp { text-align: center; margin: 1.5rem 0; }
-        .paid-stamp span { border: 3px solid #16a34a; color: #16a34a; padding: 6px 24px; border-radius: 8px; font-weight: 800; font-size: 1.1rem; letter-spacing: 3px; transform: rotate(-2deg); display: inline-flex; align-items: center; }
-        .sig { display: flex; justify-content: space-between; margin-top: 2rem; font-size: 0.75rem; color: #999; }
-        .sig-box { text-align: center; border-top: 1px solid #ccc; padding-top: 8px; width: 180px; }
-        .footer { text-align: center; margin-top: 1.5rem; font-size: 0.7rem; color: #aaa; border-top: 1px dashed #ddd; padding-top: 1rem; }
-      </style></head><body>
-      <div class="header">
-        <h1>
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#f97316" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
-          VMR Hostel
-        </h1>
-        <p>Official Fee Receipt — ${feeRecord.monthLabel}</p>
-        <div class="receipt-id">Receipt #VMR-${Date.now().toString().slice(-6)}</div>
-      </div>
-      <div class="section">Student Details</div>
-      <div class="row"><span class="label">Student Name</span><span class="val">${student.name}</span></div>
-      <div class="row"><span class="label">Course / Branch</span><span class="val">${student.course}${student.branch ? ' — ' + student.branch : ''}</span></div>
-      <div class="row"><span class="label">Room</span><span class="val">${student.room}</span></div>
-      <div class="row"><span class="label">Bed</span><span class="val">${student.bedNumber || '—'}</span></div>
-      <div class="section">Fee Details</div>
-      <div class="row"><span class="label">Fee Month</span><span class="val">${feeRecord.monthLabel}</span></div>
-      <div class="row"><span class="label">Payment Date</span><span class="val">${feeRecord.date}</span></div>
-      <div class="row"><span class="label">Payment Mode</span><span class="val">${feeRecord.method}${feeRecord.upiProvider ? ' (' + feeRecord.upiProvider + ')' : ''}</span></div>
-      ${feeRecord.transactionRef ? `<div class="row"><span class="label">Transaction Ref</span><span class="val">${feeRecord.transactionRef}</span></div>` : ''}
-      <div class="total"><span style="font-weight:700;color:#ea580c;">Total Amount Paid</span><span style="font-size:1.5rem;font-weight:800;color:#f97316;">₹${Number(feeRecord.amount).toLocaleString('en-IN')}</span></div>
-      <div class="paid-stamp">
-        <span>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-          PAID
-        </span>
-      </div>
-      <div class="sig"><div class="sig-box">Admin / Authorized Signatory</div><div class="sig-box">Student Signature</div></div>
-      <div class="footer">VMR Hostel Management System · Computer-generated receipt.</div>
-      </body></html>`);
-    win.document.close(); win.focus();
-    setTimeout(() => { win.print(); win.close(); }, 500);
-  };
-
-  return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3000 }}
-      onClick={onClose}>
-      <div style={{ width: '100%', maxWidth: 480, padding: '1.5rem' }} onClick={e => e.stopPropagation()}>
-        <div style={{ background: '#fff', color: '#1a1a1a', borderRadius: 16, overflow: 'hidden', boxShadow: '0 24px 64px rgba(0,0,0,0.5)' }}>
-          <div style={{ background: '#fff7ed', borderBottom: '3px solid #f97316', padding: '1.5rem', textAlign: 'center' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem', fontWeight: 800, color: '#f97316' }}>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#f97316" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 8 }}><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
-              VMR Hostel
-            </div>
-            <div style={{ color: '#9a3412', fontSize: '0.8rem', marginTop: 4 }}>Fee Receipt — {feeRecord.monthLabel}</div>
-          </div>
-          <div style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            {[
-              { l: 'Student', v: student.name },
-              { l: 'Room / Bed', v: `${student.room} / Bed ${student.bedNumber || '—'}` },
-              { l: 'Month', v: feeRecord.monthLabel },
-              { l: 'Payment Date', v: feeRecord.date },
-              { l: 'Mode', v: `${feeRecord.method}${feeRecord.upiProvider ? ' (' + feeRecord.upiProvider + ')' : ''}` },
-              ...(feeRecord.transactionRef ? [{ l: 'Ref ID', v: feeRecord.transactionRef }] : []),
-            ].map(({ l, v }) => (
-              <div key={l} style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0', borderBottom: '1px solid #f5f5f5', fontSize: '0.85rem' }}>
-                <span style={{ color: '#666' }}>{l}</span><span style={{ fontWeight: 600 }}>{v}</span>
-              </div>
-            ))}
-            <div style={{ background: '#fff7ed', border: '2px solid #f97316', borderRadius: 10, padding: '0.85rem', display: 'flex', justifyContent: 'space-between', marginTop: 8 }}>
-              <span style={{ fontWeight: 700, color: '#ea580c' }}>Total Paid</span>
-              <span style={{ fontWeight: 800, fontSize: '1.2rem', color: '#f97316' }}>₹{Number(feeRecord.amount).toLocaleString('en-IN')}</span>
-            </div>
-            <div style={{ textAlign: 'center', marginTop: '1rem' }}>
-              <span style={{ border: '2px dashed #16a34a', color: '#16a34a', padding: '6px 20px', borderRadius: 8, fontWeight: 800, fontSize: '0.9rem', letterSpacing: 2, display: 'inline-flex', alignItems: 'center', transform: 'rotate(-2deg)' }}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 6 }}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                PAID
-              </span>
-            </div>
-          </div>
-        </div>
-        <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
-          <button className="custom-select" style={{ flex: 1 }} onClick={onClose}>Close</button>
-          <button className="primary-btn" style={{ flex: 1, justifyContent: 'center' }} onClick={handlePrint}>
-            <Printer size={15} /> Print Receipt
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function PaymentModal({ student, selectedMonth, onClose, onSuccess }: { student: any; selectedMonth: string; onClose: () => void; onSuccess: () => void }) {
   const { showToast } = useToast();
-  const [form, setForm] = useState({ amount: MONTHLY_FEE, method: 'Cash', upiProvider: 'PhonePe', transactionRef: '', date: new Date().toISOString().split('T')[0] });
+  const { settings } = useSettings();
+  const monthlyFee = settings?.monthlyFee || 5500;
+  const [form, setForm] = useState({ amount: monthlyFee, method: 'Cash', upiProvider: 'PhonePe', transactionRef: '', date: new Date().toISOString().split('T')[0] });
   const [saving, setSaving] = useState(false);
   const monthLabel = MONTHS.find(m => m.value === selectedMonth)?.label || selectedMonth;
 
@@ -203,9 +102,10 @@ function PaymentModal({ student, selectedMonth, onClose, onSuccess }: { student:
   );
 }
 
-function StudentDetailCard({ student, selectedMonth, onClose, onRefresh }: { student: any; selectedMonth: string; onClose: () => void; onRefresh: () => void }) {
-  const { showToast } = useToast();
+function StudentDetailCard({ student, selectedMonth, onClose, onRefresh, isMobile }: { student: any; selectedMonth: string; onClose: () => void; onRefresh: () => void; isMobile: boolean }) {
   const [showHistory, setShowHistory] = useState(false);
+  const { settings } = useSettings();
+  const monthlyFee = settings?.monthlyFee || 5500;
   const [showPayment, setShowPayment] = useState(false);
   const [showReceipt, setShowReceipt] = useState(false);
 
@@ -215,10 +115,11 @@ function StudentDetailCard({ student, selectedMonth, onClose, onRefresh }: { stu
 
   return (
     <>
-      <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 }}
+      <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: isMobile ? 'flex-end' : 'center', justifyContent: 'center', zIndex: 2000 }}
         onClick={onClose}>
-        <div className="glass-heavy" style={{ width: '100%', maxWidth: 560, maxHeight: '90vh', overflowY: 'auto', padding: '2rem', position: 'relative', borderRadius: 20, margin: '1rem' }}
+        <div className={isMobile ? 'bottom-sheet' : 'glass-heavy'} style={isMobile ? {} : { width: '100%', maxWidth: 560, maxHeight: '90vh', overflowY: 'auto', padding: '2rem', position: 'relative', borderRadius: 20, margin: '1rem' }}
           onClick={e => e.stopPropagation()}>
+          {isMobile && <div className="bottom-sheet-handle" />}
           {/* Close */}
           <button className="icon-btn-small" onClick={onClose} style={{ position: 'absolute', top: 16, right: 16 }}><X size={18} /></button>
 
@@ -247,7 +148,7 @@ function StudentDetailCard({ student, selectedMonth, onClose, onRefresh }: { stu
               </div>
             </div>
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-              <div style={{ fontWeight: 700, fontSize: '1.1rem' }}>₹{MONTHLY_FEE.toLocaleString()}</div>
+              <div style={{ fontWeight: 700, fontSize: '1.1rem' }}>₹{monthlyFee.toLocaleString()}</div>
               {isPaidThisMonth ? (
                 <button className="icon-btn-small" title="Print Receipt" onClick={() => setShowReceipt(true)}><Printer size={16} /></button>
               ) : (
@@ -259,7 +160,7 @@ function StudentDetailCard({ student, selectedMonth, onClose, onRefresh }: { stu
           </div>
 
           {/* Detail grid */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.85rem', marginBottom: '1.25rem' }}>
+          <div className="responsive-grid-2" style={{ gap: '0.85rem', marginBottom: '1.25rem' }}>
             {[
               { icon: Phone, label: 'Mobile', value: student.phone || '—' },
               { icon: Mail, label: 'Email', value: student.email || '—' },
@@ -306,20 +207,39 @@ function StudentDetailCard({ student, selectedMonth, onClose, onRefresh }: { stu
       </div>
 
       {showPayment && <PaymentModal student={student} selectedMonth={selectedMonth} onClose={() => setShowPayment(false)} onSuccess={() => { setShowPayment(false); onRefresh(); }} />}
-      {showReceipt && feeRecord && <PrintReceiptModal student={student} feeRecord={feeRecord} onClose={() => setShowReceipt(false)} />}
+      {showReceipt && feeRecord && <PrintReceiptModal record={{ ...feeRecord, name: student.name, room: student.room, phone: student.phone, parentPhone: student.parentPhone, address: student.address, paymentDate: feeRecord.date }} onClose={() => setShowReceipt(false)} />}
     </>
   );
 }
 
 // ─── Admission Form ───────────────────────────────────────────────────────────
-function AdmissionForm({ student, onClose, onSave }: { student: any; onClose: () => void; onSave: () => void }) {
+const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
+  <div style={{ marginBottom: '1.5rem' }}>
+    <div style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: 'var(--primary)', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+      <div style={{ height: 1, flex: 1, background: 'var(--border-dim)' }} />
+      {title}
+      <div style={{ height: 1, flex: 1, background: 'var(--border-dim)' }} />
+    </div>
+    <div className="responsive-grid-2" style={{ gap: '0.85rem' }}>{children}</div>
+  </div>
+);
+
+const F = ({ label, col, children }: { label: string; col?: boolean; children: React.ReactNode }) => (
+  <div className="form-group" style={col ? { gridColumn: '1/-1' } : {}}>
+    <label style={{ fontSize: '0.8rem', marginBottom: 4 }}>{label}</label>
+    {children}
+  </div>
+);
+
+function AdmissionForm({ student, onClose, onSave, isMobile }: { student: any; onClose: () => void; onSave: () => void; isMobile: boolean }) {
   const { showToast } = useToast();
   const [form, setForm] = useState(student ? { ...EMPTY_FORM, ...student, dob: student.dob ? student.dob.split('T')[0] : '', dateOfJoining: student.dateOfJoining ? student.dateOfJoining.split('T')[0] : '' } : { ...EMPTY_FORM, dateOfJoining: new Date().toISOString().split('T')[0] });
   const [saving, setSaving] = useState(false);
+  const [expandedSection, setExpandedSection] = useState<string | null>('Personal Details');
 
   const branches = COURSES[form.course] || ['Other'];
 
-  const f = (key: string, val: any) => setForm(prev => ({ ...prev, [key]: val, ...(key === 'course' ? { branch: (COURSES[val] || ['Other'])[0] } : {}) }));
+  const f = (key: string, val: any) => setForm((prev: any) => ({ ...prev, [key]: val, ...(key === 'course' ? { branch: (COURSES[val] || ['Other'])[0] } : {}) }));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault(); setSaving(true);
@@ -331,107 +251,105 @@ function AdmissionForm({ student, onClose, onSave }: { student: any; onClose: ()
     } finally { setSaving(false); }
   };
 
-  const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
+  const renderSection = (title: string, children: React.ReactNode) => (
     <div style={{ marginBottom: '1.5rem' }}>
-      <div style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: 'var(--primary)', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+      <div 
+        onClick={() => isMobile && setExpandedSection(expandedSection === title ? null : title)}
+        style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: 'var(--primary)', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '6px', cursor: isMobile ? 'pointer' : 'default' }}>
         <div style={{ height: 1, flex: 1, background: 'var(--border-dim)' }} />
         {title}
+        {isMobile && (expandedSection === title ? <ChevronUp size={14} /> : <ChevronDown size={14} />)}
         <div style={{ height: 1, flex: 1, background: 'var(--border-dim)' }} />
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.85rem' }}>{children}</div>
-    </div>
-  );
-
-  const F = ({ label, col, children }: { label: string; col?: boolean; children: React.ReactNode }) => (
-    <div className="form-group" style={col ? { gridColumn: '1/-1' } : {}}>
-      <label style={{ fontSize: '0.8rem', marginBottom: 4 }}>{label}</label>
-      {children}
+      {(!isMobile || expandedSection === title) && (
+        <div className="responsive-grid-2" style={{ gap: '0.85rem' }}>{children}</div>
+      )}
     </div>
   );
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2500 }}
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: isMobile ? 'flex-end' : 'center', justifyContent: 'center', zIndex: 2000 }}
       onClick={onClose}>
-      <div className="glass-heavy" style={{ width: '100%', maxWidth: 680, maxHeight: '92vh', overflowY: 'auto', padding: '2rem', borderRadius: 20, position: 'relative' }}
+      <div className={isMobile ? 'bottom-sheet' : 'glass-heavy'} style={isMobile ? { height: '90vh' } : { width: '100%', maxWidth: 700, maxHeight: '90vh', overflowY: 'auto', padding: '2rem', position: 'relative', borderRadius: 20, margin: '1rem' }}
         onClick={e => e.stopPropagation()}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-          <h2 style={{ margin: 0 }}>{student ? 'Edit Student' : 'New Student Admission'}</h2>
-          <button className="icon-btn-small" onClick={onClose}><X size={18} /></button>
-        </div>
-
+        {isMobile && <div className="bottom-sheet-handle" />}
+        <button className="icon-btn-small" onClick={onClose} style={{ position: 'absolute', top: 16, right: 16 }}><X size={18} /></button>
+        <h2 style={{ margin: '0 0 1.5rem 0', fontSize: '1.25rem' }}>{student ? 'Edit Student' : 'Add New Student'}</h2>
         <form onSubmit={handleSubmit}>
-          <Section title="Personal Information">
-            <F label="Full Name *"><input required className="custom-input" value={form.name} onChange={e => f('name', e.target.value)} placeholder="Full name" /></F>
-            <F label="Gender">
-              <select className="custom-input" value={form.gender} onChange={e => f('gender', e.target.value)}>
-                <option value="">Select</option><option>Male</option><option>Female</option><option>Other</option>
-              </select>
-            </F>
-            <F label="Date of Birth"><input type="date" className="custom-input" value={form.dob} onChange={e => f('dob', e.target.value)} /></F>
-            <F label="Mobile Number"><input className="custom-input" value={form.phone} onChange={e => f('phone', e.target.value)} placeholder="10-digit mobile" /></F>
-            <F label="Email" col><input type="email" className="custom-input" value={form.email} onChange={e => f('email', e.target.value)} placeholder="student@email.com" /></F>
-          </Section>
-
-          <Section title="Academic Information">
-            <F label="Course *">
-              <select required className="custom-input" value={form.course} onChange={e => f('course', e.target.value)}>
-                {Object.keys(COURSES).map(c => <option key={c}>{c}</option>)}
-              </select>
-            </F>
-            <F label="Branch / Department">
-              <select className="custom-input" value={form.branch} onChange={e => f('branch', e.target.value)}>
-                {branches.map(b => <option key={b}>{b}</option>)}
-              </select>
-            </F>
-            <F label="Year">
-              <select className="custom-input" value={form.year} onChange={e => f('year', e.target.value)}>
-                <option>1st</option><option>2nd</option><option>3rd</option><option>4th</option>
-              </select>
-            </F>
-            <F label="Roll Number"><input className="custom-input" value={form.rollNumber} onChange={e => f('rollNumber', e.target.value)} placeholder="e.g. 21B01A0501" /></F>
-          </Section>
-
-          <Section title="Hostel Information">
-            <F label="Admission Date *"><input required type="date" className="custom-input" value={form.dateOfJoining} onChange={e => f('dateOfJoining', e.target.value)} /></F>
-            <F label="Status">
-              <select className="custom-input" value={form.status} onChange={e => f('status', e.target.value)}>
-                <option value="Active">Active</option><option value="On Leave">On Leave</option>
-              </select>
-            </F>
-            <F label="Security Deposit (₹)"><input type="number" className="custom-input" value={form.securityDeposit} onChange={e => f('securityDeposit', e.target.value)} placeholder="e.g. 5000" /></F>
-          </Section>
-
-          <Section title="Parent / Guardian Information">
-            <F label="Parent / Guardian Name"><input className="custom-input" value={form.parentName} onChange={e => f('parentName', e.target.value)} placeholder="Full name" /></F>
-            <F label="Relationship">
-              <select className="custom-input" value={form.parentRelationship} onChange={e => f('parentRelationship', e.target.value)}>
-                <option>Father</option><option>Mother</option><option>Guardian</option><option>Other</option>
-              </select>
-            </F>
-            <F label="Contact Number"><input className="custom-input" value={form.parentPhone} onChange={e => f('parentPhone', e.target.value)} placeholder="Mobile" /></F>
-            <F label="Alternate Number"><input className="custom-input" value={form.parentAltPhone} onChange={e => f('parentAltPhone', e.target.value)} placeholder="Alt. mobile" /></F>
-            <F label="Parent Address" col><input className="custom-input" value={form.parentAddress} onChange={e => f('parentAddress', e.target.value)} placeholder="Full address" /></F>
-          </Section>
-
-          <Section title="Emergency Contact">
-            <F label="Contact Name"><input className="custom-input" value={form.emergencyName} onChange={e => f('emergencyName', e.target.value)} placeholder="Emergency contact name" /></F>
-            <F label="Relationship"><input className="custom-input" value={form.emergencyRelationship} onChange={e => f('emergencyRelationship', e.target.value)} placeholder="e.g. Uncle" /></F>
-            <F label="Phone Number" col><input className="custom-input" value={form.emergencyPhone} onChange={e => f('emergencyPhone', e.target.value)} placeholder="Emergency phone" /></F>
-          </Section>
-
-          <Section title="Address & Identification">
-            <F label="Aadhaar Number"><input className="custom-input" value={form.aadhar} onChange={e => f('aadhar', e.target.value)} placeholder="12-digit Aadhaar" /></F>
-            <F label="State">
-              <select className="custom-input" value={form.state} onChange={e => f('state', e.target.value)}>
-                <option value="">Select State</option>
-                <option>Andhra Pradesh</option><option>Telangana</option><option>Tamil Nadu</option>
-                <option>Karnataka</option><option>Kerala</option><option>Maharashtra</option>
-                <option>Gujarat</option><option>Rajasthan</option><option>Delhi</option><option>Other</option>
-              </select>
-            </F>
-            <F label="Address" col><input className="custom-input" value={form.address} onChange={e => f('address', e.target.value)} placeholder="Full address" /></F>
-            <F label="Pincode"><input className="custom-input" value={form.pincode} onChange={e => f('pincode', e.target.value)} placeholder="6-digit pincode" /></F>
-          </Section>
+          {renderSection('Personal Details', (
+            <>
+              <F label="Full Name"><input required className="custom-input" value={form.name} onChange={e => f('name', e.target.value)} placeholder="Student's name" /></F>
+              <F label="Gender">
+                <select required className="custom-input" value={form.gender} onChange={e => f('gender', e.target.value)}>
+                  <option value="">Select Gender</option><option>Male</option><option>Female</option><option>Other</option>
+                </select>
+              </F>
+              <F label="Date of Birth"><input type="date" className="custom-input" value={form.dob} onChange={e => f('dob', e.target.value)} /></F>
+              <F label="Phone Number"><input required className="custom-input" value={form.phone} onChange={e => f('phone', e.target.value)} placeholder="10-digit mobile" /></F>
+              <F label="Email Address"><input type="email" className="custom-input" value={form.email} onChange={e => f('email', e.target.value)} placeholder="Student email" /></F>
+            </>
+          ))}
+          {renderSection('Academic Details', (
+            <>
+              <F label="Course">
+                <select className="custom-input" value={form.course} onChange={e => f('course', e.target.value)}>
+                  {Object.keys(COURSES).map(c => <option key={c}>{c}</option>)}
+                </select>
+              </F>
+              <F label="Branch / Specialization">
+                <select className="custom-input" value={form.branch} onChange={e => f('branch', e.target.value)}>
+                  {branches.map(b => <option key={b}>{b}</option>)}
+                </select>
+              </F>
+              <F label="Year of Study">
+                <select className="custom-input" value={form.year} onChange={e => f('year', e.target.value)}>
+                  <option>1st</option><option>2nd</option><option>3rd</option><option>4th</option><option>5th</option><option>Other</option>
+                </select>
+              </F>
+              <F label="Roll / ID Number"><input className="custom-input" value={form.rollNumber} onChange={e => f('rollNumber', e.target.value)} placeholder="College ID" /></F>
+            </>
+          ))}
+          {renderSection('Admission Details', (
+            <>
+              <F label="Date of Joining"><input type="date" required className="custom-input" value={form.dateOfJoining} onChange={e => f('dateOfJoining', e.target.value)} /></F>
+              <F label="Security Deposit (₹)"><input type="number" className="custom-input" value={form.securityDeposit} onChange={e => f('securityDeposit', e.target.value)} placeholder="e.g. 5000" /></F>
+            </>
+          ))}
+          {renderSection('Parent / Guardian Information', (
+            <>
+              <F label="Parent / Guardian Name"><input className="custom-input" value={form.parentName} onChange={e => f('parentName', e.target.value)} placeholder="Full name" /></F>
+              <F label="Relationship">
+                <select className="custom-input" value={form.parentRelationship} onChange={e => f('parentRelationship', e.target.value)}>
+                  <option>Father</option><option>Mother</option><option>Guardian</option><option>Other</option>
+                </select>
+              </F>
+              <F label="Contact Number"><input className="custom-input" value={form.parentPhone} onChange={e => f('parentPhone', e.target.value)} placeholder="Mobile" /></F>
+              <F label="Alternate Number"><input className="custom-input" value={form.parentAltPhone} onChange={e => f('parentAltPhone', e.target.value)} placeholder="Alt. mobile" /></F>
+              <F label="Parent Address" col><input className="custom-input" value={form.parentAddress} onChange={e => f('parentAddress', e.target.value)} placeholder="Full address" /></F>
+            </>
+          ))}
+          {renderSection('Emergency Contact', (
+            <>
+              <F label="Contact Name"><input className="custom-input" value={form.emergencyName} onChange={e => f('emergencyName', e.target.value)} placeholder="Emergency contact name" /></F>
+              <F label="Relationship"><input className="custom-input" value={form.emergencyRelationship} onChange={e => f('emergencyRelationship', e.target.value)} placeholder="e.g. Uncle" /></F>
+              <F label="Phone Number" col><input className="custom-input" value={form.emergencyPhone} onChange={e => f('emergencyPhone', e.target.value)} placeholder="Emergency phone" /></F>
+            </>
+          ))}
+          {renderSection('Address & Identification', (
+            <>
+              <F label="Aadhaar Number"><input className="custom-input" value={form.aadhar} onChange={e => f('aadhar', e.target.value)} placeholder="12-digit Aadhaar" /></F>
+              <F label="State">
+                <select className="custom-input" value={form.state} onChange={e => f('state', e.target.value)}>
+                  <option value="">Select State</option>
+                  <option>Andhra Pradesh</option><option>Telangana</option><option>Tamil Nadu</option>
+                  <option>Karnataka</option><option>Kerala</option><option>Maharashtra</option>
+                  <option>Gujarat</option><option>Rajasthan</option><option>Delhi</option><option>Other</option>
+                </select>
+              </F>
+              <F label="Address" col><input className="custom-input" value={form.address} onChange={e => f('address', e.target.value)} placeholder="Full address" /></F>
+              <F label="Pincode"><input className="custom-input" value={form.pincode} onChange={e => f('pincode', e.target.value)} placeholder="6-digit pincode" /></F>
+            </>
+          ))}
 
           <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
             <button type="button" className="custom-select" style={{ flex: 1 }} onClick={onClose}>Cancel</button>
@@ -448,6 +366,8 @@ function AdmissionForm({ student, onClose, onSave }: { student: any; onClose: ()
 // ─── Main Students Component ──────────────────────────────────────────────────
 export default function Students() {
   const { showToast } = useToast();
+  const { settings } = useSettings();
+  const monthlyFee = settings?.monthlyFee || 5500;
   const [students, setStudents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedMonth, setSelectedMonth] = useState(MONTHS[0].value);
@@ -460,6 +380,13 @@ export default function Students() {
   const [editingStudent, setEditingStudent] = useState<any>(null);
   const [viewingStudent, setViewingStudent] = useState<any>(null);
   const [payingStudent, setPayingStudent] = useState<any>(null);
+  
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const fetchStudents = useCallback(async () => {
     setLoading(true);
@@ -493,10 +420,10 @@ export default function Students() {
   return (
     <div className="animate-fade-in">
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem' }}>
         <div>
           <h1 className="page-title" style={{ margin: '0 0 4px 0' }}>Student Management</h1>
-          <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>{students.length} students · Monthly fee ₹{MONTHLY_FEE.toLocaleString()}</p>
+          <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>{students.length} students · Monthly fee ₹{monthlyFee.toLocaleString()}</p>
         </div>
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
           {/* Month selector */}
@@ -548,7 +475,8 @@ export default function Students() {
           </div>
         </div>
 
-        <div className="table-container">
+        <div className="table-container hide-on-mobile">
+        <div className="table-responsive">
           <table className="custom-table" style={{ width: '100%' }}>
             <thead>
               <tr>
@@ -566,36 +494,28 @@ export default function Students() {
                 <tr><td colSpan={5} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>No students found</td></tr>
               ) : filtered.map(student => (
                 <tr key={student.dbId} style={{ animation: 'slideInUp 0.3s ease-out' }}>
-                  <td>
+                  <td data-label="Student">
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                       <div className="avatar-small">{student.name.charAt(0)}</div>
                       <button className="student-name-btn" onClick={() => setViewingStudent(student)}>{student.name}</button>
                     </div>
                   </td>
-                  <td>
+                  <td data-label="Course · Branch">
                     <div style={{ fontWeight: 500, fontSize: '0.875rem' }}>{student.course}</div>
                     <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>{student.branch || '—'} · {student.year} Year</div>
                   </td>
-                  <td>
-                    <span className="room-badge">{student.room}</span>
-                    {student.bedNumber && <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginLeft: 6 }}>Bed {student.bedNumber}</span>}
+                  <td data-label="Room / Bed">
+                    <div style={{ fontWeight: 500 }}>{student.room}</div>
                   </td>
-                  <td>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span className={`fee-status-chip ${student.feeStatus === 'Paid' ? 'fee-paid' : 'fee-pending'}`}>
-                        <IndianRupee size={10} />{student.feeStatus}
-                      </span>
-                      {student.feeStatus !== 'Paid' && (
-                        <button className="primary-btn" style={{ padding: '3px 10px', fontSize: '0.7rem', minHeight: 26 }} onClick={() => setPayingStudent(student)}>
-                          Pay
-                        </button>
-                      )}
-                    </div>
+                  <td data-label="Fee Status">
+                    <span className={student.feeStatus === 'Paid' ? 'status-badge badge-paid' : student.feeStatus === 'Pending' ? 'status-badge badge-pending' : 'status-badge'}>
+                      {student.feeStatus}
+                    </span>
                   </td>
-                  <td>
-                    <div style={{ display: 'flex', gap: '6px' }}>
-                      <button className="icon-btn-small" onClick={() => { setEditingStudent(student); setShowForm(true); }} title="Edit"><Edit2 size={14} /></button>
-                      <button className="icon-btn-small delete" onClick={() => handleDelete(student.dbId)} title="Delete"><Trash2 size={14} /></button>
+                  <td data-label="Actions">
+                    <div style={{ display: 'flex', gap: '4px' }}>
+                      <button className="icon-btn-small" title="Edit" onClick={() => { setEditingStudent(student); setShowForm(true); }}><Edit2 size={16} /></button>
+                      <button className="icon-btn-small delete" title="Delete" onClick={() => handleDelete(student.dbId)}><Trash2 size={16} /></button>
                     </div>
                   </td>
                 </tr>
@@ -603,16 +523,55 @@ export default function Students() {
             </tbody>
           </table>
         </div>
+        </div>
+
+        {/* Mobile List View */}
+        {isMobile && (
+          <div className="mobile-card-list">
+            {loading ? (
+              <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>Loading…</div>
+            ) : filtered.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>No students found</div>
+            ) : filtered.map(student => (
+              <div key={student.dbId} className="glass" style={{ padding: '1rem', borderRadius: 12, marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '1rem', animation: 'slideInUp 0.3s ease-out', cursor: 'pointer' }} onClick={() => setViewingStudent(student)}>
+                <div className="avatar-small" style={{ width: 40, height: 40, fontSize: '1.1rem' }}>{student.name.charAt(0)}</div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 600 }}>{student.name}</div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{student.course} · Room {student.room}</div>
+                </div>
+                <span className={student.feeStatus === 'Paid' ? 'status-badge badge-paid' : student.feeStatus === 'Pending' ? 'status-badge badge-pending' : 'status-badge'}>
+                  {student.feeStatus}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
+
+      {/* Mobile FAB */}
+      {isMobile && !showForm && !viewingStudent && !payingStudent && (
+        <button className="floating-mobile-btn" onClick={() => setShowForm(true)}>
+          <UserPlus size={18} /> Add Student
+        </button>
+      )}
 
       {/* Modals */}
       {viewingStudent && (
-        <StudentDetailCard student={viewingStudent} selectedMonth={selectedMonth}
-          onClose={() => setViewingStudent(null)}
-          onRefresh={() => { fetchStudents(); setViewingStudent(null); }} />
+        <StudentDetailCard 
+          student={viewingStudent} 
+          selectedMonth={selectedMonth} 
+          isMobile={isMobile}
+          onClose={() => setViewingStudent(null)} 
+          onRefresh={() => { fetchStudents(); setViewingStudent(null); }} 
+        />
       )}
       {showForm && (
-        <AdmissionForm student={editingStudent} onClose={() => setShowForm(false)} onSave={fetchStudents} />
+        <AdmissionForm 
+          student={editingStudent} 
+          isMobile={isMobile}
+          onClose={() => { setShowForm(false); setEditingStudent(null); }} 
+          onSave={fetchStudents} 
+        />
       )}
       {payingStudent && (
         <PaymentModal student={payingStudent} selectedMonth={selectedMonth}

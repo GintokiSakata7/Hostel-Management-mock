@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Building2, Users, Calendar, IndianRupee, BedDouble, Layers3, Search, Plus, Printer, Banknote, Smartphone, CheckCircle2, Info, Phone, GraduationCap, User, XCircle, Home } from 'lucide-react';
+import { Building2, Calendar, IndianRupee, BedDouble, Layers3, Search, Plus, Printer, Banknote, Smartphone, CheckCircle2, Info, Phone, GraduationCap, User, XCircle, Home } from 'lucide-react';
 import Modal from '../components/Modal';
 import { useToast } from '../components/ToastContext';
+import { PrintReceiptModal } from './Fees';
 
-const MONTHLY_FEE = 5500;
+import { useSettings } from '../components/SettingsContext';
 
 const MONTHS = Array.from({ length: 6 }, (_, i) => {
   const d = new Date();
@@ -103,8 +104,8 @@ function BedCard({ bed, onAllocate, onPay, onPrint, onStudentClick, onUnpay }: {
   );
 }
 
-function PremiumRoomCard({ room, selectedMonth, onRoomClick, onAllocate, onPay, onPrint, onStudentClick, onUnpay }: {
-  room: any; selectedMonth: string; onRoomClick: () => void; onAllocate: (bed: any) => void; onPay: (bed: any) => void; onPrint: (bed: any) => void; onStudentClick: (bed: any) => void; onUnpay: (bed: any) => void;
+function PremiumRoomCard({ room, onRoomClick, onAllocate, onPay, onPrint, onStudentClick, onUnpay, isMobile, onOpenMobileBeds }: {
+  room: any; onRoomClick: () => void; onAllocate: (bed: any) => void; onPay: (bed: any) => void; onPrint: (bed: any) => void; onStudentClick: (bed: any) => void; onUnpay: (bed: any) => void; isMobile?: boolean; onOpenMobileBeds?: () => void;
 }) {
   const paidCount = room.beds.filter((b: any) => b.status === 'occupied' && (b.feeStatus === 'Paid' || b.feeStatus === 'Completed')).length;
   const pendingCount = room.beds.filter((b: any) => b.status === 'occupied' && b.feeStatus === 'Pending').length;
@@ -117,7 +118,10 @@ function PremiumRoomCard({ room, selectedMonth, onRoomClick, onAllocate, onPay, 
     <div className="glass-panel premium-room-card" style={{ padding: 0, overflow: 'hidden', transition: 'all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)' }}>
       {/* Room header */}
       <div style={{ padding: '1.25rem', borderBottom: '1px solid var(--border-dim)', cursor: 'pointer', background: 'rgba(255,255,255,0.02)' }}
-        onClick={onRoomClick}>
+        onClick={() => {
+          if (isMobile && onOpenMobileBeds) onOpenMobileBeds();
+          else onRoomClick();
+        }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
           <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
             <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(255,255,255,0.04)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border-dim)' }}>
@@ -152,19 +156,23 @@ function PremiumRoomCard({ room, selectedMonth, onRoomClick, onAllocate, onPay, 
         )}
       </div>
 
-      {/* Bed grid (inline — no modal needed for small rooms) */}
-      <div style={{ padding: '1rem', display: 'grid', gridTemplateColumns: room.capacity <= 4 ? '1fr 1fr' : 'repeat(3, 1fr)', gap: '8px' }}>
-        {room.beds.map((bed: any) => (
-          <BedCard key={bed.id} bed={bed} onAllocate={() => onAllocate(bed)} onPay={() => onPay(bed)} onPrint={() => onPrint({ ...bed, roomId: room.id })} onStudentClick={() => onStudentClick(bed)} onUnpay={() => onUnpay(bed)} />
-        ))}
-      </div>
+      {/* Bed grid (inline — no modal needed for desktop) */}
+      {!isMobile && (
+        <div className={room.capacity <= 4 ? 'responsive-grid-2' : 'responsive-grid-3'} style={{ padding: '1rem', gap: '8px' }}>
+          {room.beds.map((bed: any) => (
+            <BedCard key={bed.id} bed={bed} onAllocate={() => onAllocate(bed)} onPay={() => onPay(bed)} onPrint={() => onPrint({ ...bed, roomId: room.id })} onStudentClick={() => onStudentClick(bed)} onUnpay={() => onUnpay(bed)} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
 function QuickPayModal({ bed, selectedMonth, onClose, onSuccess }: { bed: any; selectedMonth: string; onClose: () => void; onSuccess: () => void }) {
   const { showToast } = useToast();
-  const [form, setForm] = useState({ amount: MONTHLY_FEE, method: 'Cash', upiProvider: 'PhonePe', transactionRef: '', date: new Date().toISOString().split('T')[0] });
+  const { settings } = useSettings();
+  const monthlyFee = settings?.monthlyFee || 5500;
+  const [form, setForm] = useState({ amount: monthlyFee, method: 'Cash', upiProvider: 'PhonePe', transactionRef: '', date: new Date().toISOString().split('T')[0] });
   const [saving, setSaving] = useState(false);
   const monthLabel = MONTHS.find(m => m.value === selectedMonth)?.label || selectedMonth;
 
@@ -221,8 +229,10 @@ function QuickPayModal({ bed, selectedMonth, onClose, onSuccess }: { bed: any; s
   );
 }
 
-function AllocateModal({ bed, selectedBuilding, onClose, onSuccess }: { bed: any; selectedBuilding: any; onClose: () => void; onSuccess: () => void }) {
+function AllocateModal({ bed, onClose, onSuccess }: { bed: any; onClose: () => void; onSuccess: () => void }) {
   const { showToast } = useToast();
+  const { settings } = useSettings();
+  const monthlyFee = settings?.monthlyFee || 5500;
   const [name, setName] = useState('');
   const [allStudents, setAllStudents] = useState<any[]>([]);
 
@@ -255,7 +265,7 @@ function AllocateModal({ bed, selectedBuilding, onClose, onSuccess }: { bed: any
       <form onSubmit={handleSubmit}>
         <div style={{ background: 'rgba(249,115,22,0.08)', border: '1px solid rgba(249,115,22,0.2)', borderRadius: 10, padding: '10px 14px', marginBottom: '1rem' }}>
           <span style={{ fontWeight: 700 }}>Bed {bed.bedIndex}</span>
-          <span style={{ color: 'var(--text-muted)', marginLeft: 8, fontSize: '0.8rem' }}>Monthly Fee: ₹{MONTHLY_FEE.toLocaleString()}</span>
+          <span style={{ color: 'var(--text-muted)', marginLeft: 8, fontSize: '0.8rem' }}>Monthly Fee: ₹{monthlyFee.toLocaleString()}</span>
         </div>
         <div className="form-group">
           <label>Student Name</label>
@@ -278,128 +288,12 @@ function AllocateModal({ bed, selectedBuilding, onClose, onSuccess }: { bed: any
   );
 }
 
-function PrintReceiptModal({ record, onClose }: { record: any; onClose: () => void }) {
-  const handlePrint = () => {
-    const win = window.open('', '', 'width=700,height=900');
-    if (!win) return;
-    win.document.write(`
-      <html><head><title>Fee Receipt</title>
-      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
-      <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'Inter', sans-serif; background: #fff; padding: 2cm; color: #1a1a1a; }
-        .header { text-align: center; border-bottom: 3px solid #f97316; padding-bottom: 1.2rem; margin-bottom: 1.5rem; }
-        .header h1 { font-size: 1.6rem; font-weight: 800; color: #f97316; display: flex; align-items: center; justify-content: center; }
-        .header p { color: #666; font-size: 0.8rem; margin-top: 4px; }
-        .receipt-id { background: #fff7ed; border: 1px solid #fed7aa; border-radius: 8px; padding: 6px 14px; display: inline-block; font-size: 0.78rem; color: #ea580c; font-weight: 700; margin-top: 8px; }
-        .section { margin: 1.2rem 0 0.5rem 0; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #999; }
-        .row { display: flex; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid #f5f5f5; font-size: 0.88rem; }
-        .label { color: #666; }
-        .val { font-weight: 600; }
-        .total { background: #fff7ed; border: 2px solid #f97316; border-radius: 12px; padding: 1rem; display: flex; justify-content: space-between; margin-top: 1.2rem; align-items: center; }
-        .paid-stamp { text-align: center; margin: 1.5rem 0; }
-        .paid-stamp span { border: 3px solid #16a34a; color: #16a34a; padding: 6px 24px; border-radius: 8px; font-weight: 800; font-size: 1.1rem; letter-spacing: 3px; transform: rotate(-2deg); display: inline-flex; align-items: center; }
-        .sig { display: flex; justify-content: space-between; margin-top: 2rem; font-size: 0.75rem; color: #999; }
-        .sig-box { text-align: center; border-top: 1px solid #ccc; padding-top: 8px; width: 180px; }
-        .footer { text-align: center; margin-top: 1.5rem; font-size: 0.7rem; color: #aaa; border-top: 1px dashed #ddd; padding-top: 1rem; }
-      </style></head><body>
-      <div class="header">
-        <h1>
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#f97316" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
-          VMR Hostel
-        </h1>
-        <p>Official Fee Receipt — ${record.monthLabel}</p>
-        <div class="receipt-id">Receipt #VMR-${Date.now().toString().slice(-6)}</div>
-      </div>
-      <div class="section">Student Details</div>
-      <div class="row"><span class="label">Student Name</span><span class="val">${record.name}</span></div>
-      <div class="row"><span class="label">Course / Branch</span><span class="val">${record.course}${record.branch ? ' — ' + record.branch : ''}</span></div>
-      <div class="row"><span class="label">Room Number</span><span class="val">${record.room}</span></div>
-      <div class="row"><span class="label">Bed Number</span><span class="val">${record.bedNumber || '—'}</span></div>
-      <div class="section">Fee Details</div>
-      <div class="row"><span class="label">Fee Month</span><span class="val">${record.monthLabel}</span></div>
-      <div class="row"><span class="label">Payment Date</span><span class="val">${record.paymentDate || '—'}</span></div>
-      <div class="row"><span class="label">Payment Mode</span><span class="val">${record.method}${record.upiProvider ? ' (' + record.upiProvider + ')' : ''}</span></div>
-      ${record.transactionRef ? `<div class="row"><span class="label">Transaction Ref</span><span class="val">${record.transactionRef}</span></div>` : ''}
-      <div class="total">
-        <span style="font-weight:700;color:#ea580c;">Total Amount Paid</span>
-        <span style="font-size:1.5rem;font-weight:800;color:#f97316;">₹${Number(record.amount).toLocaleString('en-IN')}</span>
-      </div>
-      <div class="paid-stamp">
-        <span>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-          PAID
-        </span>
-      </div>
-      <div class="sig">
-        <div class="sig-box">Admin / Authorized Signatory</div>
-        <div class="sig-box">Student Signature</div>
-      </div>
-      <div class="footer">VMR Hostel Management System · Computer-generated receipt. No signature required.</div>
-      </body></html>
-    `);
-    win.document.close();
-    win.focus();
-    setTimeout(() => { win.print(); win.close(); }, 500);
-  };
 
-  return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3000 }}
-      onClick={onClose}>
-      <div style={{ width: '100%', maxWidth: 540, padding: '1.5rem', position: 'relative' }} onClick={e => e.stopPropagation()}>
-        <div style={{ background: '#fff', color: '#1a1a1a', borderRadius: 20, overflow: 'hidden', boxShadow: '0 24px 64px rgba(0,0,0,0.5)' }}>
-          <div style={{ background: '#fff7ed', borderBottom: '3px solid #f97316', padding: '1.5rem', textAlign: 'center' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem', fontWeight: 800, color: '#f97316' }}>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#f97316" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 8 }}><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
-              VMR Hostel
-            </div>
-            <div style={{ color: '#9a3412', fontSize: '0.8rem' }}>Official Fee Receipt — {record.monthLabel}</div>
-            <div style={{ display: 'inline-block', background: '#fff', border: '1px solid #fed7aa', borderRadius: 8, padding: '4px 12px', fontSize: '0.72rem', color: '#ea580c', fontWeight: 600, marginTop: 8 }}>
-              Receipt #VMR-{Date.now().toString().slice(-6)}
-            </div>
-          </div>
-
-          <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {[
-              { label: 'Student', value: record.name },
-              { label: 'Course', value: `${record.course}${record.branch ? ' — ' + record.branch : ''}` },
-              { label: 'Room', value: record.room }, { label: 'Bed', value: record.bedNumber || '—' },
-              { label: 'Fee Month', value: record.monthLabel },
-              { label: 'Payment Date', value: record.paymentDate },
-              { label: 'Payment Mode', value: `${record.method}${record.upiProvider ? ' (' + record.upiProvider + ')' : ''}` },
-              ...(record.transactionRef ? [{ label: 'Transaction Ref', value: record.transactionRef }] : []),
-            ].map(({ label, value }) => (
-              <div key={label} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f5f5f5', fontSize: '0.85rem' }}>
-                <span style={{ color: '#666' }}>{label}</span>
-                <span style={{ fontWeight: 600 }}>{value}</span>
-              </div>
-            ))}
-            <div style={{ background: '#fff7ed', border: '2px solid #f97316', borderRadius: 12, padding: '1rem', display: 'flex', justifyContent: 'space-between', marginTop: '0.5rem' }}>
-              <span style={{ fontWeight: 700, color: '#ea580c' }}>Total Paid</span>
-              <span style={{ fontWeight: 800, fontSize: '1.3rem', color: '#f97316' }}>₹{Number(record.amount).toLocaleString('en-IN')}</span>
-            </div>
-            <div style={{ textAlign: 'center', marginTop: '1rem' }}>
-              <span style={{ border: '2px dashed #16a34a', color: '#16a34a', padding: '6px 20px', borderRadius: 8, fontWeight: 800, fontSize: '0.9rem', letterSpacing: 2, display: 'inline-flex', alignItems: 'center', transform: 'rotate(-2deg)' }}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 6 }}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                PAID
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
-          <button className="custom-select" style={{ flex: 1 }} onClick={onClose}>Close</button>
-          <button className="primary-btn" style={{ flex: 1, justifyContent: 'center' }} onClick={handlePrint}>
-            <Printer size={16} /> Print Receipt
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 export default function Rooms() {
   const { showToast } = useToast();
+  const { settings } = useSettings();
+  const monthlyFee = settings?.monthlyFee || 5500;
   const [buildings, setBuildings] = useState<any[]>([]);
   const [selectedBuilding, setSelectedBuilding] = useState<any>(null);
   const [rooms, setRooms] = useState<any[]>([]);
@@ -411,6 +305,16 @@ export default function Rooms() {
   const [payingBed, setPayingBed] = useState<any>(null);
   const [viewingReceiptBed, setViewingReceiptBed] = useState<any>(null);
   const [viewingStudent, setViewingStudent] = useState<any>(null);
+  
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  const [selectedMobileFloor, setSelectedMobileFloor] = useState<string | null>(null);
+  const [mobileBedsRoom, setMobileBedsRoom] = useState<any>(null);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const fetchBuildings = async () => {
     try {
@@ -471,7 +375,8 @@ export default function Rooms() {
       </div>
 
       {/* Building cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '1.25rem' }}>
+      {!(isMobile && selectedBuilding) && (
+      <div className="room-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '1.25rem' }}>
         {buildings.map((b, i) => (
           <div key={b.id} className={`glass building-card ${selectedBuilding?.id === b.id ? 'selected' : ''}`}
             style={{ animationDelay: `${i * 0.07}s`, animation: 'slideInUp 0.35s ease-out both', cursor: 'pointer' }}
@@ -485,7 +390,7 @@ export default function Rooms() {
                 <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>{b.totalRooms} Rooms</span>
               </div>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+            <div className="responsive-grid-2" style={{ gap: '0.75rem' }}>
               <div style={{ background: 'rgba(34,197,94,0.08)', borderRadius: 10, padding: '8px 12px' }}>
                 <div style={{ color: 'var(--success)', fontWeight: 700, fontSize: '1.2rem' }}>{b.availableBeds}</div>
                 <div style={{ color: 'var(--text-muted)', fontSize: '0.68rem' }}>Available Beds</div>
@@ -498,10 +403,11 @@ export default function Rooms() {
           </div>
         ))}
       </div>
+      )}
 
       {/* Rooms section */}
       {selectedBuilding && (
-        <div className="glass-panel" style={{ padding: '1.5rem' }}>
+        <div className="glass-panel" style={{ padding: '1.5rem', paddingBottom: isMobile ? '80px' : '1.5rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '1.25rem', flexWrap: 'wrap' }}>
             <Layers3 size={18} color="var(--primary)" />
             <h2 style={{ margin: 0, fontSize: '1.05rem' }}>Rooms in <span style={{ color: 'var(--primary)' }}>{selectedBuilding.name}</span></h2>
@@ -515,6 +421,48 @@ export default function Rooms() {
           {loading ? (
             <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>Loading rooms…</div>
           ) : (
+            isMobile ? (
+              selectedMobileFloor === null ? (
+                <>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                  <button className="secondary-btn" style={{ gridColumn: '1/-1', justifyContent: 'center' }} onClick={() => setSelectedBuilding(null)}>
+                    ← Back to Buildings
+                  </button>
+                  {floors.map(floor => {
+                    const floorRooms = filteredRooms.filter(r => r.floor === floor);
+                    return (
+                      <div key={floor} className="glass building-card" style={{ padding: '1.25rem', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }} onClick={() => setSelectedMobileFloor(floor)}>
+                        <div style={{ background: 'var(--primary)', color: '#fff', width: 40, height: 40, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem', fontWeight: 700 }}>{floor}</div>
+                        <div style={{ fontSize: '1.1rem', fontWeight: 700 }}>Floor {floor}</div>
+                        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{floorRooms.length} rooms</div>
+                      </div>
+                    );
+                  })}
+                </div>
+                </>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                  <button className="secondary-btn" style={{ alignSelf: 'flex-start' }} onClick={() => setSelectedMobileFloor(null)}>
+                    ← Back to Floors
+                  </button>
+                  <div style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '0.5rem', color: 'var(--primary)' }}>Floor {selectedMobileFloor} Rooms</div>
+                  <div className="room-grid" style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.25rem' }}>
+                    {filteredRooms.filter(r => r.floor === selectedMobileFloor).map((room, i) => (
+                      <div key={room.id} style={{ animationDelay: `${i * 0.04}s`, animation: 'slideInUp 0.3s ease-out both' }}>
+                        <PremiumRoomCard room={room} onRoomClick={() => {}} onAllocate={(bed) => setAllocatingBed(bed)} onPay={(bed) => setPayingBed(bed)} onPrint={(bed) => setViewingReceiptBed(bed)} onStudentClick={(bed) => setViewingStudent(bed)} onUnpay={async (bed) => {
+                          if (!confirm(`Are you sure you want to mark the fee for ${bed.student} as NOT PAID?`)) return;
+                          const studentId = bed.studentObj?.dbId || bed.studentDbId;
+                          if (!studentId) return showToast('Student not found', 'error');
+                          const res = await fetch('http://localhost:3001/api/fees/unpay', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ studentId, month: selectedMonth }) });
+                          if (res.ok) { showToast('Fee marked as unpaid', 'success'); handleRefresh(); }
+                          else { const err = await res.json(); showToast(err.error || 'Failed', 'error'); }
+                        }} isMobile={isMobile} onOpenMobileBeds={() => setMobileBedsRoom(room)} />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )
+            ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem' }}>
               {floors.map(floor => (
                 <div key={floor}>
@@ -525,12 +473,11 @@ export default function Rooms() {
                     <div style={{ flex: 1, height: 1, background: 'var(--border-dim)' }} />
                     <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{filteredRooms.filter(r => r.floor === floor).length} rooms</span>
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.25rem' }}>
+                  <div className="room-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.25rem' }}>
                     {filteredRooms.filter(r => r.floor === floor).map((room, i) => (
                       <div key={room.id} style={{ animationDelay: `${i * 0.04}s`, animation: 'slideInUp 0.3s ease-out both' }}>
                         <PremiumRoomCard
                           room={room}
-                          selectedMonth={selectedMonth}
                           onRoomClick={() => {}}
                           onAllocate={(bed) => setAllocatingBed(bed)}
                           onPay={(bed) => setPayingBed(bed)}
@@ -547,6 +494,8 @@ export default function Rooms() {
                             if (res.ok) { showToast('Fee marked as unpaid', 'success'); handleRefresh(); }
                             else { const err = await res.json(); showToast(err.error || 'Failed', 'error'); }
                           }}
+                          isMobile={isMobile}
+                          onOpenMobileBeds={() => setMobileBedsRoom(room)}
                         />
                       </div>
                     ))}
@@ -554,12 +503,42 @@ export default function Rooms() {
                 </div>
               ))}
             </div>
+            )
           )}
         </div>
       )}
 
+      {/* Modals */}
+      {isMobile && mobileBedsRoom && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 2000 }}
+          onClick={() => setMobileBedsRoom(null)}>
+          <div className="bottom-sheet" style={{ height: '80vh' }} onClick={e => e.stopPropagation()}>
+            <div className="bottom-sheet-handle" />
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+              <div>
+                <h3 style={{ margin: 0 }}>Room {mobileBedsRoom.id}</h3>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{mobileBedsRoom.beds.length} Beds</span>
+              </div>
+              <button className="icon-btn-small" onClick={() => setMobileBedsRoom(null)}><XCircle size={18} /></button>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              {mobileBedsRoom.beds.map((bed: any) => (
+                <BedCard key={bed.id} bed={bed} onAllocate={() => setAllocatingBed(bed)} onPay={() => setPayingBed(bed)} onPrint={() => setViewingReceiptBed({ ...bed, roomId: mobileBedsRoom.id })} onStudentClick={() => setViewingStudent(bed)} onUnpay={async () => {
+                  if (!confirm(`Are you sure you want to mark the fee for ${bed.student} as NOT PAID?`)) return;
+                  const studentId = bed.studentObj?.dbId || bed.studentDbId;
+                  if (!studentId) return showToast('Student not found', 'error');
+                  const res = await fetch('http://localhost:3001/api/fees/unpay', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ studentId, month: selectedMonth }) });
+                  if (res.ok) { showToast('Fee marked as unpaid', 'success'); handleRefresh(); }
+                  else { const err = await res.json(); showToast(err.error || 'Failed', 'error'); }
+                }} />
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       {allocatingBed && (
-        <AllocateModal bed={allocatingBed} selectedBuilding={selectedBuilding}
+        <AllocateModal bed={allocatingBed}
           onClose={() => setAllocatingBed(null)} onSuccess={handleRefresh} />
       )}
       {payingBed && (
@@ -575,7 +554,7 @@ export default function Rooms() {
             room: viewingReceiptBed.roomId || (selectedBuilding?.name + ' - ' + viewingReceiptBed.roomNumber),
             bedNumber: viewingReceiptBed.bedIndex,
             monthLabel: MONTHS.find(m => m.value === selectedMonth)?.label,
-            amount: viewingReceiptBed.studentObj?.feeRecord?.amount || MONTHLY_FEE,
+            amount: viewingReceiptBed.studentObj?.feeRecord?.amount || monthlyFee,
             paymentDate: viewingReceiptBed.studentObj?.feeRecord?.date?.split('T')[0] || new Date().toISOString().split('T')[0],
             method: viewingReceiptBed.studentObj?.feeRecord?.method || 'Cash',
             upiProvider: viewingReceiptBed.studentObj?.feeRecord?.upiProvider,
@@ -598,7 +577,7 @@ export default function Rooms() {
               </div>
             </div>
             
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+            <div className="responsive-grid-2" style={{ gap: '0.75rem' }}>
               <div style={{ background: 'rgba(255,255,255,0.03)', padding: '12px 14px', borderRadius: 12, border: '1px solid var(--border-dim)' }}>
                 <div style={{ color: 'var(--text-muted)', fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: 1, display: 'flex', alignItems: 'center', gap: '6px' }}><GraduationCap size={13} /> Course</div>
                 <div style={{ fontWeight: 600, fontSize: '0.9rem', marginTop: 4 }}>{viewingStudent.studentObj.course || '—'}</div>
@@ -609,7 +588,7 @@ export default function Rooms() {
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+            <div className="responsive-grid-2" style={{ gap: '0.75rem' }}>
               <div style={{ background: 'rgba(255,255,255,0.03)', padding: '12px 14px', borderRadius: 12, border: '1px solid var(--border-dim)' }}>
                 <div style={{ color: 'var(--text-muted)', fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: 1, display: 'flex', alignItems: 'center', gap: '6px' }}><Phone size={13} /> Phone</div>
                 <div style={{ fontWeight: 600, fontSize: '0.9rem', marginTop: 4 }}>{viewingStudent.studentObj.phone || '—'}</div>

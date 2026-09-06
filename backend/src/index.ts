@@ -23,6 +23,36 @@ const monthLabel = (m: string) => {
   return date.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
 };
 
+// ─── SETTINGS ─────────────────────────────────────────────────────────────────
+const SETTINGS_FILE = path.join(__dirname, '../../settings.json');
+const DEFAULT_SETTINGS = {
+  hostelName: 'VMR Hostel',
+  adminName: 'Admin',
+  hostelPhone: '',
+  hostelEmail: '',
+  hostelAddress: '',
+  upiId: '',
+  upiName: 'VMR Hostel',
+  monthlyFee: 5500,
+  securityDeposit: 5000,
+  lateFinePerDay: 50,
+  dueDateDay: 10,
+};
+const readSettings = () => {
+  try { return { ...DEFAULT_SETTINGS, ...JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf-8')) }; }
+  catch { return { ...DEFAULT_SETTINGS }; }
+};
+const writeSettings = (s: any) => fs.writeFileSync(SETTINGS_FILE, JSON.stringify(s, null, 2));
+
+app.get('/api/settings', (req, res) => res.json(readSettings()));
+app.put('/api/settings', (req, res) => {
+  const updated = { ...readSettings(), ...req.body };
+  writeSettings(updated);
+  res.json(updated);
+});
+
+
+
 // ─── DASHBOARD STATS ─────────────────────────────────────────────────────────
 app.get('/api/stats', async (req, res) => {
   const cm = currentMonth();
@@ -314,6 +344,21 @@ app.post('/api/fees/pay', async (req, res) => {
     }
 
     let fee;
+    // Generate a static receipt number YYMM-XXX based on the fee's month (e.g. 2609-001)
+    const prefix = m.substring(2, 4) + m.substring(5, 7); // "2026-09" -> "2609"
+    
+    // Find the latest receipt in this month to increment
+    const lastFee = await prisma.fee.findFirst({
+      where: { receiptNo: { startsWith: prefix } },
+      orderBy: { receiptNo: 'desc' }
+    });
+    let nextNum = 1;
+    if (lastFee && lastFee.receiptNo) {
+      const parts = lastFee.receiptNo.split('-');
+      if (parts.length === 2) nextNum = parseInt(parts[1], 10) + 1;
+    }
+    const generatedReceiptNo = `${prefix}-${nextNum.toString().padStart(3, '0')}`;
+
     if (existing && existing.status === 'Pending') {
       fee = await prisma.fee.update({
         where: { id: existing.id },
@@ -323,8 +368,9 @@ app.post('/api/fees/pay', async (req, res) => {
           upiProvider: upiProvider || null,
           transactionRef: transactionRef || null,
           status: 'Completed',
-          date: date ? new Date(date) : new Date()
-        }
+          date: date ? new Date(date) : new Date(),
+          receiptNo: (existing as any).receiptNo || generatedReceiptNo
+        } as any
       });
     } else {
       fee = await prisma.fee.create({
@@ -336,8 +382,9 @@ app.post('/api/fees/pay', async (req, res) => {
           upiProvider: upiProvider || null,
           transactionRef: transactionRef || null,
           status: 'Completed',
-          date: date ? new Date(date) : new Date()
-        }
+          date: date ? new Date(date) : new Date(),
+          receiptNo: generatedReceiptNo
+        } as any
       });
     }
     // Update legacy feeStatus field on student
@@ -380,6 +427,11 @@ app.get('/api/fees/transactions', async (req, res) => {
     id: t.id,
     studentId: t.studentId,
     student: t.student.name,
+    course: t.student.course,
+    branch: t.student.branch,
+    address: t.student.address,
+    phone: t.student.phone,
+    parentPhone: t.student.parentPhone,
     room: t.student.beds.length > 0 ? t.student.beds[0].room.roomNumber : 'Unallocated',
     bedNumber: t.student.beds.length > 0 ? t.student.beds[0].bedNumber : null,
     month: t.month,
@@ -389,6 +441,7 @@ app.get('/api/fees/transactions', async (req, res) => {
     method: t.method,
     upiProvider: t.upiProvider,
     transactionRef: t.transactionRef,
+    receiptNo: (t as any).receiptNo || null,
     status: t.status
   })));
 });
@@ -426,6 +479,9 @@ app.get('/api/fees/monthly-status', async (req, res) => {
       name: s.name,
       course: s.course,
       branch: s.branch,
+      address: s.address,
+      phone: s.phone,
+      parentPhone: s.parentPhone,
       room: bed ? bed.room.roomNumber : 'Unallocated',
       bedNumber: bed ? bed.bedNumber : null,
       month: m,
@@ -436,7 +492,8 @@ app.get('/api/fees/monthly-status', async (req, res) => {
       method: feeRecord?.method || null,
       upiProvider: feeRecord?.upiProvider || null,
       transactionRef: feeRecord?.transactionRef || null,
-      feeRecordId: feeRecord?.id || null
+      feeRecordId: feeRecord?.id || null,
+      receiptNo: (feeRecord as any)?.receiptNo || null
     };
   }));
 });
@@ -456,6 +513,7 @@ app.get('/api/reports/fees', async (req, res) => {
     const bed = s.beds[0] || null;
     return {
       name: s.name, course: s.course, branch: s.branch, year: s.year,
+      address: s.address, phone: s.phone, parentPhone: s.parentPhone,
       room: bed ? bed.room.roomNumber : 'Unallocated',
       bedNumber: bed ? bed.bedNumber : null,
       feeStatus: fee && fee.status === 'Completed' ? 'Paid' : 'Pending',
@@ -464,6 +522,7 @@ app.get('/api/reports/fees', async (req, res) => {
       method: fee?.method || null,
       upiProvider: fee?.upiProvider || null,
       transactionRef: fee?.transactionRef || null,
+      receiptNo: (fee as any)?.receiptNo || null,
       month: m, monthLabel: monthLabel(m)
     };
   }));
@@ -553,51 +612,7 @@ app.put('/api/complaints/:id/status', async (req, res) => {
   res.json(complaint);
 });
 
-// ─── SETTINGS ─────────────────────────────────────────────────────────────────
-// ─── SETTINGS (persisted to settings.json) ───────────────────────────────────
 
-const SETTINGS_FILE = path.join(process.cwd(), 'settings.json');
-
-const defaultSettings = {
-  hostelName: 'VMR Hostel',
-  hostelAddress: '',
-  hostelPhone: '',
-  hostelEmail: '',
-  adminName: 'Admin',
-  monthlyFee: 5500,
-  securityDeposit: 5000,
-  lateFinePerDay: 50,
-  dueDateDay: 10,
-  currency: 'INR',
-  upiId: '',
-  upiName: ''
-};
-
-const readSettings = () => {
-  try {
-    if (fs.existsSync(SETTINGS_FILE)) {
-      return { ...defaultSettings, ...JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8')) };
-    }
-  } catch {}
-  return { ...defaultSettings };
-};
-
-const writeSettings = (s: any) => {
-  fs.writeFileSync(SETTINGS_FILE, JSON.stringify(s, null, 2));
-};
-
-// GET settings
-app.get('/api/settings', (req, res) => {
-  res.json(readSettings());
-});
-
-// PUT settings
-app.put('/api/settings', (req, res) => {
-  const current = readSettings();
-  const updated = { ...current, ...req.body };
-  writeSettings(updated);
-  res.json(updated);
-});
 
 // ─── BUILDING MANAGEMENT ─────────────────────────────────────────────────────
 // Create a new building
@@ -645,7 +660,7 @@ app.post('/api/rooms', async (req, res) => {
       data: {
         buildingId,
         roomNumber,
-        floor: Number(floor) || 1,
+        floor: String(floor || '1'),
         beds: {
           create: Array.from({ length: Number(capacity) }, (_, i) => ({
             bedNumber: i + 1,

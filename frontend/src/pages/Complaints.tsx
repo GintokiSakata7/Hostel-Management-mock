@@ -9,6 +9,15 @@ export default function Complaints() {
   const [formData, setFormData] = useState({ title: '', description: '', student: '', priority: 'medium' });
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
 
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  const [mobileTab, setMobileTab] = useState<'pending' | 'in-progress' | 'resolved'>('pending');
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const fetchComplaints = async () => {
     try {
       const res = await fetch('http://localhost:3001/api/complaints');
@@ -137,7 +146,7 @@ export default function Complaints() {
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}
       onClick={() => activeDropdown && setActiveDropdown(null)}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem' }}>
         <div>
           <h1 className="page-title" style={{ margin: 0 }}>Complaints & Maintenance</h1>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', margin: '4px 0 0 0' }}>{complaints.length} total · {pending.length} pending</p>
@@ -148,7 +157,7 @@ export default function Complaints() {
       </div>
 
       {/* Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', marginBottom: '1.5rem' }}>
+      <div className="responsive-grid-3" style={{ gap: '1rem', marginBottom: '1.5rem' }}>
         {[
           { label: 'Pending', count: pending.length, color: 'var(--danger)' },
           { label: 'In Progress', count: inProgress.length, color: 'var(--warning)' },
@@ -161,18 +170,28 @@ export default function Complaints() {
         ))}
       </div>
 
+      {/* Mobile Tabs */}
+      {isMobile && (
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '1rem', background: 'rgba(255,255,255,0.05)', padding: '6px', borderRadius: 12 }}>
+          <button onClick={() => setMobileTab('pending')} style={{ flex: 1, padding: '10px', borderRadius: 8, border: 'none', background: mobileTab === 'pending' ? 'var(--danger)' : 'transparent', color: mobileTab === 'pending' ? '#fff' : 'var(--text-muted)', fontWeight: 600, fontSize: '0.85rem' }}>Pending</button>
+          <button onClick={() => setMobileTab('in-progress')} style={{ flex: 1, padding: '10px', borderRadius: 8, border: 'none', background: mobileTab === 'in-progress' ? 'var(--warning)' : 'transparent', color: mobileTab === 'in-progress' ? '#fff' : 'var(--text-muted)', fontWeight: 600, fontSize: '0.85rem' }}>In Progress</button>
+          <button onClick={() => setMobileTab('resolved')} style={{ flex: 1, padding: '10px', borderRadius: 8, border: 'none', background: mobileTab === 'resolved' ? 'var(--success)' : 'transparent', color: mobileTab === 'resolved' ? '#fff' : 'var(--text-muted)', fontWeight: 600, fontSize: '0.85rem' }}>Resolved</button>
+        </div>
+      )}
+
       {/* Kanban Columns */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.5rem', flex: 1, minHeight: 0 }}>
-        <Column title="Pending" dot="danger" items={pending} />
-        <Column title="In Progress" dot="warning" items={inProgress} />
-        <Column title="Resolved" dot="success" items={resolved} />
+      <div className={isMobile ? "" : "responsive-grid-3"} style={{ flex: 1, minHeight: 0 }}>
+        {(!isMobile || mobileTab === 'pending') && <Column title="Pending" dot="danger" items={pending} />}
+        {(!isMobile || mobileTab === 'in-progress') && <Column title="In Progress" dot="warning" items={inProgress} />}
+        {(!isMobile || mobileTab === 'resolved') && <Column title="Resolved" dot="success" items={resolved} />}
       </div>
 
       {/* Modal */}
       {isModalOpen && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 }}
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: isMobile ? 'flex-end' : 'center', justifyContent: 'center', zIndex: 2000 }}
           onClick={() => setIsModalOpen(false)}>
-          <div className="glass-heavy" style={{ width: '100%', maxWidth: 480, padding: '2rem', borderRadius: 20, position: 'relative' }} onClick={e => e.stopPropagation()}>
+          <div className={isMobile ? "bottom-sheet" : "glass-heavy"} style={isMobile ? {} : { width: '100%', maxWidth: 480, padding: '2rem', borderRadius: 20, position: 'relative' }} onClick={e => e.stopPropagation()}>
+            {isMobile && <div className="bottom-sheet-handle" />}
             <button className="icon-btn-small" onClick={() => setIsModalOpen(false)} style={{ position: 'absolute', top: 16, right: 16 }}><X size={16} /></button>
             <h2 style={{ margin: '0 0 1.5rem 0', fontSize: '1.2rem' }}>Register New Complaint</h2>
             <form onSubmit={handleSave}>
@@ -188,7 +207,7 @@ export default function Complaints() {
                   placeholder="Describe the issue in detail…"
                   style={{ resize: 'vertical', fontFamily: 'inherit', minHeight: 72 }} />
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              <div className="responsive-grid-2" style={{ gap: '1rem' }}>
                 <div className="form-group">
                   <label>Student Name</label>
                   <input required className="custom-input" value={formData.student}

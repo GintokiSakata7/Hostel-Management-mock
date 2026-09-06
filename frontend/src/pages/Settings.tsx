@@ -3,10 +3,11 @@ import {
   Settings, Building2, IndianRupee, Database,
   Save, Plus, Trash2, RefreshCw, Download,
   Layers3, FileText,
-  User, Phone, Mail, MapPin, Calendar, CreditCard, Wallet,
-  ChevronDown, ChevronRight, Home, AlertCircle
+  User, MapPin, Calendar,
+  ChevronDown, ChevronRight, Home
 } from 'lucide-react';
 import { useToast } from '../components/ToastContext';
+import { useSettings } from '../components/SettingsContext';
 
 const API = 'http://localhost:3001';
 
@@ -66,27 +67,10 @@ function ProfileTab({ settings, onSave }: { settings: any; onSave: (s: any) => v
           <SettingField label="Admin Name" icon={User}>
             <input className="custom-input" value={form.adminName || ''} onChange={e => f('adminName', e.target.value)} placeholder="Admin" />
           </SettingField>
-          <SettingField label="Phone" icon={Phone}>
-            <input className="custom-input" value={form.hostelPhone || ''} onChange={e => f('hostelPhone', e.target.value)} placeholder="+91 9999999999" />
-          </SettingField>
-          <SettingField label="Email" icon={Mail}>
-            <input className="custom-input" value={form.hostelEmail || ''} onChange={e => f('hostelEmail', e.target.value)} placeholder="admin@vmrhostel.com" />
-          </SettingField>
         </div>
         <div style={{ marginTop: '1rem' }}>
           <SettingField label="Address" icon={MapPin}>
             <textarea className="custom-input" rows={3} value={form.hostelAddress || ''} onChange={e => f('hostelAddress', e.target.value)} placeholder="Street, City, State, Pincode" style={{ resize: 'vertical', fontFamily: 'inherit' }} />
-          </SettingField>
-        </div>
-      </SectionCard>
-
-      <SectionCard title="Payment Details" icon={Wallet}>
-        <div className="settings-grid">
-          <SettingField label="UPI ID" icon={CreditCard}>
-            <input className="custom-input" value={form.upiId || ''} onChange={e => f('upiId', e.target.value)} placeholder="vmrhostel@upi" />
-          </SettingField>
-          <SettingField label="UPI Display Name" icon={User}>
-            <input className="custom-input" value={form.upiName || ''} onChange={e => f('upiName', e.target.value)} placeholder="VMR Hostel" />
           </SettingField>
         </div>
       </SectionCard>
@@ -139,18 +123,12 @@ function FeeTab({ settings, onSave }: { settings: any; onSave: (s: any) => void 
           <SettingField label="Security Deposit (₹)" icon={IndianRupee}>
             <input className="custom-input" type="number" value={form.securityDeposit || ''} onChange={e => f('securityDeposit', Number(e.target.value))} placeholder="5000" />
           </SettingField>
-          <SettingField label="Late Fine / Day (₹)" icon={AlertCircle}>
-            <input className="custom-input" type="number" value={form.lateFinePerDay || ''} onChange={e => f('lateFinePerDay', Number(e.target.value))} placeholder="50" />
-          </SettingField>
-          <SettingField label="Due Date (Day of Month)" icon={Calendar}>
-            <input className="custom-input" type="number" min={1} max={31} value={form.dueDateDay || ''} onChange={e => f('dueDateDay', Number(e.target.value))} placeholder="10" />
-          </SettingField>
         </div>
         <div style={{ marginTop: '1.25rem', padding: '1rem', background: 'rgba(249,115,22,0.06)', borderRadius: 12, border: '1px solid rgba(249,115,22,0.15)' }}>
           <div style={{ fontWeight: 700, marginBottom: '0.75rem', color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem' }}>
             <IndianRupee size={14} /> Fee Preview
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem', fontSize: '0.82rem' }}>
+          <div className="responsive-grid-3" style={{ gap: '0.75rem', fontSize: '0.82rem' }}>
             {[
               { label: 'Monthly', value: `₹${Number(form.monthlyFee || 0).toLocaleString()}` },
               { label: '3-Month Advance', value: `₹${(Number(form.monthlyFee || 0) * 3).toLocaleString()}` },
@@ -387,7 +365,7 @@ function FloorPlanTab() {
                   </div>
 
                   {expandedFloors.has(Number(floor)) && (
-                    <div style={{ padding: '1rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(175px, 1fr))', gap: '0.75rem' }}>
+                    <div className="room-grid" style={{ padding: '1rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(175px, 1fr))', gap: '0.75rem' }}>
                       {(rooms as any[]).map((room: any) => {
                         const statusColor = room.status === 'available' ? 'var(--success)' : room.status === 'full' ? 'var(--danger)' : 'var(--warning)';
                         return (
@@ -457,7 +435,7 @@ function DataTab() {
         <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem', marginBottom: '1.25rem', lineHeight: 1.6 }}>
           Download a complete backup of your hostel data as JSON files. These can be used for record-keeping or data migration.
         </p>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+        <div className="responsive-grid-2" style={{ gap: '1rem' }}>
           {[
             { label: 'Export Students', desc: 'All student profiles, room allocations, and full fee history', icon: User, url: `${API}/api/export/students` },
             { label: 'Export Fee Records', desc: 'All payment transactions and fee status for every student', icon: FileText, url: `${API}/api/export/fees` },
@@ -479,7 +457,7 @@ function DataTab() {
 
       <SectionCard title="Database Summary" icon={Database}>
         {stats ? (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '0.875rem' }}>
+          <div className="room-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '0.875rem' }}>
             {[
               { label: 'Total Students', value: stats.totalStudents, color: 'var(--primary)' },
               { label: 'Total Rooms', value: stats.totalRooms, color: 'var(--accent)' },
@@ -505,24 +483,18 @@ function DataTab() {
 // ─── MAIN ─────────────────────────────────────────────────────────────────────
 export default function SettingsPage() {
   const { showToast } = useToast();
+  const { settings, refreshSettings } = useSettings();
   const [activeTab, setActiveTab] = useState('profile');
-  const [settings, setSettings] = useState<any>(null);
-
-  const fetchSettings = useCallback(async () => {
-    try {
-      const res = await fetch(`${API}/api/settings`);
-      setSettings(await res.json());
-    } catch { setSettings({}); }
-  }, []);
-
-  useEffect(() => { fetchSettings(); }, [fetchSettings]);
 
   const saveSettings = async (updated: any) => {
     const res = await fetch(`${API}/api/settings`, {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(updated)
     });
-    if (res.ok) { setSettings(await res.json()); showToast('Settings saved!', 'success'); }
+    if (res.ok) { 
+      await refreshSettings();
+      showToast('Settings saved!', 'success'); 
+    }
     else showToast('Failed to save', 'error');
   };
 
@@ -537,14 +509,16 @@ export default function SettingsPage() {
         </p>
       </div>
 
-      <div style={{ display: 'flex', gap: '4px', marginBottom: '1.5rem', background: 'rgba(255,255,255,0.04)', borderRadius: 12, padding: '4px', flexShrink: 0 }}>
+      <div style={{ display: 'flex', gap: '4px', marginBottom: '1.5rem', background: 'rgba(255,255,255,0.04)', borderRadius: 12, padding: '4px', flexShrink: 0, overflowX: 'auto' }}>
         {TABS.map(({ id, label, icon: Icon }) => (
           <button key={id} onClick={() => setActiveTab(id)} style={{
             flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px',
             padding: '9px 14px', borderRadius: 9, border: 'none', cursor: 'pointer', fontSize: '0.82rem', fontWeight: 600,
             background: activeTab === id ? 'var(--primary)' : 'transparent',
             color: activeTab === id ? '#fff' : 'var(--text-muted)',
-            transition: 'all 0.2s'
+            transition: 'all 0.2s',
+            minWidth: 120,
+            whiteSpace: 'nowrap'
           }}>
             <Icon size={15} /> {label}
           </button>
