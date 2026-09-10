@@ -1,6 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
 :root {
+  color-scheme: dark;
   --bg-dark: #000;
   --primary: #f97316;
   --primary-hover: #ea580c;
@@ -22,6 +23,7 @@
 }
 
 .light-theme {
+  color-scheme: light;
   --bg-dark: #eef2f7;
   --text-main: #1a202c;
   --text-muted: #4a5568;
@@ -539,8 +541,32 @@ h1, h2, h3, h4, h5, h6 {
 
 .custom-select:hover { border-color: var(--border-light); }
 
-.custom-select option { background: #1e1e28; }
-.light-theme .custom-select option { background: #ffffff; color: #000; }
+.custom-select option,
+select option,
+.custom-input option {
+  background-color: #18181b !important;
+  color: #ffffff !important;
+  padding: 8px 12px;
+}
+
+select option[value=""],
+.custom-select option[value=""],
+.custom-input option[value=""] {
+  color: rgba(255, 255, 255, 0.55) !important;
+}
+
+.light-theme .custom-select option,
+.light-theme select option,
+.light-theme .custom-input option {
+  background-color: #ffffff !important;
+  color: #1a202c !important;
+}
+
+.light-theme select option[value=""],
+.light-theme .custom-select option[value=""],
+.light-theme .custom-input option[value=""] {
+  color: rgba(0, 0, 0, 0.45) !important;
+}
 
 /* Table */
 .custom-table { width: 100%; border-collapse: collapse; }
@@ -700,6 +726,11 @@ h1, h2, h3, h4, h5, h6 {
 .custom-input:focus {
   border-color: var(--primary);
   box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.15);
+}
+
+.custom-input.input-error {
+  border-color: #ef4444 !important;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2) !important;
 }
 
 /* ===================== ROOMS PAGE ===================== */

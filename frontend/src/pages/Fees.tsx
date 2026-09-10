@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
-  TrendingUp, TrendingDown, Clock, CheckCircle2, XCircle, IndianRupee, Calendar, Search, Printer, Banknote, Smartphone, Send, MessageSquare, PhoneCall
+  TrendingUp, TrendingDown, Clock, CheckCircle2, XCircle, IndianRupee, Calendar, Search, Printer, Banknote, Smartphone, Send, MessageSquare, PhoneCall, FileText
 } from 'lucide-react';
 import Modal from '../components/Modal';
 import { useToast } from '../components/ToastContext';
@@ -35,7 +35,7 @@ function PaymentModal({ student, selectedMonth, onClose, onSuccess }: {
     e.preventDefault();
     setSaving(true);
     try {
-      const res = await fetch('http://localhost:3001/api/fees/pay', {
+      const res = await fetch('/api/fees/pay', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -396,7 +396,7 @@ export default function Fees() {
     if (!studentId) return;
     setSendingReminderId(studentId);
     try {
-      const res = await fetch(`http://localhost:3001/api/reminders/student/${studentId}`, { method: 'POST' });
+      const res = await fetch(`/api/reminders/student/${studentId}`, { method: 'POST' });
       const data = await res.json();
       if (res.ok && data.success) {
         showToast(`🎙️ Voice & Text reminder sent to ${student.name}!`, 'success');
@@ -420,7 +420,7 @@ export default function Fees() {
   const handleSendReminders = async () => {
     setTriggeringReminders(true);
     try {
-      const res = await fetch('http://localhost:3001/api/reminders/trigger', { method: 'POST' });
+      const res = await fetch('/api/reminders/trigger', { method: 'POST' });
       const data = await res.json();
       if (res.ok && data.success) {
         showToast(`Reminders sent successfully! (${data.data.totalPendingCount} pending students notified)`, 'success');
@@ -439,8 +439,8 @@ export default function Fees() {
     setLoading(true);
     try {
       const [statusRes, txRes] = await Promise.all([
-        fetch(`http://localhost:3001/api/fees/monthly-status?month=${selectedMonth}`),
-        fetch(`http://localhost:3001/api/fees/transactions`)
+        fetch(`/api/fees/monthly-status?month=${selectedMonth}`),
+        fetch(`/api/fees/transactions?month=${selectedMonth}`)
       ]);
       if (statusRes.ok) setMonthlyStatus(await statusRes.json());
       if (txRes.ok) setTransactions(await txRes.json());
@@ -473,13 +473,10 @@ export default function Fees() {
   const pendingCount = monthlyStatus.filter(s => s.feeStatus === 'Pending').length;
   const totalCollected = monthlyStatus.filter(s => s.feeStatus === 'Paid').reduce((sum, s) => sum + s.amount, 0);
 
-  // Fee statistics derived from transactions
-  const totalRevenue = transactions.reduce((s: number, t: any) => s + t.amount, 0);
-  const thisMonthTx = transactions.filter((t: any) => t.month === selectedMonth);
-  const thisMonthRevenue = thisMonthTx.reduce((s: number, t: any) => s + t.amount, 0);
-  const lastMonth = MONTHS[1]?.value;
-  const lastMonthRevenue = transactions.filter((t: any) => t.month === lastMonth).reduce((s: number, t: any) => s + t.amount, 0);
-  const revTrend = lastMonthRevenue > 0 ? Math.round(((thisMonthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100) : 0;
+  // Fee statistics — transactions are already filtered by selectedMonth from API
+  const thisMonthRevenue = transactions.reduce((s: number, t: any) => s + t.amount, 0);
+  const totalRevenue = thisMonthRevenue;
+  const thisMonthTx = transactions; // Already month-scoped
 
   const methodBreakdown = thisMonthTx.reduce((acc: any, t: any) => {
     acc[t.method] = (acc[t.method] || 0) + 1;
@@ -678,6 +675,17 @@ export default function Fees() {
                   }}>
                     {s.feeStatus === 'Paid' ? <><CheckCircle2 size={12} /> PAID</> : <><Clock size={12} /> PENDING</>}
                   </span>
+                  {/* WhatsApp status badge if available */}
+                  {s.feeStatus === 'Paid' && s.whatsappStatus && (
+                    <span style={{
+                      fontSize: '0.68rem', fontWeight: 600, padding: '2px 7px', borderRadius: 4,
+                      background: s.whatsappStatus === 'READ' ? 'rgba(59,130,246,0.15)' : s.whatsappStatus === 'DELIVERED' ? 'rgba(34,197,94,0.15)' : 'rgba(249,115,22,0.15)',
+                      color: s.whatsappStatus === 'READ' ? '#60a5fa' : s.whatsappStatus === 'DELIVERED' ? '#4ade80' : '#fb923c',
+                      border: '1px solid rgba(255,255,255,0.1)'
+                    }} title={`Meta WhatsApp Status: ${s.whatsappStatus}`}>
+                      WA: {s.whatsappStatus}
+                    </span>
+                  )}
                   {/* Actions */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <button
@@ -690,10 +698,22 @@ export default function Fees() {
                       {sendingReminderId === s.studentId ? <Clock size={13} className="animate-spin" /> : <Send size={13} />}
                     </button>
                     {s.feeStatus === 'Paid' ? (
-                      <button className="icon-btn-small" title="Print Receipt"
-                        onClick={() => setViewingReceipt(s)}>
-                        <Printer size={14} />
-                      </button>
+                      <>
+                        <a
+                          href={`/api/fees/receipt/${s.feeRecordId}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="icon-btn-small"
+                          title="Download Official PDF Receipt (Stored in PostgreSQL)"
+                          style={{ color: '#4ade80', border: '1px solid rgba(74,222,128,0.3)', background: 'rgba(74,222,128,0.1)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                        >
+                          <FileText size={14} />
+                        </a>
+                        <button className="icon-btn-small" title="Print Receipt Template"
+                          onClick={() => setViewingReceipt(s)}>
+                          <Printer size={14} />
+                        </button>
+                      </>
                     ) : (
                       <button className="primary-btn" style={{ padding: '5px 12px', fontSize: '0.75rem', minHeight: 32, flexShrink: 0 }}
                         onClick={() => setPayingStudent(s)}>
@@ -720,8 +740,8 @@ export default function Fees() {
             <div className="responsive-grid-2" style={{ gap: '0.875rem', marginBottom: '1rem' }}>
               {[
                 { label: 'This Month', value: `₹${thisMonthRevenue.toLocaleString()}`, color: 'var(--success)', icon: IndianRupee, sub: `${thisMonthTx.length} payments` },
-                { label: 'vs Last Month', value: `${revTrend >= 0 ? '+' : ''}${revTrend}%`, color: revTrend >= 0 ? 'var(--success)' : 'var(--danger)', icon: revTrend >= 0 ? TrendingUp : TrendingDown, sub: `₹${lastMonthRevenue.toLocaleString()}` },
-                { label: 'All-Time Total', value: `₹${totalRevenue.toLocaleString()}`, color: 'var(--primary)', icon: IndianRupee, sub: `${transactions.length} transactions` },
+                { label: 'Paid / Pending', value: `${paidCount} / ${pendingCount}`, color: paidCount >= pendingCount ? 'var(--success)' : 'var(--warning)', icon: paidCount >= pendingCount ? TrendingUp : TrendingDown, sub: `₹${totalCollected.toLocaleString()} collected` },
+                { label: 'Total Revenue', value: `₹${totalRevenue.toLocaleString()}`, color: 'var(--primary)', icon: IndianRupee, sub: `${transactions.length} transactions` },
                 { label: 'Avg Per Student', value: transactions.length > 0 ? `₹${Math.round(totalRevenue / transactions.length).toLocaleString()}` : '—', color: 'var(--accent)', icon: IndianRupee, sub: 'per payment' },
               ].map(({ label, value, color, icon: Icon, sub }) => (
                 <div key={label} style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 12, padding: '0.875rem', border: '1px solid rgba(255,255,255,0.06)' }}>
@@ -793,9 +813,21 @@ export default function Fees() {
                     <div style={{ fontWeight: 700, color: 'var(--success)', fontSize: '0.9rem' }}>₹{Number(tx.amount).toLocaleString()}</div>
                     {tx.receiptNo && <div style={{ color: 'var(--primary)', fontSize: '0.7rem', fontWeight: 700 }}>S.No: {tx.receiptNo}</div>}
                   </div>
-                  <button className="icon-btn-small" style={{ marginLeft: '4px' }} title="Print Receipt" onClick={() => setViewingReceipt({ ...tx, name: tx.student, room: tx.room, paymentDate: tx.date })}>
-                    <Printer size={14} />
-                  </button>
+                  <div style={{ display: 'flex', gap: '4px', marginLeft: '4px' }}>
+                    <a
+                      href={`/api/fees/receipt/${tx.id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="icon-btn-small"
+                      title="Download PDF Receipt (From PostgreSQL)"
+                      style={{ color: '#4ade80', border: '1px solid rgba(74,222,128,0.3)', background: 'rgba(74,222,128,0.1)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                    >
+                      <FileText size={14} />
+                    </a>
+                    <button className="icon-btn-small" title="Print Receipt Template" onClick={() => setViewingReceipt({ ...tx, name: tx.student, room: tx.room, paymentDate: tx.date })}>
+                      <Printer size={14} />
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>

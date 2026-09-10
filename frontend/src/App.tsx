@@ -2,12 +2,13 @@ import { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, NavLink } from 'react-router-dom';
 import {
   LayoutDashboard, Users, AlertCircle, FileText, Building2,
-  BedDouble, LogOut, Bell, Download, ChevronRight, Sun, Moon, Settings, Menu
+  BedDouble, LogOut, Bell, Download, ChevronRight, Sun, Moon, Settings, Menu, Wallet
 } from 'lucide-react';
 import Dashboard from './pages/Dashboard';
 import Students from './pages/Students';
 import Rooms from './pages/Rooms';
 import Fees from './pages/Fees';
+import Finance from './pages/Finance';
 import Complaints from './pages/Complaints';
 import Reports from './pages/Reports';
 import SettingsPage from './pages/Settings';
@@ -19,10 +20,12 @@ const navItems = [
   { to: '/students', icon: Users, label: 'Students' },
   { to: '/rooms', icon: BedDouble, label: 'Rooms & Beds' },
   { to: '/fees', icon: FileText, label: 'Fees' },
+  { to: '/finance', icon: Wallet, label: 'Finance & MIS' },
   { to: '/complaints', icon: AlertCircle, label: 'Complaints' },
   { to: '/reports', icon: Download, label: 'Reports' },
   { to: '/settings', icon: Settings, label: 'Settings' },
 ];
+
 
 function SettingsTitle() {
   const { settings } = useSettings();
@@ -128,6 +131,7 @@ function App() {
                 <Route path="/students" element={<Students />} />
                 <Route path="/rooms" element={<Rooms />} />
                 <Route path="/fees" element={<Fees />} />
+                <Route path="/finance" element={<Finance />} />
                 <Route path="/complaints" element={<Complaints />} />
                 <Route path="/reports" element={<Reports />} />
                 <Route path="/settings" element={<SettingsPage />} />

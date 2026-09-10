@@ -17,12 +17,14 @@
   "type": "commonjs",
   "dependencies": {
     "@types/node-cron": "^3.0.11",
+    "@types/pdfkit": "^0.17.6",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "google-tts-api": "^2.0.2",
     "input": "^1.0.1",
     "node-cron": "^4.6.0",
+    "pdfkit": "^0.20.2",
     "telegram": "^2.26.22"
   },
   "devDependencies": {

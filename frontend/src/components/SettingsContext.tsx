@@ -32,7 +32,7 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
 
   const refreshSettings = async () => {
     try {
-      const res = await fetch('http://localhost:3001/api/settings');
+      const res = await fetch('/api/settings');
       if (res.ok) {
         setSettings(await res.json());
       }

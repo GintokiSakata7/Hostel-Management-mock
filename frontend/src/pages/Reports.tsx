@@ -74,7 +74,7 @@ function StudentReport() {
   const isMobile = useIsMobile();
 
   useEffect(() => {
-    fetch('http://localhost:3001/api/reports/students').then(r => r.json()).then(d => { setData(d); setFiltered(d); setLoading(false); });
+    fetch('/api/reports/students').then(r => r.json()).then(d => { setData(d); setFiltered(d); setLoading(false); });
   }, []);
 
   useEffect(() => {
@@ -149,7 +149,7 @@ function RoomReport() {
   const isMobile = useIsMobile();
 
   useEffect(() => {
-    fetch('http://localhost:3001/api/reports/rooms').then(r => r.json()).then(d => { setData(d); setLoading(false); });
+    fetch('/api/reports/rooms').then(r => r.json()).then(d => { setData(d); setLoading(false); });
   }, []);
 
   const filtered = data.filter(r => r.room.toLowerCase().includes(search.toLowerCase()) || r.building.toLowerCase().includes(search.toLowerCase()));
@@ -237,7 +237,7 @@ function FeeReport({ pendingOnly = false }: { pendingOnly?: boolean }) {
 
   useEffect(() => {
     setLoading(true);
-    fetch(`http://localhost:3001/api/reports/fees?month=${selectedMonth}`).then(r => r.json()).then(d => { setData(d); setLoading(false); });
+    fetch(`/api/reports/fees?month=${selectedMonth}`).then(r => r.json()).then(d => { setData(d); setLoading(false); });
   }, [selectedMonth]);
 
   const filtered = data.filter(s => {
@@ -355,7 +355,7 @@ function ComplaintReport() {
   const isMobile = useIsMobile();
 
   useEffect(() => {
-    fetch('http://localhost:3001/api/reports/complaints').then(r => r.json()).then(d => { setData(d); setLoading(false); });
+    fetch('/api/reports/complaints').then(r => r.json()).then(d => { setData(d); setLoading(false); });
   }, []);
 
   const filtered = data.filter(c => {

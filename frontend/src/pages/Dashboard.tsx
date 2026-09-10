@@ -34,8 +34,8 @@ export default function Dashboard() {
     const fetchDashboard = async () => {
       try {
         const [statsRes, actsRes] = await Promise.all([
-          fetch('http://localhost:3001/api/stats'),
-          fetch('http://localhost:3001/api/activities'),
+          fetch('/api/stats'),
+          fetch('/api/activities'),
         ]);
         if (statsRes.ok) setStats(await statsRes.json());
         if (actsRes.ok) setActivities(await actsRes.json());

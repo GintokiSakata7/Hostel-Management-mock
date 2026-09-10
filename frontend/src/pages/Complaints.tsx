@@ -20,7 +20,7 @@ export default function Complaints() {
 
   const fetchComplaints = async () => {
     try {
-      const res = await fetch('http://localhost:3001/api/complaints');
+      const res = await fetch('/api/complaints');
       if (res.ok) setComplaints(await res.json());
     } catch (e) {
       showToast('Failed to fetch complaints', 'error');
@@ -36,7 +36,7 @@ export default function Complaints() {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch('http://localhost:3001/api/complaints', {
+      const res = await fetch('/api/complaints', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
@@ -57,7 +57,7 @@ export default function Complaints() {
 
   const changeStatus = async (id: string, newStatus: string) => {
     try {
-      const res = await fetch(`http://localhost:3001/api/complaints/${id}/status`, {
+      const res = await fetch(`/api/complaints/${id}/status`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus })

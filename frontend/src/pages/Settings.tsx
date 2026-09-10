@@ -9,7 +9,7 @@ import {
 import { useToast } from '../components/ToastContext';
 import { useSettings } from '../components/SettingsContext';
 
-const API = 'http://localhost:3001';
+const API = '';
 
 const MONTHS = Array.from({ length: 12 }, (_, i) => {
   const d = new Date();

@@ -181,7 +181,7 @@ function QuickPayModal({ bed, selectedMonth, onClose, onSuccess }: { bed: any; s
     try {
       const studentId = bed.studentObj?.dbId || bed.studentDbId;
       if (!studentId) { showToast('Student not found', 'error'); return; }
-      const res = await fetch('http://localhost:3001/api/fees/pay', {
+      const res = await fetch('/api/fees/pay', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ studentId, month: selectedMonth, amount: form.amount, method: form.method, upiProvider: form.method === 'UPI' ? form.upiProvider : null, transactionRef: form.method === 'UPI' ? form.transactionRef : null, date: form.date })
       });
@@ -237,7 +237,7 @@ function AllocateModal({ bed, onClose, onSuccess }: { bed: any; onClose: () => v
   const [allStudents, setAllStudents] = useState<any[]>([]);
 
   useEffect(() => {
-    fetch('http://localhost:3001/api/students').then(r => r.json()).then(data => setAllStudents(data));
+    fetch('/api/students/names').then(r => r.json()).then(data => setAllStudents(data));
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -249,7 +249,7 @@ function AllocateModal({ bed, onClose, onSuccess }: { bed: any; onClose: () => v
     const student = allStudents.find(s => s.name === name);
     const payload = student ? { bedId: bed.id, studentId: student.id } : { bedId: bed.id, studentName: name };
 
-    const res = await fetch('http://localhost:3001/api/beds/allocate', {
+    const res = await fetch('/api/beds/allocate', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
@@ -318,7 +318,7 @@ export default function Rooms() {
 
   const fetchBuildings = async () => {
     try {
-      const res = await fetch('http://localhost:3001/api/buildings');
+      const res = await fetch('/api/buildings');
       if (res.ok) {
         const data = await res.json();
         setBuildings(data);
@@ -330,7 +330,7 @@ export default function Rooms() {
   const fetchRooms = useCallback(async (buildingId: string, month: string) => {
     setLoading(true);
     try {
-      const res = await fetch(`http://localhost:3001/api/rooms/${buildingId}?month=${month}`);
+      const res = await fetch(`/api/rooms/${buildingId}?month=${month}`);
       if (res.ok) setRooms(await res.json());
     } catch (e) { console.error(e); } finally { setLoading(false); }
   }, []);
@@ -453,7 +453,7 @@ export default function Rooms() {
                           if (!confirm(`Are you sure you want to mark the fee for ${bed.student} as NOT PAID?`)) return;
                           const studentId = bed.studentObj?.dbId || bed.studentDbId;
                           if (!studentId) return showToast('Student not found', 'error');
-                          const res = await fetch('http://localhost:3001/api/fees/unpay', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ studentId, month: selectedMonth }) });
+                          const res = await fetch('/api/fees/unpay', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ studentId, month: selectedMonth }) });
                           if (res.ok) { showToast('Fee marked as unpaid', 'success'); handleRefresh(); }
                           else { const err = await res.json(); showToast(err.error || 'Failed', 'error'); }
                         }} isMobile={isMobile} onOpenMobileBeds={() => setMobileBedsRoom(room)} />
@@ -487,7 +487,7 @@ export default function Rooms() {
                             if (!confirm(`Are you sure you want to mark the fee for ${bed.student} as NOT PAID?`)) return;
                             const studentId = bed.studentObj?.dbId || bed.studentDbId;
                             if (!studentId) return showToast('Student not found', 'error');
-                            const res = await fetch('http://localhost:3001/api/fees/unpay', {
+                            const res = await fetch('/api/fees/unpay', {
                               method: 'POST', headers: { 'Content-Type': 'application/json' },
                               body: JSON.stringify({ studentId, month: selectedMonth })
                             });
@@ -527,7 +527,7 @@ export default function Rooms() {
                   if (!confirm(`Are you sure you want to mark the fee for ${bed.student} as NOT PAID?`)) return;
                   const studentId = bed.studentObj?.dbId || bed.studentDbId;
                   if (!studentId) return showToast('Student not found', 'error');
-                  const res = await fetch('http://localhost:3001/api/fees/unpay', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ studentId, month: selectedMonth }) });
+                  const res = await fetch('/api/fees/unpay', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ studentId, month: selectedMonth }) });
                   if (res.ok) { showToast('Fee marked as unpaid', 'success'); handleRefresh(); }
                   else { const err = await res.json(); showToast(err.error || 'Failed', 'error'); }
                 }} />
