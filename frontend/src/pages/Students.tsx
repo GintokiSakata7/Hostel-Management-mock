@@ -2,9 +2,10 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   Search, UserPlus, Edit2, Trash2, X, IndianRupee, Calendar, Printer,
   User, BedDouble, Phone, Mail, Shield, ChevronDown, ChevronUp, Clock, Send, MessageSquare, PhoneCall,
-  Upload, FileText, Camera, CheckCircle, Eye, ExternalLink
+  Upload, FileText, Camera, CheckCircle, Eye, ExternalLink, UserMinus, RotateCcw, UserCheck, Archive
 } from 'lucide-react';
 import Modal from '../components/Modal';
+import ConfirmModal from '../components/ConfirmModal';
 import { useToast } from '../components/ToastContext';
 import { PrintReceiptModal } from './Fees';
 
@@ -1012,6 +1013,8 @@ export default function Students() {
   const [reminderResultModal, setReminderResultModal] = useState<any | null>(null);
   const [previewDocUrl, setPreviewDocUrl] = useState<string | null>(null);
 
+  const [residentTab, setResidentTab] = useState<'active' | 'vacated'>('active');
+
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth <= 768);
@@ -1050,15 +1053,98 @@ export default function Students() {
     }
   };
 
-  const handleDelete = async (dbId: string) => {
-    if (!confirm('Delete this student permanently?')) return;
-    try {
-      await fetch(`/api/students/${dbId}`, { method: 'DELETE' });
-      showToast('Student deleted', 'success'); fetchStudents();
-    } catch (e) { showToast('Delete failed', 'error'); }
+  const [confirmState, setConfirmState] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    confirmText: string;
+    variant: 'danger' | 'warning' | 'info';
+    onConfirm: () => void;
+  } | null>(null);
+
+  const handleVacateStudent = (student: any) => {
+    setConfirmState({
+      isOpen: true,
+      title: 'Remove Student from Hostel',
+      message: `Remove ${student.name} from hostel? They will be unallocated from room ${student.room} and moved to the Vacated Residents tab.`,
+      confirmText: 'Remove & Vacate',
+      variant: 'warning',
+      onConfirm: async () => {
+        setConfirmState(null);
+        try {
+          const res = await fetch(`/api/students/${student.dbId}/vacate`, { method: 'PUT' });
+          if (res.ok) {
+            showToast(`${student.name} removed from hostel and room unallocated`, 'success');
+            fetchStudents();
+          } else {
+            showToast('Failed to remove student', 'error');
+          }
+        } catch (e: any) {
+          showToast('Vacate error: ' + e.message, 'error');
+        }
+      }
+    });
   };
 
+  const handleReadmitStudent = (student: any) => {
+    setConfirmState({
+      isOpen: true,
+      title: 'Re-admit Resident',
+      message: `Re-admit ${student.name} back to Active Residents list?`,
+      confirmText: 'Re-admit Student',
+      variant: 'info',
+      onConfirm: async () => {
+        setConfirmState(null);
+        try {
+          const res = await fetch(`/api/students/${student.dbId}/readmit`, { method: 'PUT' });
+          if (res.ok) {
+            showToast(`${student.name} restored to Active Residents`, 'success');
+            fetchStudents();
+          } else {
+            showToast('Failed to re-admit student', 'error');
+          }
+        } catch (e: any) {
+          showToast('Re-admit error: ' + e.message, 'error');
+        }
+      }
+    });
+  };
+
+  const handlePermanentDelete = (student: any) => {
+    setConfirmState({
+      isOpen: true,
+      title: 'Permanent Database Purge',
+      message: `⚠️ PERMANENT DELETE: Delete ${student.name} and ALL associated fee records, complaints, photo, and Aadhaar documents permanently from the database? This action CANNOT be undone.`,
+      confirmText: 'Permanently Delete',
+      variant: 'danger',
+      onConfirm: async () => {
+        setConfirmState(null);
+        try {
+          const res = await fetch(`/api/students/${student.dbId}`, { method: 'DELETE' });
+          if (res.ok) {
+            showToast('Student profile & documents permanently deleted from DB', 'success');
+            fetchStudents();
+          } else {
+            showToast('Delete failed', 'error');
+          }
+        } catch (e: any) {
+          showToast('Delete error: ' + e.message, 'error');
+        }
+      }
+    });
+  };
+
+  const activeCount = students.filter(s => s.status !== 'Vacated').length;
+  const vacatedCount = students.filter(s => s.status === 'Vacated').length;
+  const activeStudents = students.filter(s => s.status !== 'Vacated');
+  const paidCount = activeStudents.filter(s => s.feeStatus === 'Paid').length;
+  const pendingCount = activeStudents.filter(s => s.feeStatus === 'Pending').length;
+
   const filtered = students.filter(s => {
+    const isVacated = s.status === 'Vacated';
+    if (residentTab === 'active' && isVacated) return false;
+    if (residentTab === 'vacated' && !isVacated) return false;
+
     const matchSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase()) || (s.room || '').toLowerCase().includes(searchTerm.toLowerCase());
     const matchCourse = courseFilter === 'all' || s.course.toLowerCase().includes(courseFilter.toLowerCase());
     const matchFee = feeFilter === 'all' || s.feeStatus === feeFilter;
@@ -1075,16 +1161,13 @@ export default function Students() {
     return a.name.localeCompare(b.name);
   });
 
-  const paidCount = students.filter(s => s.feeStatus === 'Paid').length;
-  const pendingCount = students.filter(s => s.feeStatus === 'Pending').length;
-
   return (
     <div className="animate-fade-in">
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem' }}>
         <div>
           <h1 className="page-title" style={{ margin: '0 0 4px 0' }}>Student Management</h1>
-          <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>{students.length} students · Monthly fee ₹{monthlyFee.toLocaleString()}</p>
+          <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>{activeCount} active residents · {vacatedCount} vacated · Monthly fee ₹{monthlyFee.toLocaleString()}</p>
         </div>
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
           {/* Month selector */}
@@ -1104,9 +1187,10 @@ export default function Students() {
       {/* Stats chips */}
       <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
         {[
-          { label: 'Total Students', value: students.length, color: 'var(--primary)' },
-          { label: 'Paid', value: paidCount, color: 'var(--success)' },
-          { label: 'Pending', value: pendingCount, color: 'var(--warning)' },
+          { label: 'Active Residents', value: activeCount, color: 'var(--primary)' },
+          { label: 'Fee Paid', value: paidCount, color: 'var(--success)' },
+          { label: 'Fee Pending', value: pendingCount, color: 'var(--warning)' },
+          { label: 'Vacated / Left', value: vacatedCount, color: '#ef4444' },
         ].map(({ label, value, color }) => (
           <div key={label} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border-dim)', borderRadius: 12, padding: '8px 16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <span style={{ color, fontWeight: 700, fontSize: '1.1rem' }}>{value}</span>
@@ -1115,8 +1199,53 @@ export default function Students() {
         ))}
       </div>
 
-      {/* Table */}
+      {/* Table Panel */}
       <div className="glass-panel" style={{ padding: '1.5rem' }}>
+
+        {/* Tab Switcher: Active Residents vs Vacated Residents */}
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '1.25rem', borderBottom: '1px solid var(--border-dim)', paddingBottom: '0.75rem' }}>
+          <button 
+            type="button"
+            onClick={() => setResidentTab('active')}
+            style={{
+              padding: '8px 16px',
+              borderRadius: 10,
+              border: '1px solid',
+              borderColor: residentTab === 'active' ? 'var(--primary)' : 'var(--border-dim)',
+              background: residentTab === 'active' ? 'rgba(249,115,22,0.15)' : 'transparent',
+              color: residentTab === 'active' ? 'var(--primary)' : 'var(--text-muted)',
+              fontWeight: 700,
+              fontSize: '0.85rem',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}
+          >
+            <UserCheck size={16} /> Active Residents ({activeCount})
+          </button>
+          <button 
+            type="button"
+            onClick={() => setResidentTab('vacated')}
+            style={{
+              padding: '8px 16px',
+              borderRadius: 10,
+              border: '1px solid',
+              borderColor: residentTab === 'vacated' ? '#ef4444' : 'var(--border-dim)',
+              background: residentTab === 'vacated' ? 'rgba(239,68,68,0.15)' : 'transparent',
+              color: residentTab === 'vacated' ? '#ef4444' : 'var(--text-muted)',
+              fontWeight: 700,
+              fontSize: '0.85rem',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}
+          >
+            <Archive size={16} /> Former / Vacated Residents ({vacatedCount})
+          </button>
+        </div>
+
         {/* Filters */}
         <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.25rem', flexWrap: 'wrap' }}>
           <div className="search-bar" style={{ flex: 1, minWidth: 200 }}>
@@ -1143,7 +1272,7 @@ export default function Students() {
               <tr>
                 <th>Student</th>
                 <th>Course · Branch</th>
-                <th>Room / Bed</th>
+                <th>Room / Status</th>
                 <th>Fee Status</th>
                 <th>Actions</th>
               </tr>
@@ -1152,7 +1281,7 @@ export default function Students() {
               {loading ? (
                 <tr><td colSpan={5} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>Loading…</td></tr>
               ) : filtered.length === 0 ? (
-                <tr><td colSpan={5} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>No students found</td></tr>
+                <tr><td colSpan={5} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>No {residentTab === 'vacated' ? 'vacated' : 'active'} students found</td></tr>
               ) : filtered.map(student => (
                 <tr key={student.dbId} style={{ animation: 'slideInUp 0.3s ease-out' }}>
                   <td data-label="Student">
@@ -1165,7 +1294,7 @@ export default function Students() {
                       <button className="student-name-btn" onClick={() => setViewingStudent(student)}>{student.name}</button>
                       
                       {/* Individual Reminder Trigger Button - ONLY FOR PENDING / DUE STUDENTS */}
-                      {student.feeStatus === 'Pending' && (
+                      {residentTab === 'active' && student.feeStatus === 'Pending' && (
                         <button
                           type="button"
                           className="reminder-tag-btn"
@@ -1218,8 +1347,11 @@ export default function Students() {
                     <div style={{ fontWeight: 500, fontSize: '0.875rem' }}>{student.course}</div>
                     <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>{student.branch || '—'} · {student.year} Year</div>
                   </td>
-                  <td data-label="Room / Bed">
+                  <td data-label="Room / Status">
                     <div style={{ fontWeight: 500 }}>{student.room}</div>
+                    {student.status === 'Vacated' && (
+                      <span style={{ fontSize: '0.7rem', color: '#ef4444', fontWeight: 600 }}>Vacated / Left</span>
+                    )}
                   </td>
                   <td data-label="Fee Status">
                     <span className={student.feeStatus === 'Paid' ? 'status-badge badge-paid' : student.feeStatus === 'Pending' ? 'status-badge badge-pending' : 'status-badge'}>
@@ -1231,28 +1363,60 @@ export default function Students() {
                       {/* View Details Eye Icon Button */}
                       <button 
                         className="icon-btn-small" 
-                        title={`View Full Details for ${student.name} (Room: ${student.room}, Join Date, Info)`}
+                        title={`View Full Details for ${student.name}`}
                         onClick={() => setViewingStudent(student)}
                         style={{ color: 'var(--primary)' }}
                       >
                         <Eye size={16} />
                       </button>
 
-                      {/* Reminder Send Button - Only for Pending Fee Students */}
-                      {student.feeStatus === 'Pending' && (
-                        <button 
-                          className="icon-btn-small" 
-                          title={`Send Voice & Text Reminder to ${student.name}`}
-                          disabled={sendingReminderId === student.dbId}
-                          onClick={() => handleSendIndividualReminder(student)}
-                          style={{ color: 'var(--primary)' }}
-                        >
-                          {sendingReminderId === student.dbId ? <Clock size={15} className="animate-spin" /> : <Send size={15} />}
-                        </button>
+                      {/* ACTIONS FOR ACTIVE RESIDENTS */}
+                      {residentTab === 'active' && (
+                        <>
+                          {student.feeStatus === 'Pending' && (
+                            <button 
+                              className="icon-btn-small" 
+                              title={`Send Voice & Text Reminder to ${student.name}`}
+                              disabled={sendingReminderId === student.dbId}
+                              onClick={() => handleSendIndividualReminder(student)}
+                              style={{ color: 'var(--primary)' }}
+                            >
+                              {sendingReminderId === student.dbId ? <Clock size={15} className="animate-spin" /> : <Send size={15} />}
+                            </button>
+                          )}
+                          <button className="icon-btn-small" title="Edit" onClick={() => { setEditingStudent(student); setShowForm(true); }}><Edit2 size={16} /></button>
+                          <button 
+                            className="icon-btn-small delete" 
+                            title={`Remove / Vacate ${student.name} from Hostel`} 
+                            onClick={() => handleVacateStudent(student)}
+                            style={{ color: '#ef4444' }}
+                          >
+                            <UserMinus size={16} />
+                          </button>
+                        </>
                       )}
 
-                      <button className="icon-btn-small" title="Edit" onClick={() => { setEditingStudent(student); setShowForm(true); }}><Edit2 size={16} /></button>
-                      <button className="icon-btn-small delete" title="Delete" onClick={() => handleDelete(student.dbId)}><Trash2 size={16} /></button>
+                      {/* ACTIONS FOR VACATED RESIDENTS */}
+                      {residentTab === 'vacated' && (
+                        <>
+                          <button 
+                            className="icon-btn-small" 
+                            title={`Re-admit ${student.name} to Active Residents`} 
+                            onClick={() => handleReadmitStudent(student)}
+                            style={{ color: '#4ade80' }}
+                          >
+                            <RotateCcw size={16} />
+                          </button>
+                          <button 
+                            className="icon-btn-small delete" 
+                            title={`Permanently delete ${student.name} and purge documents from DB`} 
+                            onClick={() => handlePermanentDelete(student)}
+                            style={{ color: '#ef4444' }}
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -1268,7 +1432,7 @@ export default function Students() {
             {loading ? (
               <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>Loading…</div>
             ) : filtered.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>No students found</div>
+              <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>No {residentTab === 'vacated' ? 'vacated' : 'active'} students found</div>
             ) : filtered.map(student => (
               <div key={student.dbId} className="glass" style={{ padding: '1rem', borderRadius: 12, marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '1rem', animation: 'slideInUp 0.3s ease-out', cursor: 'pointer' }} onClick={() => setViewingStudent(student)}>
                 {student.photoUrl ? (
@@ -1279,7 +1443,7 @@ export default function Students() {
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                     <div style={{ fontWeight: 600 }}>{student.name}</div>
-                    {student.feeStatus === 'Pending' && (
+                    {residentTab === 'active' && student.feeStatus === 'Pending' && (
                       <button
                         type="button"
                         disabled={sendingReminderId === student.dbId}
@@ -1312,9 +1476,35 @@ export default function Students() {
                   </div>
                   <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{student.course} · Room {student.room}</div>
                 </div>
-                <span className={student.feeStatus === 'Paid' ? 'status-badge badge-paid' : student.feeStatus === 'Pending' ? 'status-badge badge-pending' : 'status-badge'}>
-                  {student.feeStatus}
-                </span>
+                <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                  {residentTab === 'active' ? (
+                    <button 
+                      className="icon-btn-small delete" 
+                      title="Remove Student" 
+                      onClick={(e) => { e.stopPropagation(); handleVacateStudent(student); }}
+                    >
+                      <UserMinus size={14} />
+                    </button>
+                  ) : (
+                    <>
+                      <button 
+                        className="icon-btn-small" 
+                        title="Re-admit Student" 
+                        onClick={(e) => { e.stopPropagation(); handleReadmitStudent(student); }}
+                        style={{ color: '#4ade80' }}
+                      >
+                        <RotateCcw size={14} />
+                      </button>
+                      <button 
+                        className="icon-btn-small delete" 
+                        title="Permanently Delete Student" 
+                        onClick={(e) => { e.stopPropagation(); handlePermanentDelete(student); }}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
             ))}
           </div>
@@ -1428,6 +1618,19 @@ export default function Students() {
             </div>
           </div>
         </Modal>
+      )}
+
+      {/* Glassmorphism Confirmation Alert Modal */}
+      {confirmState && (
+        <ConfirmModal
+          isOpen={confirmState.isOpen}
+          title={confirmState.title}
+          message={confirmState.message}
+          confirmText={confirmState.confirmText}
+          variant={confirmState.variant}
+          onClose={() => setConfirmState(null)}
+          onConfirm={confirmState.onConfirm}
+        />
       )}
     </div>
   );

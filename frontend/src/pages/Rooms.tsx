@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Building2, Calendar, IndianRupee, BedDouble, Layers3, Search, Plus, Printer, Banknote, Smartphone, CheckCircle2, Info, Phone, GraduationCap, User, XCircle, Home } from 'lucide-react';
+import { Building2, Calendar, IndianRupee, BedDouble, Layers3, Search, Plus, Printer, Banknote, Smartphone, CheckCircle2, Phone, GraduationCap, User, XCircle, Home } from 'lucide-react';
 import Modal from '../components/Modal';
 import { useToast } from '../components/ToastContext';
 import { PrintReceiptModal } from './Fees';
@@ -235,6 +235,7 @@ function AllocateModal({ bed, onClose, onSuccess }: { bed: any; onClose: () => v
   const monthlyFee = settings?.monthlyFee || 5500;
   const [name, setName] = useState('');
   const [allStudents, setAllStudents] = useState<any[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
   useEffect(() => {
     fetch('/api/students/names').then(r => r.json()).then(data => setAllStudents(data));
@@ -246,7 +247,7 @@ function AllocateModal({ bed, onClose, onSuccess }: { bed: any; onClose: () => v
       showToast('Please enter or select a student', 'error');
       return;
     }
-    const student = allStudents.find(s => s.name === name);
+    const student = allStudents.find(s => s.name.toLowerCase() === name.trim().toLowerCase());
     const payload = student ? { bedId: bed.id, studentId: student.id } : { bedId: bed.id, studentName: name };
 
     const res = await fetch('/api/beds/allocate', {
@@ -257,8 +258,12 @@ function AllocateModal({ bed, onClose, onSuccess }: { bed: any; onClose: () => v
     else { const err = await res.json(); showToast(err.error || 'Failed', 'error'); }
   };
 
-  const selectedStudent = allStudents.find(s => s.name === name);
+  const selectedStudent = allStudents.find(s => s.name.toLowerCase() === name.trim().toLowerCase());
   const isAlreadyAllocated = selectedStudent && selectedStudent.room !== 'Unallocated';
+
+  const matchingSuggestions = name.trim().length > 0 
+    ? allStudents.filter(s => s.name.toLowerCase().includes(name.trim().toLowerCase()))
+    : allStudents;
 
   return (
     <Modal isOpen onClose={onClose} title={`Allocate Bed ${bed.bedIndex}`}>
@@ -267,21 +272,95 @@ function AllocateModal({ bed, onClose, onSuccess }: { bed: any; onClose: () => v
           <span style={{ fontWeight: 700 }}>Bed {bed.bedIndex}</span>
           <span style={{ color: 'var(--text-muted)', marginLeft: 8, fontSize: '0.8rem' }}>Monthly Fee: ₹{monthlyFee.toLocaleString()}</span>
         </div>
-        <div className="form-group">
+
+        <div className="form-group" style={{ position: 'relative' }}>
           <label>Student Name</label>
-          <input required className="custom-input" list="student-list" value={name} onChange={e => setName(e.target.value)} placeholder="Start typing student name…" />
-          <datalist id="student-list">{allStudents.map(s => <option key={s.id} value={s.name} />)}</datalist>
-          <small style={{ color: 'var(--text-muted)', marginTop: 4, display: 'block' }}>You can also type a name manually to allocate someone not yet in the system.</small>
+          <input 
+            required 
+            className="custom-input" 
+            value={name} 
+            onChange={e => {
+              setName(e.target.value);
+              setShowSuggestions(true);
+            }} 
+            onFocus={() => setShowSuggestions(true)}
+            placeholder="Start typing student name (e.g. Rishi)…" 
+            autoComplete="off"
+          />
+
+          {/* Real-time Autocomplete Suggestions Dropdown */}
+          {showSuggestions && matchingSuggestions.length > 0 && (
+            <div 
+              style={{
+                position: 'absolute',
+                top: '100%',
+                left: 0,
+                right: 0,
+                zIndex: 100,
+                marginTop: 4,
+                background: 'rgba(22, 26, 38, 0.96)',
+                backdropFilter: 'blur(12px)',
+                border: '1px solid rgba(255, 255, 255, 0.15)',
+                borderRadius: 12,
+                maxHeight: 200,
+                overflowY: 'auto',
+                boxShadow: '0 12px 36px rgba(0,0,0,0.6)',
+                padding: '4px'
+              }}
+            >
+              {matchingSuggestions.map(student => (
+                <div
+                  key={student.id}
+                  onClick={() => {
+                    setName(student.name);
+                    setShowSuggestions(false);
+                  }}
+                  style={{
+                    padding: '8px 12px',
+                    borderRadius: 8,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    fontSize: '0.85rem',
+                    color: '#fff',
+                    transition: 'background 0.15s ease'
+                  }}
+                  onMouseOver={e => e.currentTarget.style.background = 'rgba(249,115,22,0.18)'}
+                  onMouseOut={e => e.currentTarget.style.background = 'transparent'}
+                >
+                  <span style={{ fontWeight: 600 }}>{student.name}</span>
+                  {student.room !== 'Unallocated' ? (
+                    <span style={{ fontSize: '0.72rem', color: '#fb923c', background: 'rgba(249,115,22,0.15)', padding: '2px 8px', borderRadius: 6, border: '1px solid rgba(249,115,22,0.3)' }}>
+                      In {student.room}
+                    </span>
+                  ) : (
+                    <span style={{ fontSize: '0.72rem', color: '#4ade80', background: 'rgba(34,197,94,0.15)', padding: '2px 8px', borderRadius: 6, border: '1px solid rgba(34,197,94,0.3)' }}>
+                      Unallocated
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          <small style={{ color: 'var(--text-muted)', marginTop: 4, display: 'block' }}>
+            Type initial letters to search existing residents, or enter a new name manually.
+          </small>
         </div>
+
         {isAlreadyAllocated && (
-          <div style={{ marginTop: '0.75rem', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8, padding: '10px 12px', display: 'flex', gap: '8px', color: 'var(--danger)', fontSize: '0.85rem', alignItems: 'center' }}>
-            <Info size={16} />
-            <span><strong>Warning:</strong> This student is already allocated to <strong>{selectedStudent.room}</strong>. Proceeding will move them to this bed.</span>
+          <div style={{ marginTop: '0.75rem', background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.35)', borderRadius: 10, padding: '10px 14px', display: 'flex', gap: '10px', color: '#ef4444', fontSize: '0.85rem', alignItems: 'center' }}>
+            <XCircle size={18} style={{ flexShrink: 0 }} />
+            <div>
+              <strong>Action Required:</strong> <span>{selectedStudent.name} is already allocated to <strong>Room {selectedStudent.room}</strong>. Please vacate / de-allocate them from Room {selectedStudent.room} first before allocating to a new bed.</span>
+            </div>
           </div>
         )}
+
         <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
           <button type="button" className="custom-select" style={{ flex: 1 }} onClick={onClose}>Cancel</button>
-          <button type="submit" className="primary-btn" style={{ flex: 1, justifyContent: 'center' }}>Confirm Allocation</button>
+          <button type="submit" className="primary-btn" style={{ flex: 1, justifyContent: 'center' }} disabled={isAlreadyAllocated}>Confirm Allocation</button>
         </div>
       </form>
     </Modal>

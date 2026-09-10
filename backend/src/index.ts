@@ -416,13 +416,67 @@ app.put('/api/students/:id/notice', async (req, res) => {
   }
 });
 
+app.put('/api/students/:id/vacate', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await prisma.bed.updateMany({
+      where: { studentId: id },
+      data: { studentId: null, status: 'available' }
+    });
+    const student = await prisma.student.update({
+      where: { id },
+      data: {
+        status: 'Vacated',
+        isOnNotice: false
+      }
+    });
+    res.json({ success: true, student });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/students/:id/readmit', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const student = await prisma.student.update({
+      where: { id },
+      data: {
+        status: 'Active'
+      }
+    });
+    res.json({ success: true, student });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.delete('/api/students/:id', async (req, res) => {
-  const { id } = req.params;
-  await prisma.fee.deleteMany({ where: { studentId: id } });
-  await prisma.complaint.deleteMany({ where: { studentId: id } });
-  await prisma.bed.updateMany({ where: { studentId: id }, data: { studentId: null, status: 'available' } });
-  await prisma.student.delete({ where: { id } });
-  res.json({ success: true });
+  try {
+    const { id } = req.params;
+    const student = await prisma.student.findUnique({ where: { id } });
+    if (student) {
+      if (student.photoUrl && student.photoUrl.startsWith('/uploads/')) {
+        const p = path.join(UPLOADS_DIR, path.basename(student.photoUrl));
+        if (fs.existsSync(p)) {
+          try { fs.unlinkSync(p); } catch (e) { console.error('Error unlinking photo:', e); }
+        }
+      }
+      if (student.aadharCardUrl && student.aadharCardUrl.startsWith('/uploads/')) {
+        const p = path.join(UPLOADS_DIR, path.basename(student.aadharCardUrl));
+        if (fs.existsSync(p)) {
+          try { fs.unlinkSync(p); } catch (e) { console.error('Error unlinking Aadhaar document:', e); }
+        }
+      }
+    }
+    await prisma.fee.deleteMany({ where: { studentId: id } });
+    await prisma.complaint.deleteMany({ where: { studentId: id } });
+    await prisma.bed.updateMany({ where: { studentId: id }, data: { studentId: null, status: 'available' } });
+    await prisma.student.delete({ where: { id } });
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Lightweight student list for dropdowns (allocation modal etc.) — avoids loading fees/full data
@@ -521,7 +575,23 @@ app.post('/api/beds/allocate', async (req, res) => {
     student = await prisma.student.findUnique({ where: { id: studentId } });
   }
   if (!student) return res.status(404).json({ error: 'Student not found. Please check the name and try again.' });
-  await prisma.bed.updateMany({ where: { studentId: student.id }, data: { studentId: null, status: 'available' } });
+
+  // Check if student is ALREADY allocated to another room/bed
+  const existingBed = await prisma.bed.findFirst({
+    where: { studentId: student.id },
+    include: { room: true }
+  });
+
+  if (existingBed) {
+    // If the student is already in the target bed, allow idempotent update
+    if (existingBed.id === bedId) {
+      return res.json({ ...existingBed, studentName: student.name });
+    }
+    return res.status(400).json({
+      error: `${student.name} is already allocated to Room ${existingBed.room.roomNumber}. Please de-allocate / vacate ${student.name} from Room ${existingBed.room.roomNumber} first before allocating to a new room.`
+    });
+  }
+
   const bed = await prisma.bed.update({
     where: { id: bedId },
     data: { status: 'occupied', studentId: student.id }
