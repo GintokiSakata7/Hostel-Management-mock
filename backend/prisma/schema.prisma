@@ -6,12 +6,13 @@ generator client {
 }
 
 datasource db {
-  provider = "mongodb"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model Student {
-  id                      String      @id @default(auto()) @map("_id") @db.ObjectId
+  id                      String      @id @default(uuid())
   // Personal
   name                    String
   gender                  String?     // Male, Female, Other
@@ -28,6 +29,7 @@ model Student {
   dateOfJoining           DateTime    @default(now())
   // Address / ID
   aadhar                  String?
+  aadharCardUrl           String?
   address                 String?
   pincode                 String?
   state                   String?
@@ -46,6 +48,10 @@ model Student {
   // Legacy field (kept for backward compat — actual fee status comes from Fee records)
   feeStatus               String      @default("Pending") // Paid, Pending
   status                  String      @default("Active")  // Active, On Leave
+  // Notice Period / Departure
+  isOnNotice              Boolean     @default(false)
+  noticeVacateDate        DateTime?
+  noticeReason            String?
 
   createdAt               DateTime    @default(now())
   updatedAt               DateTime    @updatedAt
@@ -56,33 +62,38 @@ model Student {
 }
 
 model Building {
-  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  id          String   @id @default(uuid())
   name        String   @unique
   rooms       Room[]
+  expenses    Expense[]
 }
 
 model Room {
-  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  id          String   @id @default(uuid())
   roomNumber  String   @unique
   floor       String
-  buildingId  String   @db.ObjectId
+  buildingId  String
   building    Building @relation(fields: [buildingId], references: [id])
   beds        Bed[]
 }
 
 model Bed {
-  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  id          String   @id @default(uuid())
   bedNumber   Int
-  roomId      String   @db.ObjectId
+  roomId      String
   room        Room     @relation(fields: [roomId], references: [id])
-  studentId   String?  @db.ObjectId
+  studentId   String?
   student     Student? @relation(fields: [studentId], references: [id])
   status      String   @default("available") // available, occupied
+
+  @@index([studentId])
+  @@index([roomId])
+  @@index([status])
 }
 
 model Fee {
-  id             String   @id @default(auto()) @map("_id") @db.ObjectId
-  studentId      String   @db.ObjectId
+  id             String   @id @default(uuid())
+  studentId      String
   student        Student  @relation(fields: [studentId], references: [id])
   month          String?   // Format: "2026-09" (YYYY-MM)
   amount         Float
@@ -92,17 +103,77 @@ model Fee {
   transactionRef String?  // UPI transaction/reference ID
   status         String   @default("Completed") // Completed, Pending
   receiptNo      String?  // Format: YYMM-XXX (e.g. 2609-001)
+  whatsappStatus String?  // "SENT" | "DELIVERED" | "READ" | "FAILED"
+  whatsappMsgId  String?  // Meta WhatsApp message ID
+  receipt        Receipt?
+
+  @@index([month])
+  @@index([studentId, month])
+  @@index([status])
+}
+
+model Receipt {
+  id          String   @id @default(uuid())
+  feeId       String   @unique
+  fee         Fee      @relation(fields: [feeId], references: [id], onDelete: Cascade)
+  receiptNo   String
+  fileName    String
+  mimeType    String   @default("application/pdf")
+  pdfData     Bytes
+  createdAt   DateTime @default(now())
+}
+
+model WhatsAppLog {
+  id             String   @id @default(uuid())
+  waMessageId    String?
+  recipientPhone String
+  eventType      String
+  status         String?
+  payload        String?
+  timestamp      DateTime @default(now())
 }
 
 model Complaint {
-  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  id          String   @id @default(uuid())
   title       String
   description String?
   priority    String   @default("medium") // low, medium, high
   status      String   @default("pending") // pending, in-progress, resolved
   date        DateTime @default(now())
   
-  studentId   String   @db.ObjectId
+  studentId   String
   student     Student  @relation(fields: [studentId], references: [id])
-  roomId      String?  @db.ObjectId
+  roomId      String?
+
+  @@index([status])
+  @@index([studentId])
 }
+
+model ExpenseCategory {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  icon        String?
+  presetItems String[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Expense {
+  id            String    @id @default(uuid())
+  title         String
+  category      String
+  amount        Float
+  date          DateTime  @default(now())
+  paymentMethod String    @default("Cash") // Cash, UPI, Bank Transfer, Card, Other
+  vendor        String?
+  notes         String?
+  buildingId    String?
+  building      Building? @relation(fields: [buildingId], references: [id])
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([date])
+  @@index([category])
+  @@index([buildingId])
+}
+

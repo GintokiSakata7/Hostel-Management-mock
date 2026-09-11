@@ -1,6 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
 :root {
+  color-scheme: dark;
   --bg-dark: #000;
   --primary: #f97316;
   --primary-hover: #ea580c;
@@ -22,6 +23,7 @@
 }
 
 .light-theme {
+  color-scheme: light;
   --bg-dark: #eef2f7;
   --text-main: #1a202c;
   --text-muted: #4a5568;
@@ -539,8 +541,32 @@ h1, h2, h3, h4, h5, h6 {
 
 .custom-select:hover { border-color: var(--border-light); }
 
-.custom-select option { background: #1e1e28; }
-.light-theme .custom-select option { background: #ffffff; color: #000; }
+.custom-select option,
+select option,
+.custom-input option {
+  background-color: #18181b !important;
+  color: #ffffff !important;
+  padding: 8px 12px;
+}
+
+select option[value=""],
+.custom-select option[value=""],
+.custom-input option[value=""] {
+  color: rgba(255, 255, 255, 0.55) !important;
+}
+
+.light-theme .custom-select option,
+.light-theme select option,
+.light-theme .custom-input option {
+  background-color: #ffffff !important;
+  color: #1a202c !important;
+}
+
+.light-theme select option[value=""],
+.light-theme .custom-select option[value=""],
+.light-theme .custom-input option[value=""] {
+  color: rgba(0, 0, 0, 0.45) !important;
+}
 
 /* Table */
 .custom-table { width: 100%; border-collapse: collapse; }
@@ -700,6 +726,11 @@ h1, h2, h3, h4, h5, h6 {
 .custom-input:focus {
   border-color: var(--primary);
   box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.15);
+}
+
+.custom-input.input-error {
+  border-color: #ef4444 !important;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2) !important;
 }
 
 /* ===================== ROOMS PAGE ===================== */
@@ -1368,5 +1399,304 @@ h1, h2, h3, h4, h5, h6 {
   .premium-room-card:active, .bed-card-hover:active, button:active {
     transform: scale(0.98) !important;
     opacity: 0.8;
+  }
+}
+
+/* ===================== VELOZTY AI VIRTUAL WORKSPACE STYLES ===================== */
+.velozty-canvas-container {
+  background-color: #0b0d14;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+  background-size: 24px 24px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 0 60px rgba(0, 0, 0, 0.6);
+  position: relative;
+  overflow: visible;
+  flex: 1;
+}
+
+.velozty-sidebar-panel {
+  background: rgba(14, 17, 26, 0.85);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 20px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+}
+
+.velozty-room-box {
+  background: rgba(18, 22, 34, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  backdrop-filter: blur(12px);
+  transition: all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+}
+
+.velozty-room-box:hover {
+  border-color: rgba(249, 115, 22, 0.4);
+  box-shadow: 0 12px 36px rgba(249, 115, 22, 0.15);
+}
+
+.velozty-floor-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  padding: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.velozty-floor-card:hover, .velozty-floor-card.active {
+  background: rgba(249, 115, 22, 0.12);
+  border-color: rgba(249, 115, 22, 0.4);
+  box-shadow: 0 0 16px rgba(249, 115, 22, 0.15);
+}
+
+/* ===================== EDIT BUILDING LAYOUT MODAL ===================== */
+@keyframes editBuildingSlideIn {
+  from { opacity: 0; transform: scale(0.95) translateY(12px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes editBuildingRoomCard {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.edit-building-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 3000;
+  animation: modalBackdropIn 0.2s ease;
+  padding: 24px;
+}
+
+.edit-building-container {
+  width: 100%;
+  max-width: 920px;
+  max-height: 85vh;
+  background: rgba(18, 20, 30, 0.95);
+  backdrop-filter: blur(40px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 22px;
+  box-shadow:
+    0 32px 80px rgba(0, 0, 0, 0.6),
+    0 0 0 1px rgba(255, 255, 255, 0.05) inset,
+    0 -1px 0 rgba(255, 255, 255, 0.06) inset;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: editBuildingSlideIn 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.edit-building-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 18px 24px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.02);
+  flex-shrink: 0;
+}
+
+.edit-building-stat-chip {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.edit-building-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.edit-building-floors-nav {
+  width: 220px;
+  min-width: 220px;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+}
+
+.edit-building-floor-tab {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+  font-family: inherit;
+}
+
+.edit-building-floor-tab:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.edit-building-floor-tab.active {
+  background: rgba(249, 115, 22, 0.1);
+  border-color: rgba(249, 115, 22, 0.3);
+  box-shadow: 0 2px 12px rgba(249, 115, 22, 0.12);
+}
+
+.edit-building-rooms-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.edit-building-room-card {
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 14px;
+  padding: 14px;
+  transition: all 0.25s ease;
+  animation: editBuildingRoomCard 0.3s ease-out both;
+}
+
+.edit-building-room-card:hover {
+  background: rgba(255, 255, 255, 0.045);
+  border-color: rgba(255, 255, 255, 0.12);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+}
+
+.edit-building-cap-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--primary);
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-weight: 800;
+  font-size: 0.95rem;
+  transition: all 0.15s;
+  font-family: inherit;
+}
+
+.edit-building-cap-btn:hover:not(:disabled) {
+  background: rgba(249, 115, 22, 0.15);
+  border-color: rgba(249, 115, 22, 0.4);
+  transform: scale(1.08);
+}
+
+.edit-building-add-room-bar {
+  padding: 14px 24px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(0, 0, 0, 0.15);
+  flex-shrink: 0;
+}
+
+.edit-building-cap-chip {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-muted);
+  font-weight: 700;
+  font-size: 0.78rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+  font-family: inherit;
+}
+
+.edit-building-cap-chip:hover {
+  border-color: rgba(249, 115, 22, 0.4);
+  color: var(--primary);
+}
+
+.edit-building-cap-chip.active {
+  background: rgba(249, 115, 22, 0.2);
+  border-color: var(--primary);
+  color: var(--primary);
+  box-shadow: 0 0 12px rgba(249, 115, 22, 0.2);
+}
+
+/* Responsive: stack panels on mobile */
+@media (max-width: 768px) {
+  .edit-building-overlay {
+    padding: 0;
+    align-items: flex-end;
+  }
+
+  .edit-building-container {
+    max-width: 100%;
+    max-height: 95vh;
+    border-radius: 22px 22px 0 0;
+    border-bottom: none;
+  }
+
+  .edit-building-body {
+    flex-direction: column;
+  }
+
+  .edit-building-floors-nav {
+    width: 100%;
+    min-width: unset;
+    border-right: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    flex-direction: row;
+    overflow-x: auto;
+    padding: 8px;
+    gap: 6px;
+  }
+
+  .edit-building-floors-nav > div:first-child {
+    display: none;
+  }
+
+  .edit-building-floors-nav > div:last-child {
+    flex-direction: row;
+    padding: 0;
+    gap: 6px;
+    overflow-x: auto;
+    width: 100%;
+  }
+
+  .edit-building-floor-tab {
+    white-space: nowrap;
+    min-width: fit-content;
+    padding: 8px 14px;
+  }
+
+  .edit-building-stat-chip {
+    display: none;
+  }
+
+  .edit-building-add-room-bar form {
+    flex-wrap: wrap;
   }
 }

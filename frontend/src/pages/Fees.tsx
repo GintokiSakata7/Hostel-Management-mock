@@ -1,11 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
-  Search, Calendar, Printer, CheckCircle2, XCircle, Clock, IndianRupee, TrendingUp, TrendingDown, Banknote, Smartphone
+  TrendingUp, TrendingDown, Clock, CheckCircle2, XCircle, IndianRupee, Calendar, Search, Printer, Banknote, Smartphone, Send, MessageSquare, PhoneCall, FileText
 } from 'lucide-react';
 import Modal from '../components/Modal';
 import { useToast } from '../components/ToastContext';
-
 import { useSettings } from '../components/SettingsContext';
+import { useBuilding } from '../components/BuildingContext';
 
 const MONTHS = Array.from({ length: 12 }, (_, i) => {
   const d = new Date();
@@ -36,7 +36,7 @@ function PaymentModal({ student, selectedMonth, onClose, onSuccess }: {
     e.preventDefault();
     setSaving(true);
     try {
-      const res = await fetch('http://localhost:3001/api/fees/pay', {
+      const res = await fetch('/api/fees/pay', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -377,6 +377,9 @@ export default function Fees() {
   const [feeFilter, setFeeFilter] = useState<'all' | 'Paid' | 'Pending'>('all');
   const [payingStudent, setPayingStudent] = useState<any>(null);
   const [viewingReceipt, setViewingReceipt] = useState<any>(null);
+  const [triggeringReminders, setTriggeringReminders] = useState(false);
+  const [sendingReminderId, setSendingReminderId] = useState<string | null>(null);
+  const [reminderModalData, setReminderModalData] = useState<any>(null);
   const [serialSearch, setSerialSearch] = useState('');
 
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
@@ -389,12 +392,58 @@ export default function Fees() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  const handleSendIndividualReminder = async (student: any) => {
+    const studentId = student.studentId || student.dbId || student.id;
+    if (!studentId) return;
+    setSendingReminderId(studentId);
+    try {
+      const res = await fetch(`/api/reminders/student/${studentId}`, { method: 'POST' });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        showToast(`🎙️ Voice & Text reminder sent to ${student.name}!`, 'success');
+        setReminderModalData({
+          monthLabel: MONTHS.find(m => m.value === selectedMonth)?.label || selectedMonth,
+          totalPendingCount: 1,
+          totalPendingAmount: data.result.totalAmount,
+          summaryMessage: `Personal fee reminder successfully delivered to ${student.name}.`,
+          results: [data.result]
+        });
+      } else {
+        showToast(data.message || data.error || 'Failed to send reminder', 'error');
+      }
+    } catch (err: any) {
+      showToast(`Error: ${err.message}`, 'error');
+    } finally {
+      setSendingReminderId(null);
+    }
+  };
+
+  const handleSendReminders = async () => {
+    setTriggeringReminders(true);
+    try {
+      const res = await fetch('/api/reminders/trigger', { method: 'POST' });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        showToast(`Reminders sent successfully! (${data.data.totalPendingCount} pending students notified)`, 'success');
+        setReminderModalData(data.data);
+      } else {
+        showToast(data.error || 'Failed to dispatch fee reminders', 'error');
+      }
+    } catch (err: any) {
+      showToast(`Error: ${err.message}`, 'error');
+    } finally {
+      setTriggeringReminders(false);
+    }
+  };
+
+  const { selectedBuildingId } = useBuilding();
+
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
       const [statusRes, txRes] = await Promise.all([
-        fetch(`http://localhost:3001/api/fees/monthly-status?month=${selectedMonth}`),
-        fetch(`http://localhost:3001/api/fees/transactions`)
+        fetch(`/api/fees/monthly-status?month=${selectedMonth}&buildingId=${selectedBuildingId}`),
+        fetch(`/api/fees/transactions?month=${selectedMonth}&buildingId=${selectedBuildingId}`)
       ]);
       if (statusRes.ok) setMonthlyStatus(await statusRes.json());
       if (txRes.ok) setTransactions(await txRes.json());
@@ -403,7 +452,7 @@ export default function Fees() {
     } finally {
       setLoading(false);
     }
-  }, [selectedMonth]);
+  }, [selectedMonth, selectedBuildingId]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -411,19 +460,26 @@ export default function Fees() {
     const matchSearch = s.name.toLowerCase().includes(search.toLowerCase()) || s.room.toLowerCase().includes(search.toLowerCase());
     const matchFee = feeFilter === 'all' || s.feeStatus === feeFilter;
     return matchSearch && matchFee;
+  }).sort((a, b) => {
+    if (a.feeStatus !== b.feeStatus) {
+      return a.feeStatus === 'Pending' ? -1 : 1;
+    }
+    const countA = a.pendingMonthsCount || 0;
+    const countB = b.pendingMonthsCount || 0;
+    if (countB !== countA) {
+      return countB - countA;
+    }
+    return a.name.localeCompare(b.name);
   });
 
   const paidCount = monthlyStatus.filter(s => s.feeStatus === 'Paid').length;
   const pendingCount = monthlyStatus.filter(s => s.feeStatus === 'Pending').length;
   const totalCollected = monthlyStatus.filter(s => s.feeStatus === 'Paid').reduce((sum, s) => sum + s.amount, 0);
 
-  // Fee statistics derived from transactions
-  const totalRevenue = transactions.reduce((s: number, t: any) => s + t.amount, 0);
-  const thisMonthTx = transactions.filter((t: any) => t.month === selectedMonth);
-  const thisMonthRevenue = thisMonthTx.reduce((s: number, t: any) => s + t.amount, 0);
-  const lastMonth = MONTHS[1]?.value;
-  const lastMonthRevenue = transactions.filter((t: any) => t.month === lastMonth).reduce((s: number, t: any) => s + t.amount, 0);
-  const revTrend = lastMonthRevenue > 0 ? Math.round(((thisMonthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100) : 0;
+  // Fee statistics — transactions are already filtered by selectedMonth from API
+  const thisMonthRevenue = transactions.reduce((s: number, t: any) => s + t.amount, 0);
+  const totalRevenue = thisMonthRevenue;
+  const thisMonthTx = transactions; // Already month-scoped
 
   const methodBreakdown = thisMonthTx.reduce((acc: any, t: any) => {
     acc[t.method] = (acc[t.method] || 0) + 1;
@@ -443,6 +499,14 @@ export default function Fees() {
           <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>Monthly fee tracking · ₹{monthlyFee.toLocaleString()}/student</p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <button 
+            className="primary-btn" 
+            disabled={triggeringReminders}
+            onClick={handleSendReminders}
+            style={{ background: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)', boxShadow: '0 4px 14px rgba(249,115,22,0.3)', gap: '8px' }}>
+            {triggeringReminders ? <Clock size={16} className="animate-spin" /> : <Send size={16} />}
+            {triggeringReminders ? 'Sending Reminders…' : 'Send Fee Reminders Now (7 PM IST)'}
+          </button>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-dim)', borderRadius: 10, padding: '8px 12px' }}>
             <Calendar size={16} color="var(--primary)" />
             <select className="custom-select" style={{ background: 'transparent', border: 'none', padding: 0, color: 'var(--text-main)' }}
@@ -452,6 +516,59 @@ export default function Fees() {
           </div>
         </div>
       </div>
+
+      {/* Fee Reminder Results Modal */}
+      {reminderModalData && (
+        <Modal isOpen onClose={() => setReminderModalData(null)} title="Automated Fee Reminders Dispatch Report">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div style={{ background: 'rgba(249,115,22,0.08)', border: '1px solid rgba(249,115,22,0.2)', borderRadius: 12, padding: '12px 16px' }}>
+              <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--primary)' }}>📢 Fee Reminders Summary ({reminderModalData.monthLabel})</div>
+              <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: 4 }}>
+                {reminderModalData.summaryMessage}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '360px', overflowY: 'auto' }}>
+              {reminderModalData.results.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '1rem', color: 'var(--text-muted)' }}>No pending students found. All student fees are up to date!</div>
+              ) : reminderModalData.results.map((r: any) => (
+                <div key={r.studentId} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-dim)', borderRadius: 10, padding: '12px 14px', fontSize: '0.82rem' }}>
+                  <div style={{ fontWeight: 700, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '0.9rem' }}>👤 {r.studentName} {r.roomName ? `· ${r.roomName}` : ''}</span>
+                    <span style={{ color: 'var(--warning)', fontWeight: 800 }}>₹{Number(r.totalAmount || 5500).toLocaleString('en-IN')}</span>
+                  </div>
+                  
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: 4, color: 'var(--text-muted)', fontSize: '0.75rem' }}>
+                    <span>📞 {r.phone}</span>
+                    <span>•</span>
+                    <span>🗓️ Due Day: <strong>{r.dueDayLabel || '10th'}</strong> of every month</span>
+                    <span>•</span>
+                    <span style={{ color: r.pendingMonthsCount > 1 ? '#f87171' : 'var(--text-muted)' }}>
+                      Backlog: <strong>{r.pendingMonthsCount || 1} Month(s)</strong> {r.pendingMonthsList ? `(${r.pendingMonthsList.join(', ')})` : ''}
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '12px', marginTop: 8, fontSize: '0.75rem', paddingTop: 6, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                    <span style={{ color: '#38bdf8', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                      <Send size={12} /> Telegram: {r.telegramStatus}
+                    </span>
+                    <span style={{ color: '#fbbf24', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                      <PhoneCall size={12} /> Voice Note: {r.telegramVoiceStatus}
+                    </span>
+                    <span style={{ color: '#4ade80', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                      <MessageSquare size={12} /> WhatsApp: {r.whatsappStatus}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ textAlign: 'right', marginTop: '0.5rem' }}>
+              <button className="primary-btn" onClick={() => setReminderModalData(null)}>Close</button>
+            </div>
+          </div>
+        </Modal>
+      )}
 
       {/* Stats row */}
       <div className="responsive-grid-3" style={{ marginBottom: '1.5rem' }}>
@@ -533,7 +650,19 @@ export default function Fees() {
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontWeight: 600, fontSize: '0.9rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.name}</div>
-                    <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>{s.course}{s.branch ? ` · ${s.branch}` : ''} · {s.room}</div>
+                    <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                      <span>{s.course}{s.branch ? ` · ${s.branch}` : ''} · {s.room}</span>
+                      {s.dueDayLabel && (
+                        <span style={{ background: 'rgba(249,115,22,0.12)', color: 'var(--primary)', padding: '1px 6px', borderRadius: 4, fontSize: '0.7rem', fontWeight: 600 }}>
+                          Due: {s.dueDayLabel}
+                        </span>
+                      )}
+                      {s.pendingMonthsCount > 1 && (
+                        <span style={{ background: 'rgba(239,68,68,0.15)', color: '#f87171', padding: '1px 6px', borderRadius: 4, fontSize: '0.7rem', fontWeight: 700 }}>
+                          {s.pendingMonthsCount} Mos Overdue (₹{s.totalPendingAmount?.toLocaleString('en-IN')})
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
                 
@@ -549,24 +678,59 @@ export default function Fees() {
                   }}>
                     {s.feeStatus === 'Paid' ? <><CheckCircle2 size={12} /> PAID</> : <><Clock size={12} /> PENDING</>}
                   </span>
-                  {/* Actions */}
-                  {s.feeStatus === 'Paid' ? (
-                    <button className="icon-btn-small" title="Print Receipt"
-                      onClick={() => setViewingReceipt(s)}>
-                      <Printer size={14} />
-                    </button>
-                  ) : (
-                    <button className="primary-btn" style={{ padding: '5px 12px', fontSize: '0.75rem', minHeight: 32, flexShrink: 0 }}
-                      onClick={() => setPayingStudent(s)}>
-                      <IndianRupee size={12} /> Pay
-                    </button>
+                  {/* WhatsApp status badge if available */}
+                  {s.feeStatus === 'Paid' && s.whatsappStatus && (
+                    <span style={{
+                      fontSize: '0.68rem', fontWeight: 600, padding: '2px 7px', borderRadius: 4,
+                      background: s.whatsappStatus === 'READ' ? 'rgba(59,130,246,0.15)' : s.whatsappStatus === 'DELIVERED' ? 'rgba(34,197,94,0.15)' : 'rgba(249,115,22,0.15)',
+                      color: s.whatsappStatus === 'READ' ? '#60a5fa' : s.whatsappStatus === 'DELIVERED' ? '#4ade80' : '#fb923c',
+                      border: '1px solid rgba(255,255,255,0.1)'
+                    }} title={`Meta WhatsApp Status: ${s.whatsappStatus}`}>
+                      WA: {s.whatsappStatus}
+                    </span>
                   )}
+                  {/* Actions */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <button
+                      className="icon-btn-small"
+                      title={`Send Personal Voice & Text Reminder to ${s.name}`}
+                      disabled={sendingReminderId === s.studentId}
+                      onClick={() => handleSendIndividualReminder(s)}
+                      style={{ color: 'var(--primary)', border: '1px solid rgba(249,115,22,0.25)', background: 'rgba(249,115,22,0.08)' }}
+                    >
+                      {sendingReminderId === s.studentId ? <Clock size={13} className="animate-spin" /> : <Send size={13} />}
+                    </button>
+                    {s.feeStatus === 'Paid' ? (
+                      <>
+                        <a
+                          href={`/api/fees/receipt/${s.feeRecordId}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="icon-btn-small"
+                          title="Download Official PDF Receipt (Stored in PostgreSQL)"
+                          style={{ color: '#4ade80', border: '1px solid rgba(74,222,128,0.3)', background: 'rgba(74,222,128,0.1)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                        >
+                          <FileText size={14} />
+                        </a>
+                        <button className="icon-btn-small" title="Print Receipt Template"
+                          onClick={() => setViewingReceipt(s)}>
+                          <Printer size={14} />
+                        </button>
+                      </>
+                    ) : (
+                      <button className="primary-btn" style={{ padding: '5px 12px', fontSize: '0.75rem', minHeight: 32, flexShrink: 0 }}
+                        onClick={() => setPayingStudent(s)}>
+                        <IndianRupee size={12} /> Pay
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}
           </div>
         </div>
         )}
+
 
         {/* Right: Chart + Monthly transactions */}
         {(!isMobile || mobileTab === 'transactions') && (
@@ -579,8 +743,8 @@ export default function Fees() {
             <div className="responsive-grid-2" style={{ gap: '0.875rem', marginBottom: '1rem' }}>
               {[
                 { label: 'This Month', value: `₹${thisMonthRevenue.toLocaleString()}`, color: 'var(--success)', icon: IndianRupee, sub: `${thisMonthTx.length} payments` },
-                { label: 'vs Last Month', value: `${revTrend >= 0 ? '+' : ''}${revTrend}%`, color: revTrend >= 0 ? 'var(--success)' : 'var(--danger)', icon: revTrend >= 0 ? TrendingUp : TrendingDown, sub: `₹${lastMonthRevenue.toLocaleString()}` },
-                { label: 'All-Time Total', value: `₹${totalRevenue.toLocaleString()}`, color: 'var(--primary)', icon: IndianRupee, sub: `${transactions.length} transactions` },
+                { label: 'Paid / Pending', value: `${paidCount} / ${pendingCount}`, color: paidCount >= pendingCount ? 'var(--success)' : 'var(--warning)', icon: paidCount >= pendingCount ? TrendingUp : TrendingDown, sub: `₹${totalCollected.toLocaleString()} collected` },
+                { label: 'Total Revenue', value: `₹${totalRevenue.toLocaleString()}`, color: 'var(--primary)', icon: IndianRupee, sub: `${transactions.length} transactions` },
                 { label: 'Avg Per Student', value: transactions.length > 0 ? `₹${Math.round(totalRevenue / transactions.length).toLocaleString()}` : '—', color: 'var(--accent)', icon: IndianRupee, sub: 'per payment' },
               ].map(({ label, value, color, icon: Icon, sub }) => (
                 <div key={label} style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 12, padding: '0.875rem', border: '1px solid rgba(255,255,255,0.06)' }}>
@@ -652,9 +816,21 @@ export default function Fees() {
                     <div style={{ fontWeight: 700, color: 'var(--success)', fontSize: '0.9rem' }}>₹{Number(tx.amount).toLocaleString()}</div>
                     {tx.receiptNo && <div style={{ color: 'var(--primary)', fontSize: '0.7rem', fontWeight: 700 }}>S.No: {tx.receiptNo}</div>}
                   </div>
-                  <button className="icon-btn-small" style={{ marginLeft: '4px' }} title="Print Receipt" onClick={() => setViewingReceipt({ ...tx, name: tx.student, room: tx.room, paymentDate: tx.date })}>
-                    <Printer size={14} />
-                  </button>
+                  <div style={{ display: 'flex', gap: '4px', marginLeft: '4px' }}>
+                    <a
+                      href={`/api/fees/receipt/${tx.id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="icon-btn-small"
+                      title="Download PDF Receipt (From PostgreSQL)"
+                      style={{ color: '#4ade80', border: '1px solid rgba(74,222,128,0.3)', background: 'rgba(74,222,128,0.1)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                    >
+                      <FileText size={14} />
+                    </a>
+                    <button className="icon-btn-small" title="Print Receipt Template" onClick={() => setViewingReceipt({ ...tx, name: tx.student, room: tx.room, paymentDate: tx.date })}>
+                      <Printer size={14} />
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>

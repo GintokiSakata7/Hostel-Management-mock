@@ -10,5 +10,6 @@
   "dueDateDay": 10,
   "currency": "INR",
   "upiId": "",
-  "upiName": ""
+  "upiName": "",
+  "reminderTime": "22:10"
 }

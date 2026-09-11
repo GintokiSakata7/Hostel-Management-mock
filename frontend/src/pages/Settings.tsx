@@ -4,12 +4,12 @@ import {
   Save, Plus, Trash2, RefreshCw, Download,
   Layers3, FileText,
   User, MapPin, Calendar,
-  ChevronDown, ChevronRight, Home
+  ChevronDown, ChevronRight, Home, Clock
 } from 'lucide-react';
 import { useToast } from '../components/ToastContext';
 import { useSettings } from '../components/SettingsContext';
 
-const API = 'http://localhost:3001';
+const API = '';
 
 const MONTHS = Array.from({ length: 12 }, (_, i) => {
   const d = new Date();
@@ -93,6 +93,41 @@ function FeeTab({ settings, onSave }: { settings: any; onSave: (s: any) => void 
   const [bulkMonth, setBulkMonth] = useState(MONTHS[6]?.value || '');
   const [bulkAmount, setBulkAmount] = useState('');
   const [bulkLoading, setBulkLoading] = useState(false);
+  const [reminderTime, setReminderTime] = useState('19:00');
+  const [savingSchedule, setSavingSchedule] = useState(false);
+
+  useEffect(() => {
+    fetch(`${API}/api/reminders/settings`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && data.settings?.reminderTime) {
+          setReminderTime(data.settings.reminderTime);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const handleSaveSchedule = async () => {
+    setSavingSchedule(true);
+    try {
+      const res = await fetch(`${API}/api/reminders/settings`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reminderTime })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        showToast(`Cron Schedule updated! Fee reminders will run daily at ${reminderTime} IST`, 'success');
+      } else {
+        showToast(data.error || 'Failed to update schedule time', 'error');
+      }
+    } catch {
+      showToast('Failed to update schedule time', 'error');
+    } finally {
+      setSavingSchedule(false);
+    }
+  };
+
   useEffect(() => setForm(settings), [settings]);
   const f = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
 
@@ -140,6 +175,61 @@ function FeeTab({ settings, onSave }: { settings: any; onSave: (s: any) => void 
               </div>
             ))}
           </div>
+        </div>
+      </SectionCard>
+
+      <SectionCard title="Automated Fee Reminders Daily Schedule (IST)" icon={Clock}>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem', marginBottom: '1rem', lineHeight: 1.6 }}>
+          Set the exact time of day when the backend background job will automatically query pending fees and dispatch Telegram, WhatsApp, and Voice Call reminders in Indian Standard Time (Asia/Kolkata).
+        </p>
+        <div className="settings-grid" style={{ alignItems: 'flex-end' }}>
+          <SettingField label="Reminder Time (24-Hour Format HH:MM IST)" icon={Clock}>
+            <input 
+              className="custom-input" 
+              type="time" 
+              value={reminderTime} 
+              onChange={e => setReminderTime(e.target.value)} 
+            />
+          </SettingField>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', width: '100%' }}>Quick Presets:</span>
+            {[
+              { label: '12:00 AM (Midnight/Test)', value: '00:00' },
+              { label: '09:00 AM (Morning)', value: '09:00' },
+              { label: '12:00 PM (Noon)', value: '12:00' },
+              { label: '07:00 PM (Standard)', value: '19:00' },
+              { label: '09:00 PM (Night)', value: '21:00' },
+            ].map(preset => (
+              <button 
+                key={preset.value} 
+                type="button"
+                onClick={() => setReminderTime(preset.value)}
+                style={{ 
+                  padding: '4px 10px', 
+                  borderRadius: 6, 
+                  border: '1px solid',
+                  fontSize: '0.72rem',
+                  cursor: 'pointer',
+                  borderColor: reminderTime === preset.value ? 'var(--primary)' : 'var(--border-dim)',
+                  background: reminderTime === preset.value ? 'rgba(249,115,22,0.15)' : 'rgba(255,255,255,0.03)',
+                  color: reminderTime === preset.value ? 'var(--primary)' : 'var(--text-muted)'
+                }}>
+                {preset.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ fontSize: '0.8rem', color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Clock size={14} /> Active Cron Schedule: <strong>Daily at {reminderTime} IST (Asia/Kolkata)</strong>
+          </div>
+          <button 
+            className="primary-btn" 
+            style={{ justifyContent: 'center', minWidth: 160 }}
+            onClick={handleSaveSchedule} 
+            disabled={savingSchedule}>
+            <Save size={14} /> {savingSchedule ? 'Saving Schedule…' : 'Save Cron Schedule'}
+          </button>
         </div>
       </SectionCard>
 
