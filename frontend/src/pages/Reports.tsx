@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Printer, Search, Calendar, Users, Building, CreditCard, AlertCircle, FileText } from 'lucide-react';
 import { useSettings } from '../components/SettingsContext';
+import { useBuilding } from '../components/BuildingContext';
 
 
 const MONTHS = Array.from({ length: 12 }, (_, i) => {
@@ -68,14 +69,16 @@ const printTable = (title: string, headers: string[], rows: any[][], subtitle = 
 function StudentReport() {
   const [data, setData] = useState<any[]>([]);
   const { settings } = useSettings();
+  const { selectedBuildingId } = useBuilding();
   const [filtered, setFiltered] = useState<any[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const isMobile = useIsMobile();
 
   useEffect(() => {
-    fetch('/api/reports/students').then(r => r.json()).then(d => { setData(d); setFiltered(d); setLoading(false); });
-  }, []);
+    setLoading(true);
+    fetch(`/api/reports/students?buildingId=${selectedBuildingId}`).then(r => r.json()).then(d => { setData(d); setFiltered(d); setLoading(false); });
+  }, [selectedBuildingId]);
 
   useEffect(() => {
     const q = search.toLowerCase();
@@ -144,13 +147,15 @@ function StudentReport() {
 function RoomReport() {
   const [data, setData] = useState<any[]>([]);
   const { settings } = useSettings();
+  const { selectedBuildingId } = useBuilding();
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const isMobile = useIsMobile();
 
   useEffect(() => {
-    fetch('/api/reports/rooms').then(r => r.json()).then(d => { setData(d); setLoading(false); });
-  }, []);
+    setLoading(true);
+    fetch(`/api/reports/rooms?buildingId=${selectedBuildingId}`).then(r => r.json()).then(d => { setData(d); setLoading(false); });
+  }, [selectedBuildingId]);
 
   const filtered = data.filter(r => r.room.toLowerCase().includes(search.toLowerCase()) || r.building.toLowerCase().includes(search.toLowerCase()));
 
@@ -228,6 +233,7 @@ function RoomReport() {
 // ─── FEE REPORT ───────────────────────────────────────────────────────────────
 function FeeReport({ pendingOnly = false }: { pendingOnly?: boolean }) {
   const { settings } = useSettings();
+  const { selectedBuildingId } = useBuilding();
   const monthlyFee = settings?.monthlyFee || 5500;
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -237,8 +243,8 @@ function FeeReport({ pendingOnly = false }: { pendingOnly?: boolean }) {
 
   useEffect(() => {
     setLoading(true);
-    fetch(`/api/reports/fees?month=${selectedMonth}`).then(r => r.json()).then(d => { setData(d); setLoading(false); });
-  }, [selectedMonth]);
+    fetch(`/api/reports/fees?month=${selectedMonth}&buildingId=${selectedBuildingId}`).then(r => r.json()).then(d => { setData(d); setLoading(false); });
+  }, [selectedMonth, selectedBuildingId]);
 
   const filtered = data.filter(s => {
     const matchSearch = s.name.toLowerCase().includes(search.toLowerCase()) || (s.room || '').includes(search);
@@ -349,14 +355,16 @@ function FeeReport({ pendingOnly = false }: { pendingOnly?: boolean }) {
 function ComplaintReport() {
   const [data, setData] = useState<any[]>([]);
   const { settings } = useSettings();
+  const { selectedBuildingId } = useBuilding();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [loading, setLoading] = useState(true);
   const isMobile = useIsMobile();
 
   useEffect(() => {
-    fetch('/api/reports/complaints').then(r => r.json()).then(d => { setData(d); setLoading(false); });
-  }, []);
+    setLoading(true);
+    fetch(`/api/reports/complaints?buildingId=${selectedBuildingId}`).then(r => r.json()).then(d => { setData(d); setLoading(false); });
+  }, [selectedBuildingId]);
 
   const filtered = data.filter(c => {
     const matchSearch = c.title.toLowerCase().includes(search.toLowerCase()) || c.student.toLowerCase().includes(search.toLowerCase());

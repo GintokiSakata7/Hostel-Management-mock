@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '../components/ToastContext';
 import { useSettings } from '../components/SettingsContext';
+import { useBuilding } from '../components/BuildingContext';
 
 
 interface Expense {
@@ -20,6 +21,8 @@ interface Expense {
   paymentMethod: string;
   vendor?: string | null;
   notes?: string | null;
+  buildingId?: string | null;
+  building?: { id: string; name: string } | null;
 }
 
 interface ExpenseCategory {
@@ -86,6 +89,7 @@ const getCategoryIcon = (catName: string) => {
 const Finance: React.FC = () => {
   const { showToast } = useToast();
   const { settings } = useSettings();
+  const { selectedBuildingId, buildings: availableBuildings } = useBuilding();
 
   // Helper: get current YYYY-MM
   const getCurrentMonthStr = () => {
@@ -166,7 +170,8 @@ const Finance: React.FC = () => {
     date: new Date().toISOString().split('T')[0],
     paymentMethod: 'Cash',
     vendor: '',
-    notes: ''
+    notes: '',
+    buildingId: selectedBuildingId !== 'all' ? selectedBuildingId : 'all'
   });
 
   // Bulk Form State (Multi-row spreadsheet mode)
@@ -193,7 +198,7 @@ const Finance: React.FC = () => {
   const fetchSummary = async () => {
     try {
       const param = filterMode === 'day' ? `date=${selectedDate}` : `month=${selectedMonth}`;
-      const res = await fetch(`/api/finance/summary?${param}`);
+      const res = await fetch(`/api/finance/summary?${param}&buildingId=${selectedBuildingId}`);
       if (res.ok) {
         const data = await res.json();
         setSummary(data);
@@ -208,8 +213,8 @@ const Finance: React.FC = () => {
     setLoading(true);
     try {
       const url = filterMode === 'day' 
-        ? `/api/finance/expenses?date=${selectedDate}` 
-        : `/api/finance/expenses?month=${selectedMonth}`;
+        ? `/api/finance/expenses?date=${selectedDate}&buildingId=${selectedBuildingId}` 
+        : `/api/finance/expenses?month=${selectedMonth}&buildingId=${selectedBuildingId}`;
 
       const res = await fetch(url);
       if (res.ok) {
@@ -231,7 +236,7 @@ const Finance: React.FC = () => {
   useEffect(() => {
     fetchSummary();
     fetchExpenses();
-  }, [selectedMonth, selectedDate, filterMode]);
+  }, [selectedMonth, selectedDate, filterMode, selectedBuildingId]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -247,7 +252,8 @@ const Finance: React.FC = () => {
       date: new Date().toISOString().split('T')[0],
       paymentMethod: 'Cash',
       vendor: '',
-      notes: ''
+      notes: '',
+      buildingId: selectedBuildingId !== 'all' ? selectedBuildingId : 'all'
     });
     setIsSingleModalOpen(true);
   };
@@ -262,7 +268,8 @@ const Finance: React.FC = () => {
       date: exp.date.split('T')[0],
       paymentMethod: exp.paymentMethod || 'Cash',
       vendor: exp.vendor || '',
-      notes: exp.notes || ''
+      notes: exp.notes || '',
+      buildingId: exp.buildingId || 'all'
     });
     setIsSingleModalOpen(true);
   };
@@ -1556,6 +1563,7 @@ const Finance: React.FC = () => {
                 <tr style={{ borderBottom: '1px solid var(--border-light)', color: 'var(--text-muted)' }}>
                   <th style={{ padding: '12px 14px', fontWeight: 600 }}>Date</th>
                   <th style={{ padding: '12px 14px', fontWeight: 600 }}>Title / Description</th>
+                  <th style={{ padding: '12px 14px', fontWeight: 600 }}>Building Scope</th>
                   <th style={{ padding: '12px 14px', fontWeight: 600 }}>Category</th>
                   <th style={{ padding: '12px 14px', fontWeight: 600 }}>Payment Mode</th>
                   <th style={{ padding: '12px 14px', fontWeight: 600 }}>Vendor / Notes</th>
@@ -1584,6 +1592,21 @@ const Finance: React.FC = () => {
                       {/* Title */}
                       <td style={{ padding: '12px 14px', fontWeight: 600, color: 'var(--text-main)' }}>
                         {exp.title}
+                      </td>
+
+                      {/* Building Scope Badge */}
+                      <td style={{ padding: '12px 14px' }}>
+                        <span style={{
+                          padding: '3px 9px',
+                          borderRadius: '8px',
+                          background: exp.building ? 'rgba(249,115,22,0.12)' : 'rgba(255,255,255,0.06)',
+                          color: exp.building ? 'var(--primary)' : 'var(--text-muted)',
+                          border: `1px solid ${exp.building ? 'rgba(249,115,22,0.3)' : 'rgba(255,255,255,0.1)'}`,
+                          fontSize: '0.74rem',
+                          fontWeight: 600
+                        }}>
+                          {exp.building ? exp.building.name : '🌐 Shared / All'}
+                        </span>
                       </td>
 
                       {/* Category Badge */}
@@ -2210,6 +2233,34 @@ const Finance: React.FC = () => {
                     colorScheme: 'dark'
                   }}
                 />
+              </div>
+
+              {/* Building Workspace Selector */}
+              <div>
+                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'rgba(249, 115, 22, 0.9)', marginBottom: '6px' }}>
+                  Building Workspace Scope *
+                </label>
+                <select
+                  value={formData.buildingId}
+                  onChange={(e) => setFormData({ ...formData, buildingId: e.target.value })}
+                  style={{
+                    width: '100%',
+                    background: 'rgba(249, 115, 22, 0.08)',
+                    border: '1px solid rgba(249, 115, 22, 0.3)',
+                    borderRadius: '10px',
+                    padding: '11px 12px',
+                    color: '#ffffff',
+                    fontSize: '0.88rem',
+                    fontWeight: 600,
+                    outline: 'none',
+                    colorScheme: 'dark'
+                  }}
+                >
+                  <option value="all" style={{ background: '#13141a', color: '#fff' }}>All Buildings (General Shared Expense)</option>
+                  {availableBuildings.map(b => (
+                    <option key={b.id} value={b.id} style={{ background: '#13141a', color: '#fff' }}>{b.name}</option>
+                  ))}
+                </select>
               </div>
 
               {/* Category & Amount Row */}

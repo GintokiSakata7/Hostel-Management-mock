@@ -65,6 +65,7 @@ model Building {
   id          String   @id @default(uuid())
   name        String   @unique
   rooms       Room[]
+  expenses    Expense[]
 }
 
 model Room {
@@ -158,18 +159,21 @@ model ExpenseCategory {
 }
 
 model Expense {
-  id            String   @id @default(uuid())
+  id            String    @id @default(uuid())
   title         String
   category      String
   amount        Float
-  date          DateTime @default(now())
-  paymentMethod String   @default("Cash") // Cash, UPI, Bank Transfer, Card, Other
+  date          DateTime  @default(now())
+  paymentMethod String    @default("Cash") // Cash, UPI, Bank Transfer, Card, Other
   vendor        String?
   notes         String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  buildingId    String?
+  building      Building? @relation(fields: [buildingId], references: [id])
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
   @@index([date])
   @@index([category])
+  @@index([buildingId])
 }
 

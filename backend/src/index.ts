@@ -185,7 +185,21 @@ app.get('/api/fees/receipt/:feeId', async (req, res) => {
 
 // ─── DASHBOARD STATS (parallelized — all queries fire simultaneously) ─────────
 app.get('/api/stats', async (req, res) => {
+  const { buildingId } = req.query as { buildingId?: string };
   const cm = currentMonth();
+
+  const isBuildingFiltered = buildingId && buildingId !== 'all';
+  const studentWhere: any = isBuildingFiltered ? { beds: { some: { room: { buildingId } } } } : {};
+  const roomWhere: any = isBuildingFiltered ? { buildingId } : {};
+  const bedWhere: any = isBuildingFiltered ? { room: { buildingId } } : {};
+  const occupiedBedWhere: any = isBuildingFiltered ? { status: 'occupied', room: { buildingId } } : { status: 'occupied' };
+  const complaintWhere: any = isBuildingFiltered
+    ? { status: { in: ['pending', 'in-progress'] }, student: { beds: { some: { room: { buildingId } } } } }
+    : { status: { in: ['pending', 'in-progress'] } };
+  const feeWhere: any = isBuildingFiltered
+    ? { month: cm, status: 'Completed', student: { beds: { some: { room: { buildingId } } } } }
+    : { month: cm, status: 'Completed' };
+
   const [
     totalStudents,
     totalRooms,
@@ -195,13 +209,13 @@ app.get('/api/stats', async (req, res) => {
     paidThisMonth,
     monthlyCollection
   ] = await Promise.all([
-    prisma.student.count(),
-    prisma.room.count(),
-    prisma.bed.count(),
-    prisma.bed.count({ where: { status: 'occupied' } }),
-    prisma.complaint.count({ where: { status: { in: ['pending', 'in-progress'] } } }),
-    prisma.fee.count({ where: { month: cm, status: 'Completed' } }),
-    prisma.fee.aggregate({ where: { month: cm, status: 'Completed' }, _sum: { amount: true } })
+    prisma.student.count({ where: studentWhere }),
+    prisma.room.count({ where: roomWhere }),
+    prisma.bed.count({ where: bedWhere }),
+    prisma.bed.count({ where: occupiedBedWhere }),
+    prisma.complaint.count({ where: complaintWhere }),
+    prisma.fee.count({ where: feeWhere }),
+    prisma.fee.aggregate({ where: feeWhere, _sum: { amount: true } })
   ]);
 
   res.json({
@@ -216,8 +230,12 @@ app.get('/api/stats', async (req, res) => {
 });
 
 app.get('/api/activities', async (req, res) => {
-  // Recent fee payments
+  const { buildingId } = req.query as { buildingId?: string };
+  const feeWhere: any = buildingId && buildingId !== 'all'
+    ? { student: { beds: { some: { room: { buildingId } } } } }
+    : {};
   const recentFees = await prisma.fee.findMany({
+    where: feeWhere,
     take: 3, orderBy: { date: 'desc' },
     include: { student: true }
   });
@@ -233,12 +251,17 @@ app.get('/api/activities', async (req, res) => {
 
 // ─── STUDENTS (optimized — scoped fee queries, computed due status uses settings) ─
 app.get('/api/students', async (req, res) => {
-  const { month } = req.query as { month?: string };
+  const { month, buildingId } = req.query as { month?: string; buildingId?: string };
   const m = month || currentMonth();
   const settings = readSettings();
   const monthlyFee = settings.monthlyFee || 5500;
 
+  const studentWhere: any = (buildingId && buildingId !== 'all')
+    ? { beds: { some: { room: { buildingId } } } }
+    : {};
+
   const students = await prisma.student.findMany({
+    where: studentWhere,
     include: {
       beds: { include: { room: { include: { building: true } } } },
       fees: { where: { status: 'Completed' } }
@@ -512,21 +535,172 @@ app.get('/api/buildings', async (req, res) => {
   res.json(formatted);
 });
 
+app.post('/api/buildings', async (req, res) => {
+  try {
+    const { name } = req.body;
+    if (!name || !name.trim()) return res.status(400).json({ error: 'Building name is required' });
+    const building = await prisma.building.create({
+      data: { name: name.trim() }
+    });
+    res.json(building);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/buildings/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name } = req.body;
+    if (!name || !name.trim()) return res.status(400).json({ error: 'Building name is required' });
+    const building = await prisma.building.update({
+      where: { id },
+      data: { name: name.trim() }
+    });
+    res.json(building);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Add a new room with specified bed capacity
+app.post('/api/rooms', async (req, res) => {
+  try {
+    const { buildingId, floor, roomNumber, capacity } = req.body;
+    if (!buildingId || !floor || !roomNumber || !capacity) {
+      return res.status(400).json({ error: 'buildingId, floor, roomNumber, and capacity are required' });
+    }
+
+    // Check if room number already exists
+    const existing = await prisma.room.findFirst({
+      where: { roomNumber: String(roomNumber).trim() }
+    });
+    if (existing) {
+      return res.status(400).json({ error: `Room number ${roomNumber} already exists.` });
+    }
+
+    const capNum = Math.max(1, Number(capacity));
+
+    const room = await prisma.room.create({
+      data: {
+        buildingId,
+        floor: String(floor).trim(),
+        roomNumber: String(roomNumber).trim(),
+        beds: {
+          create: Array.from({ length: capNum }, (_, i) => ({
+            bedNumber: i + 1,
+            status: 'available'
+          }))
+        }
+      },
+      include: { beds: true }
+    });
+
+    res.json(room);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Update room details (floor, room number, capacity)
+app.put('/api/rooms/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { floor, roomNumber, capacity } = req.body;
+
+    const room = await prisma.room.findUnique({
+      where: { id },
+      include: { beds: true }
+    });
+    if (!room) return res.status(404).json({ error: 'Room not found' });
+
+    const newCap = capacity ? Math.max(1, Number(capacity)) : room.beds.length;
+    const currentCap = room.beds.length;
+
+    if (newCap > currentCap) {
+      // Add new beds
+      const newBedsData = Array.from({ length: newCap - currentCap }, (_, i) => ({
+        roomId: room.id,
+        bedNumber: currentCap + i + 1,
+        status: 'available'
+      }));
+      await prisma.bed.createMany({ data: newBedsData });
+    } else if (newCap < currentCap) {
+      // Remove excess available beds
+      const availableBeds = room.beds.filter(b => b.status === 'available');
+      const neededRemovals = currentCap - newCap;
+
+      if (availableBeds.length < neededRemovals) {
+        return res.status(400).json({
+          error: `Cannot reduce room capacity to ${newCap}. Room has occupied beds that cannot be removed.`
+        });
+      }
+
+      const bedIdsToRemove = availableBeds.slice(0, neededRemovals).map(b => b.id);
+      await prisma.bed.deleteMany({
+        where: { id: { in: bedIdsToRemove } }
+      });
+    }
+
+    const updated = await prisma.room.update({
+      where: { id },
+      data: {
+        floor: floor ? String(floor).trim() : undefined,
+        roomNumber: roomNumber ? String(roomNumber).trim() : undefined
+      },
+      include: { beds: true }
+    });
+
+    res.json(updated);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Delete room (only if no occupied beds)
+app.delete('/api/rooms/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const room = await prisma.room.findUnique({
+      where: { id },
+      include: { beds: true }
+    });
+    if (!room) return res.status(404).json({ error: 'Room not found' });
+
+    const occupiedCount = room.beds.filter(b => b.status === 'occupied').length;
+    if (occupiedCount > 0) {
+      return res.status(400).json({
+        error: `Cannot delete Room ${room.roomNumber}. It currently has ${occupiedCount} active resident(s). Please vacate them first.`
+      });
+    }
+
+    await prisma.bed.deleteMany({ where: { roomId: id } });
+    await prisma.room.delete({ where: { id } });
+
+    res.json({ success: true, message: `Room ${room.roomNumber} deleted successfully` });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.get('/api/rooms/:buildingId', async (req, res) => {
   const { buildingId } = req.params;
   const { month } = req.query as { month?: string };
   const m = month || currentMonth();
 
+  const whereClause = (buildingId && buildingId !== 'all') ? { buildingId } : {};
+
   const rooms = await prisma.room.findMany({
-    where: { buildingId },
+    where: whereClause,
     include: {
+      building: true,
       beds: {
         include: {
           student: { include: { fees: { where: { month: m } } } }
         }
       }
     },
-    orderBy: { floor: 'asc' }
+    orderBy: [{ floor: 'asc' }, { roomNumber: 'asc' }]
   });
 
   const formatted = rooms.map(r => {
@@ -790,9 +964,13 @@ app.post('/api/fees/unpay', async (req, res) => {
 
 // Get monthly transactions — defaults to current month for performance, pass month= to filter
 app.get('/api/fees/transactions', async (req, res) => {
-  const { month, all } = req.query as { month?: string; all?: string };
+  const { month, all, buildingId } = req.query as { month?: string; all?: string; buildingId?: string };
   // Default to current month unless 'all=true' is explicitly passed
-  const where = all === 'true' ? {} : { month: month || currentMonth() };
+  const where: any = all === 'true' ? {} : { month: month || currentMonth() };
+  if (buildingId && buildingId !== 'all') {
+    where.student = { beds: { some: { room: { buildingId } } } };
+  }
+
   const txs = await prisma.fee.findMany({
     where,
     include: { student: { include: { beds: { include: { room: true } } } } },
@@ -839,12 +1017,17 @@ app.get('/api/fees/student/:id', async (req, res) => {
 
 // Monthly summary: all students + their fee status for a given month (optimized DB filtering)
 app.get('/api/fees/monthly-status', async (req, res) => {
-  const { month } = req.query as { month?: string };
+  const { month, buildingId } = req.query as { month?: string; buildingId?: string };
   const m = month || currentMonth();
   const settings = readSettings();
   const monthlyFee = settings.monthlyFee || 5500;
 
+  const studentWhere: any = (buildingId && buildingId !== 'all')
+    ? { beds: { some: { room: { buildingId } } } }
+    : {};
+
   const students = await prisma.student.findMany({
+    where: studentWhere,
     include: {
       beds: { include: { room: true } },
       fees: { where: { status: 'Completed' } }
@@ -904,9 +1087,13 @@ app.get('/api/fees/monthly-status', async (req, res) => {
 
 // Reports: Fee report for a month
 app.get('/api/reports/fees', async (req, res) => {
-  const { month } = req.query as { month?: string };
+  const { month, buildingId } = req.query as { month?: string; buildingId?: string };
   const m = month || currentMonth();
+  const studentWhere: any = (buildingId && buildingId !== 'all')
+    ? { beds: { some: { room: { buildingId } } } }
+    : {};
   const students = await prisma.student.findMany({
+    where: studentWhere,
     include: {
       beds: { include: { room: true } },
       fees: { where: { month: m } }
@@ -934,7 +1121,10 @@ app.get('/api/reports/fees', async (req, res) => {
 
 // Reports: Room occupancy
 app.get('/api/reports/rooms', async (req, res) => {
+  const { buildingId } = req.query as { buildingId?: string };
+  const roomWhere: any = (buildingId && buildingId !== 'all') ? { buildingId } : {};
   const rooms = await prisma.room.findMany({
+    where: roomWhere,
     include: { building: true, beds: { include: { student: true } } }
   });
   res.json(rooms.map(r => {
@@ -950,7 +1140,12 @@ app.get('/api/reports/rooms', async (req, res) => {
 
 // Reports: Student report
 app.get('/api/reports/students', async (req, res) => {
+  const { buildingId } = req.query as { buildingId?: string };
+  const studentWhere: any = (buildingId && buildingId !== 'all')
+    ? { beds: { some: { room: { buildingId } } } }
+    : {};
   const students = await prisma.student.findMany({
+    where: studentWhere,
     include: { beds: { include: { room: true } } }
   });
   res.json(students.map(s => {
@@ -1055,50 +1250,6 @@ app.delete('/api/buildings/:id', async (req, res) => {
       await prisma.room.delete({ where: { id: room.id } });
     }
     await prisma.building.delete({ where: { id } });
-    res.json({ success: true });
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// ─── ROOM MANAGEMENT ─────────────────────────────────────────────────────────
-// Create a new room in a building
-app.post('/api/rooms', async (req, res) => {
-  const { buildingId, roomNumber, floor, capacity } = req.body;
-  if (!buildingId || !roomNumber || !capacity) return res.status(400).json({ error: 'Missing fields' });
-  try {
-    const room = await prisma.room.create({
-      data: {
-        buildingId,
-        roomNumber,
-        floor: String(floor || '1'),
-        beds: {
-          create: Array.from({ length: Number(capacity) }, (_, i) => ({
-            bedNumber: i + 1,
-            status: 'available'
-          }))
-        }
-      },
-      include: { beds: true }
-    });
-    res.json(room);
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Delete a room
-app.delete('/api/rooms/:id', async (req, res) => {
-  const { id } = req.params;
-  try {
-    const beds = await prisma.bed.findMany({ where: { roomId: id } });
-    for (const bed of beds) {
-      if (bed.studentId) {
-        await prisma.bed.update({ where: { id: bed.id }, data: { studentId: null, status: 'available' } });
-      }
-    }
-    await prisma.bed.deleteMany({ where: { roomId: id } });
-    await prisma.room.delete({ where: { id } });
     res.json({ success: true });
   } catch (err: any) {
     res.status(500).json({ error: err.message });

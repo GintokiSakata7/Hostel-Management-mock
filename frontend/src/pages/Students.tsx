@@ -10,6 +10,7 @@ import { useToast } from '../components/ToastContext';
 import { PrintReceiptModal } from './Fees';
 
 import { useSettings } from '../components/SettingsContext';
+import { useBuilding } from '../components/BuildingContext';
 
 const MONTHS = Array.from({ length: 12 }, (_, i) => {
   const d = new Date();
@@ -996,6 +997,7 @@ function AdmissionForm({ student, onClose, onSave, isMobile, onPreviewDoc }: { s
 export default function Students() {
   const { showToast } = useToast();
   const { settings } = useSettings();
+  const { selectedBuildingId } = useBuilding();
   const monthlyFee = settings?.monthlyFee || 5500;
   const [students, setStudents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1025,11 +1027,11 @@ export default function Students() {
   const fetchStudents = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/students?month=${selectedMonth}`);
+      const res = await fetch(`/api/students?month=${selectedMonth}&buildingId=${selectedBuildingId}`);
       if (res.ok) setStudents(await res.json());
     } catch (e) { showToast('Failed to fetch students', 'error'); }
     finally { setLoading(false); }
-  }, [selectedMonth]);
+  }, [selectedMonth, selectedBuildingId]);
 
   useEffect(() => { fetchStudents(); }, [fetchStudents]);
 

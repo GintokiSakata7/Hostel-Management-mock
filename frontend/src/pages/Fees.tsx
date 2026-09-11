@@ -5,6 +5,7 @@ import {
 import Modal from '../components/Modal';
 import { useToast } from '../components/ToastContext';
 import { useSettings } from '../components/SettingsContext';
+import { useBuilding } from '../components/BuildingContext';
 
 const MONTHS = Array.from({ length: 12 }, (_, i) => {
   const d = new Date();
@@ -435,12 +436,14 @@ export default function Fees() {
     }
   };
 
+  const { selectedBuildingId } = useBuilding();
+
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
       const [statusRes, txRes] = await Promise.all([
-        fetch(`/api/fees/monthly-status?month=${selectedMonth}`),
-        fetch(`/api/fees/transactions?month=${selectedMonth}`)
+        fetch(`/api/fees/monthly-status?month=${selectedMonth}&buildingId=${selectedBuildingId}`),
+        fetch(`/api/fees/transactions?month=${selectedMonth}&buildingId=${selectedBuildingId}`)
       ]);
       if (statusRes.ok) setMonthlyStatus(await statusRes.json());
       if (txRes.ok) setTransactions(await txRes.json());
@@ -449,7 +452,7 @@ export default function Fees() {
     } finally {
       setLoading(false);
     }
-  }, [selectedMonth]);
+  }, [selectedMonth, selectedBuildingId]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 

@@ -108,7 +108,7 @@ export function createFinanceRouter(prisma: PrismaClient) {
   // 3. GET Expenses (Filterable & Searchable)
   router.get('/expenses', async (req: Request, res: Response) => {
     try {
-      const { month, date, category, search, startDate, endDate, year } = req.query as {
+      const { month, date, category, search, startDate, endDate, year, buildingId } = req.query as {
         month?: string;
         date?: string;
         category?: string;
@@ -116,20 +116,37 @@ export function createFinanceRouter(prisma: PrismaClient) {
         startDate?: string;
         endDate?: string;
         year?: string;
+        buildingId?: string;
       };
 
       const whereClause: any = {};
+
+      if (buildingId && buildingId !== 'all') {
+        whereClause.OR = [
+          { buildingId: buildingId },
+          { buildingId: null }
+        ];
+      }
 
       if (category && category !== 'All') {
         whereClause.category = category;
       }
 
       if (search && search.trim() !== '') {
-        whereClause.OR = [
+        const searchOR = [
           { title: { contains: search, mode: 'insensitive' } },
           { vendor: { contains: search, mode: 'insensitive' } },
           { notes: { contains: search, mode: 'insensitive' } }
         ];
+        if (whereClause.OR) {
+          whereClause.AND = [
+            { OR: whereClause.OR },
+            { OR: searchOR }
+          ];
+          delete whereClause.OR;
+        } else {
+          whereClause.OR = searchOR;
+        }
       }
 
       if (date) {
@@ -154,8 +171,8 @@ export function createFinanceRouter(prisma: PrismaClient) {
       }
 
       const expenses = await (prisma as any).expense.findMany({
-
         where: whereClause,
+        include: { building: true },
         orderBy: { date: 'desc' }
       });
 
@@ -168,7 +185,7 @@ export function createFinanceRouter(prisma: PrismaClient) {
   // 4. POST Create Expense
   router.post('/expenses', async (req: Request, res: Response) => {
     try {
-      const { title, category, amount, date, paymentMethod, vendor, notes } = req.body;
+      const { title, category, amount, date, paymentMethod, vendor, notes, buildingId } = req.body;
       if (!title || !amount) {
         return res.status(400).json({ error: 'Title and amount are required' });
       }
@@ -181,8 +198,10 @@ export function createFinanceRouter(prisma: PrismaClient) {
           date: date ? new Date(date) : new Date(),
           paymentMethod: paymentMethod || 'Cash',
           vendor: vendor ? String(vendor).trim() : null,
-          notes: notes ? String(notes).trim() : null
-        }
+          notes: notes ? String(notes).trim() : null,
+          buildingId: buildingId && buildingId !== 'all' ? buildingId : null
+        },
+        include: { building: true }
       });
 
       invalidateCache();
@@ -209,7 +228,8 @@ export function createFinanceRouter(prisma: PrismaClient) {
           date: item.date ? new Date(item.date) : new Date(),
           paymentMethod: item.paymentMethod || 'Cash',
           vendor: item.vendor ? String(item.vendor).trim() : null,
-          notes: item.notes ? String(item.notes).trim() : null
+          notes: item.notes ? String(item.notes).trim() : null,
+          buildingId: item.buildingId && item.buildingId !== 'all' ? item.buildingId : null
         }));
 
       if (validItems.length === 0) {
@@ -231,7 +251,7 @@ export function createFinanceRouter(prisma: PrismaClient) {
   router.put('/expenses/:id', async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
-      const { title, category, amount, date, paymentMethod, vendor, notes } = req.body;
+      const { title, category, amount, date, paymentMethod, vendor, notes, buildingId } = req.body;
 
       const updated = await (prisma as any).expense.update({
         where: { id },
@@ -242,8 +262,10 @@ export function createFinanceRouter(prisma: PrismaClient) {
           date: date ? new Date(date) : undefined,
           paymentMethod,
           vendor: vendor !== undefined ? (vendor ? String(vendor).trim() : null) : undefined,
-          notes: notes !== undefined ? (notes ? String(notes).trim() : null) : undefined
-        }
+          notes: notes !== undefined ? (notes ? String(notes).trim() : null) : undefined,
+          buildingId: buildingId !== undefined ? (buildingId && buildingId !== 'all' ? buildingId : null) : undefined
+        },
+        include: { building: true }
       });
 
       invalidateCache();
@@ -268,11 +290,11 @@ export function createFinanceRouter(prisma: PrismaClient) {
   // 8. GET Finance / MIS Summary
   router.get('/summary', async (req: Request, res: Response) => {
     try {
-      const { month, date, year: queryYear } = req.query as { month?: string; date?: string; year?: string };
+      const { month, date, year: queryYear, buildingId } = req.query as { month?: string; date?: string; year?: string; buildingId?: string };
       let m = month || currentMonth();
       if (date) m = date.substring(0, 7);
 
-      const cacheKey = `${m}_${date || ''}_${queryYear || ''}`;
+      const cacheKey = `${m}_${date || ''}_${queryYear || ''}_${buildingId || 'all'}`;
       const cached = summaryCache.get(cacheKey);
       if (cached && (Date.now() - cached.timestamp < CACHE_TTL_MS)) {
         return res.json(cached.data);
@@ -301,6 +323,9 @@ export function createFinanceRouter(prisma: PrismaClient) {
 
       // Revenue: Total completed fees for the month / period
       const feeWhere: any = { status: 'Completed' };
+      if (buildingId && buildingId !== 'all') {
+        feeWhere.student = { beds: { some: { room: { buildingId } } } };
+      }
       if (queryYear && !month) {
         feeWhere.month = { startsWith: `${queryYear}-` };
       } else {
@@ -315,16 +340,28 @@ export function createFinanceRouter(prisma: PrismaClient) {
       });
       let totalRevenue = feeRevenueAgg._sum.amount || 0;
       if (date && totalRevenue === 0) {
+        const monthlyRevWhere: any = { month: m, status: 'Completed' };
+        if (buildingId && buildingId !== 'all') {
+          monthlyRevWhere.student = { beds: { some: { room: { buildingId } } } };
+        }
         const monthlyRevAgg = await prisma.fee.aggregate({
-          where: { month: m, status: 'Completed' },
+          where: monthlyRevWhere,
           _sum: { amount: true }
         });
         totalRevenue = monthlyRevAgg._sum.amount || 0;
       }
 
       // Expenses: Total expenses in the date range
+      const expenseWhere: any = { date: { gte: startDate, lte: endDate } };
+      if (buildingId && buildingId !== 'all') {
+        expenseWhere.OR = [
+          { buildingId: buildingId },
+          { buildingId: null }
+        ];
+      }
+
       const expenseAgg = await (prisma as any).expense.aggregate({
-        where: { date: { gte: startDate, lte: endDate } },
+        where: expenseWhere,
         _sum: { amount: true },
         _count: { id: true }
       });
@@ -339,7 +376,7 @@ export function createFinanceRouter(prisma: PrismaClient) {
       // Category Breakdown
       const categoryGroups = await (prisma as any).expense.groupBy({
         by: ['category'],
-        where: { date: { gte: startDate, lte: endDate } },
+        where: expenseWhere,
         _sum: { amount: true },
         _count: { id: true }
       });
@@ -364,14 +401,21 @@ export function createFinanceRouter(prisma: PrismaClient) {
         const monthStart = new Date(yStr, d.getMonth(), 1);
         const monthEnd = new Date(yStr, d.getMonth() + 1, 0, 23, 59, 59, 999);
 
+        const trendFeeWhere: any = { month: monthKey, status: 'Completed' };
+        const trendExpWhere: any = { date: { gte: monthStart, lte: monthEnd } };
+        if (buildingId && buildingId !== 'all') {
+          trendFeeWhere.student = { beds: { some: { room: { buildingId } } } };
+          trendExpWhere.OR = [{ buildingId: buildingId }, { buildingId: null }];
+        }
+
         trendPromises.push(
           Promise.all([
             prisma.fee.aggregate({
-              where: { month: monthKey, status: 'Completed' },
+              where: trendFeeWhere,
               _sum: { amount: true }
             }),
             (prisma as any).expense.aggregate({
-              where: { date: { gte: monthStart, lte: monthEnd } },
+              where: trendExpWhere,
               _sum: { amount: true }
             })
           ]).then(([revRes, expRes]) => ({

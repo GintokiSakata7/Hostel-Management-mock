@@ -1,5 +1,6 @@
 import { Users, BedDouble, AlertCircle, IndianRupee, Activity, CheckCircle2, Home, TrendingUp } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { useBuilding } from '../components/BuildingContext';
 
 const Gauge = ({ value, max, color }: { value: number; max: number; color: string }) => {
   const pct = max > 0 ? Math.round((value / max) * 100) : 0;
@@ -26,16 +27,18 @@ const MiniStatRow = ({ label, value, color }: { label: string; value: string | n
 );
 
 export default function Dashboard() {
+  const { selectedBuildingId, activeBuildingName } = useBuilding();
   const [stats, setStats] = useState<any>(null);
   const [activities, setActivities] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchDashboard = async () => {
+      setLoading(true);
       try {
         const [statsRes, actsRes] = await Promise.all([
-          fetch('/api/stats'),
-          fetch('/api/activities'),
+          fetch(`/api/stats?buildingId=${selectedBuildingId}`),
+          fetch(`/api/activities?buildingId=${selectedBuildingId}`),
         ]);
         if (statsRes.ok) setStats(await statsRes.json());
         if (actsRes.ok) setActivities(await actsRes.json());
@@ -46,7 +49,7 @@ export default function Dashboard() {
       }
     };
     fetchDashboard();
-  }, []);
+  }, [selectedBuildingId]);
 
   if (loading || !stats) {
     return (
@@ -64,7 +67,7 @@ export default function Dashboard() {
       <div style={{ marginBottom: '1.75rem' }}>
         <h1 className="page-title" style={{ margin: '0 0 6px 0' }}>Overview</h1>
         <p className="text-muted" style={{ margin: 0, fontSize: '0.875rem' }}>
-          Welcome back, Admin · {new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+          Welcome back, Admin · <strong>{activeBuildingName}</strong> · {new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
         </p>
       </div>
 
