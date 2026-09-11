@@ -402,7 +402,8 @@ const Finance: React.FC = () => {
     targetExpenses: Expense[],
     targetSummary: SummaryData | null,
     periodTitle: string,
-    scope: 'monthly' | 'yearly'
+    scope: 'monthly' | 'yearly',
+    targetWin?: Window | null
   ) => {
     const hostelName = settings?.hostelName || 'VMR Hostel';
     const adminName = settings?.adminName || 'Hostel Owner / Manager';
@@ -429,11 +430,13 @@ const Finance: React.FC = () => {
       minute: '2-digit'
     });
 
-    const win = window.open('', '_blank', 'width=1050,height=850');
+    const win = targetWin || window.open('', '_blank', 'width=1050,height=850');
     if (!win) {
       showToast('Please allow popups to generate the PDF report', 'error');
       return;
     }
+
+    win.document.open();
 
     const rowsHtml = targetExpenses.map((item, idx) => `
       <tr>
@@ -767,6 +770,43 @@ const Finance: React.FC = () => {
 
   // Fetch & Execute Customized Report Generation
   const handleExecuteGeneratePDF = async () => {
+    // Open popup window IMMEDIATELY on user click gesture so browser popup blockers NEVER block it
+    const printWin = window.open('', '_blank', 'width=1050,height=850');
+    if (!printWin) {
+      showToast('Popup blocker prevented opening statement window. Please allow popups for this site.', 'error');
+      return;
+    }
+
+    // Write initial loading state inside pre-opened tab
+    printWin.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Generating Statement...</title>
+          <style>
+            body {
+              margin: 0; background: #0f172a; color: #ffffff;
+              font-family: system-ui, -apple-system, sans-serif;
+              display: flex; flex-direction: column;
+              align-items: center; justify-content: center;
+              height: 100vh; text-align: center;
+            }
+            .spinner {
+              width: 48px; height: 48px; border: 4px solid rgba(255,255,255,0.1);
+              border-left-color: #3b82f6; border-radius: 50%;
+              animation: spin 1s linear infinite; margin-bottom: 20px;
+            }
+            @keyframes spin { to { transform: rotate(360deg); } }
+          </style>
+        </head>
+        <body>
+          <div class="spinner"></div>
+          <h2 style="font-weight:700; margin:0 0 8px 0;">Generating Financial Statement...</h2>
+          <p style="color:#94a3b8; margin:0; font-size:14px;">Fetching accounting data & formatting PDF document.</p>
+        </body>
+      </html>
+    `);
+
     setIsGeneratingReport(true);
     try {
       let expensesUrl = '';
@@ -799,6 +839,7 @@ const Finance: React.FC = () => {
 
       if (!expRes.ok || !sumRes.ok) {
         showToast('Failed to fetch data for selected report period', 'error');
+        printWin.close();
         setIsGeneratingReport(false);
         return;
       }
@@ -808,15 +849,19 @@ const Finance: React.FC = () => {
 
       if (fetchedExpenses.length === 0) {
         showToast(`No expense records found for ${periodTitle}`, 'info');
+        printWin.close();
         setIsGeneratingReport(false);
         return;
       }
 
-      renderMartPDFReport(fetchedExpenses, fetchedSummary, periodTitle, reportScope);
+      renderMartPDFReport(fetchedExpenses, fetchedSummary, periodTitle, reportScope, printWin);
       setIsReportModalOpen(false);
     } catch (e: any) {
       console.error(e);
       showToast(e.message || 'Error generating report', 'error');
+      if (printWin && !printWin.closed) {
+        printWin.close();
+      }
     } finally {
       setIsGeneratingReport(false);
     }
