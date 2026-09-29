@@ -6,9 +6,7 @@ import path from 'path';
 import { initReminderScheduler, executeFeeReminderDispatch, executeSingleStudentReminder, getReminderScheduleSettings, updateReminderScheduleTime } from './services/reminderScheduler';
 import { calculateStudentDueStatus, getOrdinal } from './services/billingHelper';
 import { generateFeeReceiptPDFBuffer } from './services/pdfService';
-import { sendPaymentReceiptWhatsApp } from './services/whatsappCloudService';
-import { handleWebhookVerification, processWebhookPayload } from './services/whatsappWebhookService';
-import { sendTelegramMessage } from './services/telegramService';
+import { sendPaymentReceiptEmail } from './services/emailService';
 import { createFinanceRouter } from './routes/financeRoutes';
 
 const app = express();
@@ -104,12 +102,6 @@ app.put('/api/settings', (req, res) => {
   res.json(updated);
 });
 
-// ─── META WHATSAPP WEBHOOKS ──────────────────────────────────────────────────
-app.get('/api/whatsapp/webhook', handleWebhookVerification);
-app.post('/api/whatsapp/webhook', async (req, res) => {
-  res.sendStatus(200); // Immediate 200 OK acknowledgment to Meta
-  await processWebhookPayload(req.body, prisma);
-});
 
 // ─── POSTGRESQL PDF RECEIPT STREAMING ─────────────────────────────────────────
 app.get('/api/fees/receipt/:feeId', async (req, res) => {
@@ -704,6 +696,7 @@ app.get('/api/rooms/:buildingId', async (req, res) => {
   });
 
   const formatted = rooms.map(r => {
+    const sortedBeds = [...r.beds].sort((a, b) => a.bedNumber - b.bedNumber);
     const occupied = r.beds.filter(b => b.status === 'occupied').length;
     return {
       id: r.roomNumber,
@@ -712,11 +705,11 @@ app.get('/api/rooms/:buildingId', async (req, res) => {
       capacity: r.beds.length,
       occupied,
       status: occupied === r.beds.length ? 'full' : occupied === 0 ? 'available' : 'partial',
-      beds: r.beds.map(b => {
+      beds: sortedBeds.map((b, idx) => {
         const feeRecord = b.student?.fees?.[0];
         return {
           id: b.id,
-          bedIndex: b.bedNumber,
+          bedIndex: idx + 1,
           status: b.status,
           student: b.student ? b.student.name : null,
           studentDbId: b.student?.id || null,
@@ -780,6 +773,74 @@ app.delete('/api/beds/:bedId/vacate', async (req, res) => {
     data: { studentId: null, status: 'available' }
   });
   res.json(bed);
+});
+
+app.post('/api/beds/deallocate', async (req, res) => {
+  try {
+    const { bedId } = req.body;
+    if (!bedId) return res.status(400).json({ error: 'bedId is required' });
+    const bed = await prisma.bed.findUnique({ where: { id: bedId }, include: { student: true, room: true } });
+    if (!bed) return res.status(404).json({ error: 'Bed not found' });
+    const studentName = bed.student?.name;
+    const roomNumber = bed.room?.roomNumber;
+    await prisma.bed.update({
+      where: { id: bedId },
+      data: { studentId: null, status: 'available' }
+    });
+    res.json({ success: true, message: `Deallocated ${studentName || 'resident'} from Room ${roomNumber}` });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/beds/transfer', async (req, res) => {
+  try {
+    const { sourceBedId, targetBedId } = req.body;
+    if (!sourceBedId || !targetBedId) {
+      return res.status(400).json({ error: 'sourceBedId and targetBedId are required' });
+    }
+    if (sourceBedId === targetBedId) {
+      return res.status(400).json({ error: 'Source and target bed are the same' });
+    }
+
+    const sourceBed = await prisma.bed.findUnique({ where: { id: sourceBedId }, include: { room: true, student: true } });
+    const targetBed = await prisma.bed.findUnique({ where: { id: targetBedId }, include: { room: true, student: true } });
+
+    if (!sourceBed || !sourceBed.studentId) {
+      return res.status(400).json({ error: 'Source bed has no resident to move' });
+    }
+    if (!targetBed) {
+      return res.status(404).json({ error: 'Target bed not found' });
+    }
+
+    const sourceStudentName = sourceBed.student?.name || 'Resident';
+    const sourceRoomNum = sourceBed.room.roomNumber;
+    const targetRoomNum = targetBed.room.roomNumber;
+
+    if (targetBed.status === 'occupied') {
+      const targetStudentId = targetBed.studentId;
+      const targetStudentName = targetBed.student?.name || 'Resident';
+      await prisma.$transaction([
+        prisma.bed.update({ where: { id: sourceBedId }, data: { studentId: targetStudentId, status: 'occupied' } }),
+        prisma.bed.update({ where: { id: targetBedId }, data: { studentId: sourceBed.studentId, status: 'occupied' } })
+      ]);
+      return res.json({
+        success: true,
+        message: `Swapped ${sourceStudentName} (Room ${sourceRoomNum}) with ${targetStudentName} (Room ${targetRoomNum})`
+      });
+    } else {
+      await prisma.$transaction([
+        prisma.bed.update({ where: { id: sourceBedId }, data: { studentId: null, status: 'available' } }),
+        prisma.bed.update({ where: { id: targetBedId }, data: { studentId: sourceBed.studentId, status: 'occupied' } })
+      ]);
+      return res.json({
+        success: true,
+        message: `Moved ${sourceStudentName} to Room ${targetRoomNum} (Bed ${targetBed.bedNumber})`
+      });
+    }
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // ─── FEES ─────────────────────────────────────────────────────────────────────
@@ -896,44 +957,26 @@ app.post('/api/fees/pay', async (req, res) => {
         });
         console.log(`[PostgreSQL Bucket]: PDF Receipt ${receiptNo} stored in database for Fee ${fee.id}`);
 
-        // 3. Dispatch PDF Receipt via Meta WhatsApp Cloud API if student phone exists
-        if (student.phone) {
-          sendPaymentReceiptWhatsApp(
-            student.phone,
-            student.name,
-            receiptNo,
-            pdfBuffer,
-            Number(amount),
-            label
-          ).then(async (waRes) => {
-            if (waRes.success && waRes.messageId) {
-              await prisma.fee.update({
-                where: { id: fee.id },
-                data: {
-                  whatsappMsgId: waRes.messageId,
-                  whatsappStatus: waRes.status || 'SENT'
-                }
-              });
-              console.log(`[Meta WhatsApp Dispatch]: Fee ${fee.id} updated with MsgID ${waRes.messageId}`);
-            } else {
-              await prisma.fee.update({
-                where: { id: fee.id },
-                data: { whatsappStatus: waRes.status || 'FAILED' }
-              });
-            }
-          }).catch(err => console.error('[Meta WhatsApp Background Error]:', err.message));
+        // 3. Dispatch PDF Receipt via Email
+        if (student.name) {
+          const emailTo = 'rishivardhan165@gmail.com'; // Testing mode
+          const emailRes = await sendPaymentReceiptEmail(emailTo, student.name, `Receipt_${receiptNo}.pdf`, pdfBuffer);
+          
+          if (emailRes.success) {
+            await prisma.fee.update({
+              where: { id: fee.id },
+              data: {
+                whatsappStatus: 'SENT_EMAIL'
+              }
+            });
+            console.log(`[Email Dispatch]: Fee ${fee.id} receipt sent successfully to ${emailTo}`);
+          } else {
+            await prisma.fee.update({
+              where: { id: fee.id },
+              data: { whatsappStatus: 'FAILED_EMAIL' }
+            });
+          }
         }
-
-        // 4. Secondary Telegram Notification (Preserving existing Telegram setup)
-        const tgMessage = `<b>✅ PAYMENT RECEIVED & RECEIPT ISSUED</b>\n\n` +
-          `<b>Student:</b> ${student.name}\n` +
-          `<b>Receipt No:</b> ${receiptNo}\n` +
-          `<b>Billing Month:</b> ${label}\n` +
-          `<b>Amount Paid:</b> ₹${Number(amount).toLocaleString('en-IN')}\n` +
-          `<b>Method:</b> ${method}${upiProvider ? ` (${upiProvider})` : ''}\n` +
-          `<b>Txn Ref:</b> ${transactionRef || 'N/A'}`;
-
-        sendTelegramMessage(tgMessage, student.phone || undefined).catch(() => {});
 
       } catch (pdfErr: any) {
         console.error('[PDF Generation / Dispatch Error]:', pdfErr.message);
@@ -1270,7 +1313,7 @@ app.get('/api/floor-plan/:buildingId', async (req, res) => {
   });
 
   // Group by floor
-  const floors: Record<number, any[]> = {};
+  const floors: Record<string, any[]> = {};
   for (const room of rooms) {
     if (!floors[room.floor]) floors[room.floor] = [];
     const occupied = room.beds.filter(b => b.status === 'occupied').length;
