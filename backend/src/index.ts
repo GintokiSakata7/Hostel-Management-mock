@@ -23,6 +23,15 @@ if (!fs.existsSync(UPLOADS_DIR)) {
 }
 app.use('/uploads', express.static(UPLOADS_DIR));
 
+// Health check endpoints for Render & monitoring
+app.get('/', (_req, res) => {
+  res.json({ success: true, message: 'Majin Hostel Backend API is live & running' });
+});
+
+app.get('/api/health', (_req, res) => {
+  res.json({ status: 'ok', uptime: process.uptime(), timestamp: new Date().toISOString() });
+});
+
 // File upload endpoint for student photo & Aadhar documents
 app.post('/api/upload', express.json({ limit: '20mb' }), (req: any, res: any) => {
   try {
