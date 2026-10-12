@@ -1,0 +1,16 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/:match*",
+      "destination": "https://hostel-management-mock.onrender.com/api/:match*"
+    },
+    {
+      "source": "/uploads/:match*",
+      "destination": "https://hostel-management-mock.onrender.com/uploads/:match*"
+    },
+    {
+      "source": "/((?!assets/|favicon.svg|.*\\..*).*)",
+      "destination": "/index.html"
+    }
+  ]
+}
