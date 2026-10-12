@@ -97,7 +97,7 @@ export const Fees: React.FC = () => {
     if (!student) return;
 
     const msg = 
-`🧾 *FEE PAYMENT RECEIPT - VMR LUXURY HOSTEL* 🧾
+`🧾 *FEE PAYMENT RECEIPT - MAJIN HOSTEL* 🧾
 ━━━━━━━━━━━━━━━━━━━━
 Dear *${student.name}*,
 Your payment for *${record.month}* has been confirmed!

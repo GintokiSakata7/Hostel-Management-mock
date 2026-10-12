@@ -126,7 +126,7 @@ export const WorkspaceSelector: React.FC = () => {
                     type="text"
                     required
                     className="form-input"
-                    placeholder="e.g. VMR Royal - Block D"
+                    placeholder="e.g. Majin Royal - Block D"
                     value={newBuildingName}
                     onChange={e => setNewBuildingName(e.target.value)}
                   />

@@ -1,4 +1,4 @@
-# VMR Hostel Cloud OS • Client Live Demonstration Suite
+# Majin Hostel Cloud OS • Client Live Demonstration Suite
 
 A standalone, 100% static React + Vite web application built specifically for client demonstrations and live presentations.
 

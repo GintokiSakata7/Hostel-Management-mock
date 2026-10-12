@@ -1,12 +1,12 @@
 import { Building, Room, Student, FeeRecord, ExpenseCategory, Expense, Complaint, ActivityLog, HostelSettings } from './types';
 
 export const initialSettings: HostelSettings = {
-  hostelName: 'VMR Luxury Hostel & PG',
-  tagline: 'Premium Air-Conditioned Living & High-Speed Student Suites',
-  ownerName: 'V. M. Ramachandra',
+  hostelName: 'Majin Hostel',
+  tagline: 'Premium Living & Student Suites',
+  ownerName: 'Majin Management',
   ownerPhone: '9491554114',
   whatsappDemoNumber: '9491554114',
-  ownerEmail: 'admin@vmrhostel.com',
+  ownerEmail: 'admin@majinhostel.com',
   address: 'Plot 42, Gachibowli High Street, Financial District',
   city: 'Hyderabad, Telangana - 500032',
   upiId: '9491554114@ybl',
@@ -19,21 +19,21 @@ export const initialSettings: HostelSettings = {
 export const initialBuildings: Building[] = [
   {
     id: 'bld-1',
-    name: 'VMR Deluxe - Main Wing',
+    name: 'Majin Deluxe - Main Wing',
     tag: 'Primary Wing (G+3)',
     address: 'Plot 42, Gachibowli, Hyderabad',
     floorsCount: 3,
   },
   {
     id: 'bld-2',
-    name: 'VMR Executive - Tower B',
+    name: 'Majin Executive - Tower B',
     tag: 'Luxury AC Suites',
     address: 'Plot 43, Gachibowli, Hyderabad',
     floorsCount: 2,
   },
   {
     id: 'bld-3',
-    name: 'VMR Elite - North Campus',
+    name: 'Majin Elite - North Campus',
     tag: 'Premium Single/Double Sharing',
     address: 'Plot 45, Financial District, Hyderabad',
     floorsCount: 2,
