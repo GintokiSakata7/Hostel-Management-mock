@@ -180,8 +180,8 @@ function BedRow({
   );
 }
 
-function PremiumRoomCard({ room, onRoomClick, onAllocate, onPay, onPrint, onStudentClick, onUnpay, onDeallocate, onTransfer, onOpenTransferModal, isMobile, onOpenMobileBeds }: {
-  room: any; onRoomClick: () => void; onAllocate: (bed: any) => void; onPay: (bed: any) => void; onPrint: (bed: any) => void; onStudentClick: (bed: any) => void; onUnpay: (bed: any) => void; onDeallocate: (bed: any) => void; onTransfer: (sourceBedId: string, targetBedId: string) => void; onOpenTransferModal?: (bed: any) => void; isMobile?: boolean; onOpenMobileBeds?: () => void;
+function PremiumRoomCard({ room, onAllocate, onPay, onPrint, onStudentClick, onUnpay, onDeallocate, onTransfer, onOpenTransferModal, isMobile, onOpenMobileBeds }: {
+  room: any; onRoomClick?: () => void; onAllocate: (bed: any) => void; onPay: (bed: any) => void; onPrint: (bed: any) => void; onStudentClick: (bed: any) => void; onUnpay: (bed: any) => void; onDeallocate: (bed: any) => void; onTransfer: (sourceBedId: string, targetBedId: string) => void; onOpenTransferModal?: (bed: any) => void; isMobile?: boolean; onOpenMobileBeds?: () => void;
 }) {
   const sortedBeds = [...(room.beds || [])].sort((a: any, b: any) => (a.bedIndex || a.bedNumber || 0) - (b.bedIndex || b.bedNumber || 0));
   const paidCount = sortedBeds.filter((b: any) => b.status === 'occupied' && (b.feeStatus === 'Paid' || b.feeStatus === 'Completed')).length;
@@ -1148,7 +1148,7 @@ function TransferBedModal({
 export default function Rooms() {
   const { showToast, confirmAction } = useToast();
   const { settings } = useSettings();
-  const { selectedBuildingId, setSelectedBuildingId, fetchBuildings: refreshContextBuildings } = useBuilding();
+  const { selectedBuildingId, fetchBuildings: refreshContextBuildings } = useBuilding();
   const monthlyFee = settings?.monthlyFee || 5500;
   const [buildings, setBuildings] = useState<any[]>([]);
   const [rooms, setRooms] = useState<any[]>([]);
@@ -1164,7 +1164,6 @@ export default function Rooms() {
   const [showEditLayoutModal, setShowEditLayoutModal] = useState<boolean>(false);
   
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
-  const [selectedMobileFloor, setSelectedMobileFloor] = useState<string | null>(null);
   const [mobileBedsRoom, setMobileBedsRoom] = useState<any>(null);
 
   useEffect(() => {
