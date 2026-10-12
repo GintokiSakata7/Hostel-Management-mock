@@ -71,19 +71,31 @@ interface DemoDataContextType {
   resetToDemoData: () => void;
 }
 
-const STORAGE_KEY = 'HOSTEL_DEMO_DATA_STATE_V2';
+const STORAGE_KEY = 'HOSTEL_DEMO_DATA_STATE_MAJIN_V3';
 
 const DemoDataContext = createContext<DemoDataContextType | undefined>(undefined);
 
 export const DemoDataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [settings, setSettings] = useState<HostelSettings>(() => {
-    const saved = localStorage.getItem(`${STORAGE_KEY}_settings`);
-    return saved ? JSON.parse(saved) : initialSettings;
+    const saved = localStorage.getItem(`${STORAGE_KEY}_settings`) || localStorage.getItem('HOSTEL_DEMO_DATA_STATE_V2_settings');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (parsed.hostelName?.includes('VMR')) parsed.hostelName = 'Majin Hostel';
+      return parsed;
+    }
+    return initialSettings;
   });
 
   const [buildings, setBuildings] = useState<Building[]>(() => {
-    const saved = localStorage.getItem(`${STORAGE_KEY}_buildings`);
-    return saved ? JSON.parse(saved) : initialBuildings;
+    const saved = localStorage.getItem(`${STORAGE_KEY}_buildings`) || localStorage.getItem('HOSTEL_DEMO_DATA_STATE_V2_buildings');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      return parsed.map((b: Building) => ({
+        ...b,
+        name: b.name.replace('VMR', 'Majin'),
+      }));
+    }
+    return initialBuildings;
   });
 
   const [rooms, setRooms] = useState<Room[]>(() => {

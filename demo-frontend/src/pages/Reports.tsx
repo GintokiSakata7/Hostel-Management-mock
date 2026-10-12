@@ -62,7 +62,7 @@ export const Reports: React.FC = () => {
         s.monthlyFee,
       ];
     });
-    downloadCSV(`VMR_Students_Roster_${selectedMonth}.csv`, headers, rows);
+    downloadCSV(`Majin_Students_Roster_${selectedMonth}.csv`, headers, rows);
   };
 
   // Export 2: Occupancy
@@ -84,7 +84,7 @@ export const Reports: React.FC = () => {
         rm.beds.length - occupied,
       ];
     });
-    downloadCSV(`VMR_Room_Occupancy_${selectedMonth}.csv`, headers, rows);
+    downloadCSV(`Majin_Room_Occupancy_${selectedMonth}.csv`, headers, rows);
   };
 
   // Export 3: Fees
@@ -105,7 +105,7 @@ export const Reports: React.FC = () => {
         f.status,
       ];
     });
-    downloadCSV(`VMR_Fee_Receipts_${selectedMonth}.csv`, headers, rows);
+    downloadCSV(`Majin_Fee_Receipts_${selectedMonth}.csv`, headers, rows);
   };
 
   // Export 4: Expenses
@@ -121,7 +121,7 @@ export const Reports: React.FC = () => {
       e.vendor || '',
       e.notes || '',
     ]);
-    downloadCSV(`VMR_Operating_Expenses_${selectedMonth}.csv`, headers, rows);
+    downloadCSV(`Majin_Operating_Expenses_${selectedMonth}.csv`, headers, rows);
   };
 
   return (

@@ -60,7 +60,7 @@ Facility: ${formData.hostelName}
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `VMR_Hostel_Settings_Backup_${Date.now()}.json`;
+    a.download = `Majin_Hostel_Settings_Backup_${Date.now()}.json`;
     a.click();
     success('Settings JSON exported');
   };

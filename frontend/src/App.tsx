@@ -31,7 +31,7 @@ const navItems = [
 
 function SettingsTitle() {
   const { settings } = useSettings();
-  return <>{settings?.hostelName || 'VMR Hostel'} Admin</>;
+  return <>{settings?.hostelName || 'Majin Hostel'} Admin</>;
 }
 
 function App() {
@@ -67,7 +67,7 @@ function App() {
               <div className="sidebar-logo-icon">
                 <div className="icon-container"><Building2 size={22} color="#fff" /></div>
               </div>
-              <span className="sidebar-brand-name">VMR Hostel</span>
+              <span className="sidebar-brand-name">Majin Hostel</span>
             </div>
 
             {/* Nav Links */}
