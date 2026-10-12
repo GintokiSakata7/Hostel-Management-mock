@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
-import { Calendar, IndianRupee, BedDouble, Layers3, Search, Plus, Printer, Banknote, Smartphone, CheckCircle2, Phone, GraduationCap, User, XCircle, Home, Trash2 } from 'lucide-react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { Calendar, IndianRupee, BedDouble, Layers3, Search, Plus, Printer, Banknote, Smartphone, CheckCircle2, Phone, GraduationCap, User, XCircle, Home, Trash2, GripVertical, UserX, ArrowRightLeft } from 'lucide-react';
 import Modal from '../components/Modal';
 import { useToast } from '../components/ToastContext';
 import { PrintReceiptModal } from './Fees';
@@ -15,92 +15,164 @@ const MONTHS = Array.from({ length: 6 }, (_, i) => {
   return { value: `${y}-${m}`, label: d.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' }) };
 });
 
-function BedCard({ bed, onAllocate, onPay, onPrint, onStudentClick, onUnpay }: { bed: any; onAllocate: () => void; onPay: () => void; onPrint: () => void; onStudentClick?: () => void; onUnpay: () => void }) {
+function BedRow({
+  bed,
+  onAllocate,
+  onPay,
+  onPrint,
+  onStudentClick,
+  onUnpay,
+  onDeallocate,
+  onTransfer,
+  onOpenTransferModal
+}: {
+  bed: any;
+  onAllocate: () => void;
+  onPay: () => void;
+  onPrint: () => void;
+  onStudentClick?: () => void;
+  onUnpay: () => void;
+  onDeallocate: () => void;
+  onTransfer?: (sourceBedId: string, targetBedId: string) => void;
+  onOpenTransferModal?: () => void;
+}) {
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [isDraggingSelf, setIsDraggingSelf] = useState(false);
+  const dragCounter = useRef(0);
+
   const isOccupied = bed.status === 'occupied';
   const isPaid = bed.feeStatus === 'Paid' || bed.feeStatus === 'Completed';
 
-  let borderColor = 'rgba(255,255,255,0.06)';
-  let bgGrad = 'rgba(255,255,255,0.015)';
-  let statusColor = 'rgba(255,255,255,0.35)';
-  let statusDot = 'rgba(255,255,255,0.25)';
-
-  if (isOccupied) {
-    if (isPaid) {
-      borderColor = 'rgba(34,197,94,0.2)';
-      bgGrad = 'linear-gradient(135deg, rgba(34,197,94,0.06), rgba(34,197,94,0.02))';
-      statusColor = 'var(--success)';
-      statusDot = '#22c55e';
-    } else {
-      borderColor = 'rgba(234,179,8,0.2)';
-      bgGrad = 'linear-gradient(135deg, rgba(234,179,8,0.06), rgba(234,179,8,0.02))';
-      statusColor = 'var(--warning)';
-      statusDot = '#eab308';
-    }
-  }
+  const dotColor = !isOccupied ? 'rgba(255,255,255,0.2)' : isPaid ? '#22c55e' : '#eab308';
+  const rowBg = isDragOver
+    ? 'rgba(249,115,22,0.22)'
+    : !isOccupied
+    ? 'transparent'
+    : isPaid
+    ? 'rgba(34,197,94,0.04)'
+    : 'rgba(234,179,8,0.04)';
 
   return (
-    <div style={{
-      border: `1px solid ${borderColor}`, borderRadius: 12,
-      background: bgGrad, padding: '12px',
-      transition: 'all 0.25s cubic-bezier(0.25, 0.8, 0.25, 1)',
-      position: 'relative', overflow: 'hidden'
-    }}
-      className="bed-card-hover">
-      {/* Glow pulse for pending */}
-      {isOccupied && !isPaid && (
-        <div style={{ position: 'absolute', inset: 0, borderRadius: 12, pointerEvents: 'none', animation: 'pendingPulse 2.5s ease-in-out infinite', background: 'rgba(234,179,8,0.03)' }} />
+    <div
+      className={`bed-row ${isDragOver ? 'bed-row-dragover' : ''}`}
+      draggable={isOccupied}
+      onDragStart={(e) => {
+        if (!isOccupied) return;
+        setIsDraggingSelf(true);
+        e.dataTransfer.setData('text/plain', bed.id);
+        e.dataTransfer.effectAllowed = 'move';
+      }}
+      onDragEnd={() => {
+        setIsDraggingSelf(false);
+        dragCounter.current = 0;
+        setIsDragOver(false);
+      }}
+      onDragOver={(e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+      }}
+      onDragEnter={(e) => {
+        e.preventDefault();
+        dragCounter.current++;
+        if (dragCounter.current === 1) {
+          setIsDragOver(true);
+        }
+      }}
+      onDragLeave={(e) => {
+        e.preventDefault();
+        dragCounter.current--;
+        if (dragCounter.current <= 0) {
+          dragCounter.current = 0;
+          setIsDragOver(false);
+        }
+      }}
+      onDrop={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dragCounter.current = 0;
+        setIsDragOver(false);
+        const sourceBedId = e.dataTransfer.getData('text/plain');
+        if (sourceBedId && sourceBedId !== bed.id && onTransfer) {
+          onTransfer(sourceBedId, bed.id);
+        }
+      }}
+      style={{
+        display: 'flex', alignItems: 'center', gap: '6px',
+        padding: '7px 10px', borderRadius: 8, background: rowBg,
+        border: isDragOver
+          ? '2px dashed var(--primary)'
+          : isDraggingSelf
+          ? '1px dashed rgba(249,115,22,0.5)'
+          : '1px solid transparent',
+        opacity: isDraggingSelf ? 0.45 : 1,
+        transition: 'all 0.15s ease',
+        cursor: isOccupied ? 'grab' : 'default',
+        boxShadow: isDragOver ? '0 0 12px rgba(249,115,22,0.35)' : 'none'
+      }}
+      onClick={() => { if (isOccupied && onStudentClick) onStudentClick(); }}
+    >
+      {/* Drag Handle Icon for occupied beds */}
+      {isOccupied && (
+        <span
+          title="Drag to transfer resident to another bed"
+          style={{ cursor: 'grab', color: 'rgba(255,255,255,0.25)', display: 'flex', alignItems: 'center', flexShrink: 0 }}
+          onMouseOver={e => e.currentTarget.style.color = 'var(--primary)'}
+          onMouseOut={e => e.currentTarget.style.color = 'rgba(255,255,255,0.25)'}
+        >
+          <GripVertical size={12} />
+        </span>
       )}
 
-      {/* Bed header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <BedDouble size={13} color={isOccupied ? statusColor : 'rgba(255,255,255,0.3)'} />
-          <span style={{ fontWeight: 700, fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.8 }}>Bed {bed.bedIndex}</span>
-        </div>
-        <div style={{ width: 7, height: 7, borderRadius: '50%', background: statusDot, boxShadow: isOccupied ? `0 0 6px ${statusDot}` : 'none', flexShrink: 0 }} />
-      </div>
+      {/* Status dot */}
+      <div style={{ width: 7, height: 7, borderRadius: '50%', background: dotColor, boxShadow: isOccupied ? `0 0 6px ${dotColor}` : 'none', flexShrink: 0 }} />
 
-      {/* Student name or empty */}
-      <div style={{ minHeight: 28, marginBottom: 8 }}>
-        {isOccupied ? (
-          <div onClick={e => { e.stopPropagation(); if (onStudentClick) onStudentClick(); }}
-            style={{ fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-main)', lineHeight: 1.3, cursor: 'pointer', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-            className="student-name-hover">{bed.student}</div>
-        ) : (
-          <div style={{ color: 'rgba(255,255,255,0.25)', fontSize: '0.78rem', fontStyle: 'italic' }}>Vacant</div>
-        )}
+      {/* Bed number */}
+      <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', minWidth: 16, flexShrink: 0 }}>{bed.bedIndex}</span>
+
+      {/* Student name or vacant */}
+      <div style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '0.82rem', fontWeight: isOccupied ? 600 : 400, color: isOccupied ? 'var(--text-main)' : 'rgba(255,255,255,0.2)' }}>
+        {isOccupied ? bed.student : '—'}
       </div>
 
       {/* Action */}
-      <div>
+      <div style={{ flexShrink: 0, display: 'flex', gap: '3px', alignItems: 'center' }} onClick={e => e.stopPropagation()}>
         {isOccupied ? (
-          !isPaid ? (
-            <button className="primary-btn" style={{ width: '100%', justifyContent: 'center', padding: '6px 8px', fontSize: '0.7rem', minHeight: 28, borderRadius: 8, boxShadow: '0 2px 8px rgba(249,115,22,0.25)' }}
-              onClick={e => { e.stopPropagation(); onPay(); }}>
-              <IndianRupee size={11} /> Record Payment
+          <>
+            {!isPaid ? (
+              <button className="primary-btn" onClick={onPay}
+                style={{ padding: '3px 8px', fontSize: '0.65rem', borderRadius: 6, minHeight: 0, gap: '3px', boxShadow: '0 1px 6px rgba(249,115,22,0.3)' }}>
+                <IndianRupee size={10} /> Pay
+              </button>
+            ) : (
+              <>
+                <button onClick={onPrint}
+                  style={{ padding: '3px 7px', fontSize: '0.62rem', borderRadius: 5, background: 'rgba(255,255,255,0.05)', color: 'var(--text-muted)', border: '1px solid rgba(255,255,255,0.08)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '3px', transition: 'all 0.15s' }}
+                  onMouseOver={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.12)'; e.currentTarget.style.color = '#fff'; }}
+                  onMouseOut={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.color = 'var(--text-muted)'; }}>
+                  <Printer size={9} /> Receipt
+                </button>
+                <button onClick={onUnpay} title="Undo Fee Payment" className="icon-btn-micro danger">
+                  <XCircle size={10} />
+                </button>
+              </>
+            )}
+
+            {onOpenTransferModal && (
+              <button onClick={onOpenTransferModal} title="Move resident to another room or bed" className="icon-btn-micro">
+                <ArrowRightLeft size={10} />
+              </button>
+            )}
+
+            <button onClick={onDeallocate} title="Deallocate / Vacate Bed" className="icon-btn-micro danger">
+              <UserX size={10} />
             </button>
-          ) : (
-            <div style={{ display: 'flex', gap: '4px' }}>
-              <button style={{ flex: 1, justifyContent: 'center', padding: '5px 6px', fontSize: '0.68rem', minHeight: 26, borderRadius: 7, background: 'rgba(255,255,255,0.05)', color: 'var(--text-muted)', border: '1px solid rgba(255,255,255,0.08)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '3px', transition: 'all 0.15s' }}
-                onClick={e => { e.stopPropagation(); onPrint(); }}
-                onMouseOver={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; e.currentTarget.style.color = '#fff'; }}
-                onMouseOut={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.color = 'var(--text-muted)'; }}>
-                <Printer size={10} /> Receipt
-              </button>
-              <button style={{ flex: 1, justifyContent: 'center', padding: '5px 6px', fontSize: '0.68rem', minHeight: 26, borderRadius: 7, background: 'rgba(239,68,68,0.08)', color: 'rgba(239,68,68,0.7)', border: '1px solid rgba(239,68,68,0.15)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '3px', transition: 'all 0.15s' }}
-                onClick={e => { e.stopPropagation(); onUnpay(); }}
-                onMouseOver={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.15)'; e.currentTarget.style.color = '#ef4444'; }}
-                onMouseOut={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.08)'; e.currentTarget.style.color = 'rgba(239,68,68,0.7)'; }}>
-                <XCircle size={10} /> Unpay
-              </button>
-            </div>
-          )
+          </>
         ) : (
-          <button onClick={e => { e.stopPropagation(); onAllocate(); }}
-            style={{ width: '100%', padding: '6px 8px', borderRadius: 7, border: '1px dashed rgba(249,115,22,0.3)', background: 'rgba(249,115,22,0.04)', color: 'var(--primary)', cursor: 'pointer', fontSize: '0.7rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', transition: 'all 0.2s', minHeight: 26 }}
+          <button onClick={onAllocate}
+            style={{ padding: '3px 10px', fontSize: '0.62rem', borderRadius: 5, border: '1px dashed rgba(249,115,22,0.3)', background: 'rgba(249,115,22,0.04)', color: 'var(--primary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '3px', transition: 'all 0.15s' }}
             onMouseOver={e => { e.currentTarget.style.background = 'rgba(249,115,22,0.12)'; e.currentTarget.style.borderStyle = 'solid'; }}
             onMouseOut={e => { e.currentTarget.style.background = 'rgba(249,115,22,0.04)'; e.currentTarget.style.borderStyle = 'dashed'; }}>
-            <Plus size={11} /> Allocate
+            <Plus size={9} /> Assign
           </button>
         )}
       </div>
@@ -108,63 +180,78 @@ function BedCard({ bed, onAllocate, onPay, onPrint, onStudentClick, onUnpay }: {
   );
 }
 
-function PremiumRoomCard({ room, onRoomClick, onAllocate, onPay, onPrint, onStudentClick, onUnpay, isMobile, onOpenMobileBeds }: {
-  room: any; onRoomClick: () => void; onAllocate: (bed: any) => void; onPay: (bed: any) => void; onPrint: (bed: any) => void; onStudentClick: (bed: any) => void; onUnpay: (bed: any) => void; isMobile?: boolean; onOpenMobileBeds?: () => void;
+function PremiumRoomCard({ room, onRoomClick, onAllocate, onPay, onPrint, onStudentClick, onUnpay, onDeallocate, onTransfer, onOpenTransferModal, isMobile, onOpenMobileBeds }: {
+  room: any; onRoomClick: () => void; onAllocate: (bed: any) => void; onPay: (bed: any) => void; onPrint: (bed: any) => void; onStudentClick: (bed: any) => void; onUnpay: (bed: any) => void; onDeallocate: (bed: any) => void; onTransfer: (sourceBedId: string, targetBedId: string) => void; onOpenTransferModal?: (bed: any) => void; isMobile?: boolean; onOpenMobileBeds?: () => void;
 }) {
-  const paidCount = room.beds.filter((b: any) => b.status === 'occupied' && (b.feeStatus === 'Paid' || b.feeStatus === 'Completed')).length;
-  const pendingCount = room.beds.filter((b: any) => b.status === 'occupied' && b.feeStatus === 'Pending').length;
+  const sortedBeds = [...(room.beds || [])].sort((a: any, b: any) => (a.bedIndex || a.bedNumber || 0) - (b.bedIndex || b.bedNumber || 0));
+  const paidCount = sortedBeds.filter((b: any) => b.status === 'occupied' && (b.feeStatus === 'Paid' || b.feeStatus === 'Completed')).length;
+  const pendingCount = sortedBeds.filter((b: any) => b.status === 'occupied' && b.feeStatus === 'Pending').length;
+  const emptyCount = room.capacity - room.occupied;
   const occupancyPct = room.capacity > 0 ? Math.round((room.occupied / room.capacity) * 100) : 0;
 
-  const statusColor = room.status === 'available' ? 'var(--success)' : room.status === 'full' ? 'var(--danger)' : 'var(--warning)';
-  const statusLabel = room.status === 'available' ? 'Available' : room.status === 'full' ? 'Full' : 'Partial';
+  const statusColor = room.status === 'available' ? '#22c55e' : room.status === 'full' ? '#ef4444' : '#eab308';
 
   return (
-    <div className="glass-panel premium-room-card" style={{ padding: 0, overflow: 'hidden', transition: 'all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)' }}>
-      {/* Room header */}
-      <div style={{ padding: '1.25rem', borderBottom: '1px solid var(--border-dim)', cursor: 'pointer', background: 'rgba(255,255,255,0.02)' }}
-        onClick={() => {
-          if (isMobile && onOpenMobileBeds) onOpenMobileBeds();
-          else onRoomClick();
-        }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
-          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-            <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(255,255,255,0.04)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border-dim)' }}>
-              <Home size={20} color="var(--primary)" />
+    <div className="room-card-v2">
+      {/* Room header — compact */}
+      <div style={{
+        padding: '14px 16px 12px',
+        borderBottom: '1px solid rgba(255,255,255,0.05)',
+        cursor: isMobile ? 'pointer' : 'default'
+      }}
+        onClick={() => { if (isMobile && onOpenMobileBeds) onOpenMobileBeds(); }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{
+              width: 34, height: 34, borderRadius: 10,
+              background: `rgba(${room.status === 'available' ? '34,197,94' : room.status === 'full' ? '239,68,68' : '249,115,22'},0.08)`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              border: `1px solid ${statusColor}25`
+            }}>
+              <Home size={16} color={statusColor} />
             </div>
             <div>
-              <div style={{ fontWeight: 800, fontSize: '1.15rem', color: 'var(--text-main)', letterSpacing: -0.5 }}>{room.id}</div>
-              <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: 3 }}>Floor {room.floor} · {room.capacity} Bed Room</div>
+              <div style={{ fontWeight: 800, fontSize: '1.05rem', color: '#fff', letterSpacing: -0.3, lineHeight: 1 }}>{room.id}</div>
+              <div style={{ color: 'rgba(255,255,255,0.35)', fontSize: '0.68rem', marginTop: 3 }}>
+                Floor {room.floor} · {room.capacity}-bed
+              </div>
             </div>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '5px' }}>
-            <span style={{ fontSize: '0.68rem', fontWeight: 700, padding: '3px 10px', borderRadius: 20, background: `rgba(${room.status === 'available' ? '34,197,94' : room.status === 'full' ? '239,68,68' : '234,179,8'},0.12)`, color: statusColor, border: `1px solid ${statusColor}40` }}>
-              {statusLabel}
-            </span>
+          
+          {/* Clear, labeled status pills */}
+          <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+            {paidCount > 0 && <span style={{ fontSize: '0.62rem', fontWeight: 700, padding: '2px 8px', borderRadius: 10, background: 'rgba(34,197,94,0.14)', color: '#22c55e', border: '1px solid rgba(34,197,94,0.3)' }}>{paidCount} Paid</span>}
+            {pendingCount > 0 && <span style={{ fontSize: '0.62rem', fontWeight: 700, padding: '2px 8px', borderRadius: 10, background: 'rgba(234,179,8,0.14)', color: '#eab308', border: '1px solid rgba(234,179,8,0.3)' }}>{pendingCount} Due</span>}
+            {emptyCount > 0 && <span style={{ fontSize: '0.62rem', fontWeight: 600, padding: '2px 8px', borderRadius: 10, background: 'rgba(255,255,255,0.06)', color: 'var(--text-muted)', border: '1px solid rgba(255,255,255,0.08)' }}>{emptyCount} Vacant</span>}
           </div>
         </div>
 
-        {/* Occupancy bar */}
+        {/* Thin occupancy bar */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <div style={{ flex: 1, height: 4, background: 'rgba(255,255,255,0.08)', borderRadius: 4, overflow: 'hidden' }}>
-            <div style={{ height: '100%', width: `${occupancyPct}%`, background: statusColor, borderRadius: 4, transition: 'width 0.5s ease' }} />
+          <div style={{ flex: 1, height: 4, background: 'rgba(255,255,255,0.06)', borderRadius: 4, overflow: 'hidden' }}>
+            <div style={{ height: '100%', width: `${occupancyPct}%`, background: `linear-gradient(90deg, ${statusColor}, ${statusColor}99)`, borderRadius: 4, transition: 'width 0.5s ease' }} />
           </div>
-          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', flexShrink: 0 }}>{room.occupied}/{room.capacity}</div>
+          <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 700, minWidth: 28, textAlign: 'right' }}>{room.occupied}/{room.capacity}</span>
         </div>
-
-        {/* Fee mini summary */}
-        {room.occupied > 0 && (
-          <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
-            {paidCount > 0 && <span style={{ fontSize: '0.65rem', padding: '2px 8px', borderRadius: 12, background: 'rgba(34,197,94,0.12)', color: 'var(--success)', fontWeight: 700 }}>✓ {paidCount} Paid</span>}
-            {pendingCount > 0 && <span style={{ fontSize: '0.65rem', padding: '2px 8px', borderRadius: 12, background: 'rgba(234,179,8,0.12)', color: 'var(--warning)', fontWeight: 700 }}>⏳ {pendingCount} Pending</span>}
-          </div>
-        )}
       </div>
 
-      {/* Bed grid (inline — no modal needed for desktop) */}
+      {/* Bed rows — compact list sorted strictly 1..N */}
       {!isMobile && (
-        <div className={room.capacity <= 4 ? 'responsive-grid-2' : 'responsive-grid-3'} style={{ padding: '1rem', gap: '8px' }}>
-          {room.beds.map((bed: any) => (
-            <BedCard key={bed.id} bed={bed} onAllocate={() => onAllocate(bed)} onPay={() => onPay(bed)} onPrint={() => onPrint({ ...bed, roomId: room.id })} onStudentClick={() => onStudentClick(bed)} onUnpay={() => onUnpay(bed)} />
+        <div style={{ padding: '6px 8px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+          {sortedBeds.map((bed: any, idx: number) => (
+            <BedRow
+              key={bed.id || idx}
+              bed={{ ...bed, bedIndex: bed.bedIndex || idx + 1 }}
+              onAllocate={() => onAllocate(bed)}
+              onPay={() => onPay(bed)}
+              onPrint={() => onPrint({ ...bed, roomId: room.id })}
+              onStudentClick={() => onStudentClick(bed)}
+              onUnpay={() => onUnpay(bed)}
+              onDeallocate={() => onDeallocate(bed)}
+              onTransfer={onTransfer}
+              onOpenTransferModal={() => onOpenTransferModal && onOpenTransferModal(bed)}
+            />
           ))}
         </div>
       )}
@@ -384,7 +471,7 @@ function EditBuildingModal({
   onClose: () => void;
   onSuccess: () => void;
 }) {
-  const { showToast } = useToast();
+  const { showToast, confirmAction } = useToast();
   const [buildingName, setBuildingName] = useState(building ? building.name : '');
   const [saving, setSaving] = useState(false);
   const [isRenaming, setIsRenaming] = useState(false);
@@ -508,20 +595,27 @@ function EditBuildingModal({
     }
   };
 
-  const handleDeleteRoom = async (room: any) => {
-    if (!confirm(`Are you sure you want to delete Room ${room.id}?`)) return;
-    try {
-      const res = await fetch(`/api/rooms/${room.dbId}`, { method: 'DELETE' });
-      if (res.ok) {
-        showToast(`Room ${room.id} deleted`, 'success');
-        onSuccess();
-      } else {
-        const err = await res.json();
-        showToast(err.error || 'Failed to delete room', 'error');
+  const handleDeleteRoom = (room: any) => {
+    confirmAction({
+      title: 'Delete Room',
+      message: `Are you sure you want to delete Room ${room.id}? This will remove the room and all its beds.`,
+      confirmText: 'Delete Room',
+      variant: 'danger',
+      onConfirm: async () => {
+        try {
+          const res = await fetch(`/api/rooms/${room.dbId}`, { method: 'DELETE' });
+          if (res.ok) {
+            showToast(`Room ${room.id} deleted`, 'success');
+            onSuccess();
+          } else {
+            const err = await res.json();
+            showToast(err.error || 'Failed to delete room', 'error');
+          }
+        } catch (e: any) {
+          showToast('Error: ' + e.message, 'error');
+        }
       }
-    } catch (e: any) {
-      showToast('Error: ' + e.message, 'error');
-    }
+    });
   };
 
   const floorRooms = rooms.filter(r => r.floor === activeTabFloor);
@@ -885,8 +979,174 @@ function EditBuildingModal({
   );
 }
 
-export default function Rooms() {
+function TransferBedModal({
+  sourceBed,
+  rooms,
+  onClose,
+  onSuccess
+}: {
+  sourceBed: any;
+  rooms: any[];
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
   const { showToast } = useToast();
+  const [selectedTargetBedId, setSelectedTargetBedId] = useState<string>('');
+  const [transferring, setTransferring] = useState(false);
+
+  // Filters
+  const [filterFloor, setFilterFloor] = useState<string>('all');
+  const [filterStatus, setFilterStatus] = useState<string>('all');
+
+  // Find source room
+  const sourceRoom = rooms.find(r => (r.beds || []).some((b: any) => b.id === sourceBed.id));
+
+  // Collect all target beds except the source bed itself
+  const allTargetBeds: any[] = [];
+  rooms.forEach(r => {
+    (r.beds || []).forEach((b: any) => {
+      if (b.id !== sourceBed.id) {
+        allTargetBeds.push({
+          ...b,
+          roomNumber: r.id,
+          floor: r.floor
+        });
+      }
+    });
+  });
+
+  const availableFloors = Array.from(new Set(rooms.map(r => r.floor))).sort((a, b) =>
+    a.localeCompare(b, undefined, { numeric: true })
+  );
+
+  const handleConfirmTransfer = async () => {
+    if (!selectedTargetBedId) {
+      showToast('Please select a target bed', 'error');
+      return;
+    }
+    setTransferring(true);
+    try {
+      const res = await fetch('/api/beds/transfer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sourceBedId: sourceBed.id, targetBedId: selectedTargetBedId })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        showToast(data.message || 'Transfer completed successfully!', 'success');
+        onSuccess();
+        onClose();
+      } else {
+        const err = await res.json();
+        showToast(err.error || 'Failed to transfer bed', 'error');
+      }
+    } catch (e: any) {
+      showToast('Error: ' + e.message, 'error');
+    } finally {
+      setTransferring(false);
+    }
+  };
+
+  const filteredTargetBeds = allTargetBeds.filter(b => {
+    if (filterFloor !== 'all' && b.floor !== filterFloor) return false;
+    if (filterStatus === 'vacant' && b.status !== 'available') return false;
+    if (filterStatus === 'occupied' && b.status !== 'occupied') return false;
+    return true;
+  });
+
+  return (
+    <Modal isOpen onClose={onClose} title={`Move Resident: ${sourceBed.student}`}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+        {/* Source Bed Current Location */}
+        <div style={{ background: 'rgba(249,115,22,0.1)', border: '1px solid rgba(249,115,22,0.25)', padding: '12px 14px', borderRadius: 10, fontSize: '0.85rem' }}>
+          <div style={{ fontWeight: 700, color: 'var(--accent)', marginBottom: 4 }}>
+            Resident: {sourceBed.student}
+          </div>
+          <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+            Current Location: <strong>Floor {sourceRoom?.floor || '1st'} · Room {sourceRoom?.id || '—'} · Bed {sourceBed.bedIndex}</strong>
+          </div>
+        </div>
+
+        {/* Filters */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+          <div>
+            <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 4, display: 'block' }}>Filter Floor</label>
+            <select
+              className="custom-input"
+              value={filterFloor}
+              onChange={e => setFilterFloor(e.target.value)}
+              style={{ width: '100%', padding: '8px 10px', borderRadius: 8, fontSize: '0.82rem', background: 'rgba(0,0,0,0.4)', color: '#fff' }}
+            >
+              <option value="all">All Floors</option>
+              {availableFloors.map(f => (
+                <option key={f} value={f}>Floor {f}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 4, display: 'block' }}>Filter Status</label>
+            <select
+              className="custom-input"
+              value={filterStatus}
+              onChange={e => setFilterStatus(e.target.value)}
+              style={{ width: '100%', padding: '8px 10px', borderRadius: 8, fontSize: '0.82rem', background: 'rgba(0,0,0,0.4)', color: '#fff' }}
+            >
+              <option value="all">All Beds</option>
+              <option value="vacant">Vacant Beds Only</option>
+              <option value="occupied">Occupied (Swap Only)</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Target Bed Dropdown */}
+        <div>
+          <label style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: 8, display: 'block' }}>Select Target Room & Bed</label>
+          <select
+            className="custom-input"
+            value={selectedTargetBedId}
+            onChange={e => setSelectedTargetBedId(e.target.value)}
+            style={{ width: '100%', padding: '10px 12px', borderRadius: 10, background: 'rgba(0,0,0,0.4)', color: '#fff', fontSize: '0.88rem' }}
+          >
+            <option value="">-- Choose Target Bed --</option>
+            {availableFloors
+              .filter(f => filterFloor === 'all' || filterFloor === f)
+              .map(floor => {
+                const bedsOnFloor = filteredTargetBeds.filter(b => b.floor === floor);
+                if (bedsOnFloor.length === 0) return null;
+                const vacantOnFloor = bedsOnFloor.filter(b => b.status === 'available');
+                const occupiedOnFloor = bedsOnFloor.filter(b => b.status === 'occupied');
+
+                return (
+                  <optgroup key={floor} label={`Floor ${floor}`}>
+                    {vacantOnFloor.map(b => (
+                      <option key={b.id} value={b.id}>
+                        🟢 Floor {b.floor} · Room {b.roomNumber} · Bed {b.bedIndex} [VACANT]
+                      </option>
+                    ))}
+                    {occupiedOnFloor.map(b => (
+                      <option key={b.id} value={b.id}>
+                        🟡 Floor {b.floor} · Room {b.roomNumber} · Bed {b.bedIndex} [Swap with {b.student}]
+                      </option>
+                    ))}
+                  </optgroup>
+                );
+              })}
+          </select>
+        </div>
+
+        <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
+          <button className="secondary-btn" style={{ flex: 1, justifyContent: 'center' }} onClick={onClose}>Cancel</button>
+          <button className="primary-btn" style={{ flex: 1, justifyContent: 'center' }} onClick={handleConfirmTransfer} disabled={transferring || !selectedTargetBedId}>
+            {transferring ? 'Transferring...' : 'Confirm Move / Swap'}
+          </button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+export default function Rooms() {
+  const { showToast, confirmAction } = useToast();
   const { settings } = useSettings();
   const { selectedBuildingId, setSelectedBuildingId, fetchBuildings: refreshContextBuildings } = useBuilding();
   const monthlyFee = settings?.monthlyFee || 5500;
@@ -900,6 +1160,7 @@ export default function Rooms() {
   const [payingBed, setPayingBed] = useState<any>(null);
   const [viewingReceiptBed, setViewingReceiptBed] = useState<any>(null);
   const [viewingStudent, setViewingStudent] = useState<any>(null);
+  const [transferringSourceBed, setTransferringSourceBed] = useState<any>(null);
   const [showEditLayoutModal, setShowEditLayoutModal] = useState<boolean>(false);
   
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
@@ -922,18 +1183,21 @@ export default function Rooms() {
     } catch (e) { showToast('Failed to fetch buildings', 'error'); }
   };
 
-  const fetchRooms = useCallback(async (bId: string, month: string) => {
-    setLoading(true);
+  const fetchRooms = useCallback(async (bId: string, month: string, isSilent = false) => {
+    if (!isSilent) setLoading(true);
     try {
       const res = await fetch(`/api/rooms/${bId}?month=${month}`);
-      if (res.ok) setRooms(await res.json());
-    } catch (e) { console.error(e); } finally { setLoading(false); }
+      if (res.ok) {
+        const data = await res.json();
+        setRooms(data);
+      }
+    } catch (e) { console.error(e); } finally { if (!isSilent) setLoading(false); }
   }, []);
 
   useEffect(() => { fetchBuildings(); }, []);
 
   useEffect(() => {
-    fetchRooms(selectedBuildingId, selectedMonth);
+    fetchRooms(selectedBuildingId, selectedMonth, rooms.length > 0);
   }, [selectedBuildingId, selectedMonth, fetchRooms]);
 
   const activeBuilding = buildings.find(b => b.id === selectedBuildingId);
@@ -944,14 +1208,69 @@ export default function Rooms() {
   const floors = Array.from(new Set(rooms.map(r => r.floor))).sort();
   const filteredRooms = rooms.filter(r => r.id.toLowerCase().includes(search.toLowerCase()));
 
-  const handleRefresh = () => {
-    fetchRooms(selectedBuildingId, selectedMonth);
+  const handleRefresh = (silent = true) => {
+    fetchRooms(selectedBuildingId, selectedMonth, silent);
     fetchBuildings();
     refreshContextBuildings();
   };
 
+  useEffect(() => {
+    if (mobileBedsRoom) {
+      const updated = rooms.find(r => r.id === mobileBedsRoom.id);
+      if (updated) setMobileBedsRoom(updated);
+    }
+  }, [rooms]);
+
+  const handleDeallocateBed = (bed: any) => {
+    const studentName = bed.student || 'resident';
+    confirmAction({
+      title: 'Deallocate Resident',
+      message: `Are you sure you want to deallocate ${studentName} from this bed?`,
+      confirmText: 'Vacate Bed',
+      variant: 'danger',
+      onConfirm: async () => {
+        try {
+          const res = await fetch('/api/beds/deallocate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ bedId: bed.id })
+          });
+          if (res.ok) {
+            const data = await res.json();
+            showToast(data.message || `Deallocated ${studentName}!`, 'success');
+            handleRefresh();
+          } else {
+            const err = await res.json();
+            showToast(err.error || 'Failed to deallocate bed', 'error');
+          }
+        } catch (e: any) {
+          showToast('Error: ' + e.message, 'error');
+        }
+      }
+    });
+  };
+
+  const handleTransferBed = async (sourceBedId: string, targetBedId: string) => {
+    try {
+      const res = await fetch('/api/beds/transfer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sourceBedId, targetBedId })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        showToast(data.message || 'Bed transfer completed!', 'success');
+        handleRefresh();
+      } else {
+        const err = await res.json();
+        showToast(err.error || 'Failed to transfer bed', 'error');
+      }
+    } catch (e: any) {
+      showToast('Error: ' + e.message, 'error');
+    }
+  };
+
   const [selectedFloor, setSelectedFloor] = useState<string | null>(null);
-  const [isFloorsPinned, setIsFloorsPinned] = useState<boolean>(true);
 
   const formatFloorName = (f: string) => {
     if (!f) return 'Floor 1';
@@ -1006,20 +1325,6 @@ export default function Rooms() {
             </div>
           ))}
 
-          {/* Toggle Unpinned Floors Button if collapsed */}
-          {!isFloorsPinned && !isMobile && (
-            <button
-              onClick={() => setIsFloorsPinned(true)}
-              style={{
-                display: 'flex', alignItems: 'center', gap: '6px',
-                background: 'rgba(249,115,22,0.12)', border: '1px solid rgba(249,115,22,0.3)',
-                color: 'var(--primary)', padding: '6px 12px', borderRadius: 10,
-                fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s'
-              }}
-            >
-              <Layers3 size={14} /> Show Floors Panel (📌 Pin)
-            </button>
-          )}
 
           {/* Month selector */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(255,255,255,0.06)', border: '1px solid var(--border-dim)', borderRadius: 10, padding: '6px 12px' }}>
@@ -1097,17 +1402,27 @@ export default function Rooms() {
                           onPay={(bed) => setPayingBed(bed)}
                           onPrint={(bed) => setViewingReceiptBed(bed)}
                           onStudentClick={(bed) => setViewingStudent(bed)}
-                          onUnpay={async (bed) => {
-                            if (!confirm(`Are you sure you want to mark the fee for ${bed.student} as NOT PAID?`)) return;
-                            const studentId = bed.studentObj?.dbId || bed.studentDbId;
-                            if (!studentId) return showToast('Student not found', 'error');
-                            const res = await fetch('/api/fees/unpay', {
-                              method: 'POST', headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify({ studentId, month: selectedMonth })
+                          onUnpay={(bed) => {
+                            confirmAction({
+                              title: 'Undo Payment',
+                              message: `Are you sure you want to mark the fee for ${bed.student} as NOT PAID?`,
+                              confirmText: 'Mark Unpaid',
+                              variant: 'warning',
+                              onConfirm: async () => {
+                                const studentId = bed.studentObj?.dbId || bed.studentDbId;
+                                if (!studentId) return showToast('Student not found', 'error');
+                                const res = await fetch('/api/fees/unpay', {
+                                  method: 'POST', headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ studentId, month: selectedMonth })
+                                });
+                                if (res.ok) { showToast('Fee marked as unpaid', 'success'); handleRefresh(); }
+                                else { const err = await res.json(); showToast(err.error || 'Failed', 'error'); }
+                              }
                             });
-                            if (res.ok) { showToast('Fee marked as unpaid', 'success'); handleRefresh(); }
-                            else { const err = await res.json(); showToast(err.error || 'Failed', 'error'); }
                           }}
+                          onDeallocate={(bed) => handleDeallocateBed(bed)}
+                          onTransfer={(sourceBedId, targetBedId) => handleTransferBed(sourceBedId, targetBedId)}
+                          onOpenTransferModal={(bed) => setTransferringSourceBed(bed)}
                           isMobile={isMobile}
                           onOpenMobileBeds={() => setMobileBedsRoom(room)}
                         />
@@ -1136,14 +1451,21 @@ export default function Rooms() {
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
               {mobileBedsRoom.beds.map((bed: any) => (
-                <BedCard key={bed.id} bed={bed} onAllocate={() => setAllocatingBed(bed)} onPay={() => setPayingBed(bed)} onPrint={() => setViewingReceiptBed({ ...bed, roomId: mobileBedsRoom.id })} onStudentClick={() => setViewingStudent(bed)} onUnpay={async () => {
-                  if (!confirm(`Are you sure you want to mark the fee for ${bed.student} as NOT PAID?`)) return;
-                  const studentId = bed.studentObj?.dbId || bed.studentDbId;
-                  if (!studentId) return showToast('Student not found', 'error');
-                  const res = await fetch('/api/fees/unpay', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ studentId, month: selectedMonth }) });
-                  if (res.ok) { showToast('Fee marked as unpaid', 'success'); handleRefresh(); }
-                  else { const err = await res.json(); showToast(err.error || 'Failed', 'error'); }
-                }} />
+                <BedRow key={bed.id} bed={bed} onAllocate={() => setAllocatingBed(bed)} onPay={() => setPayingBed(bed)} onPrint={() => setViewingReceiptBed({ ...bed, roomId: mobileBedsRoom.id })} onStudentClick={() => setViewingStudent(bed)} onUnpay={() => {
+                  confirmAction({
+                    title: 'Undo Payment',
+                    message: `Are you sure you want to mark the fee for ${bed.student} as NOT PAID?`,
+                    confirmText: 'Mark Unpaid',
+                    variant: 'warning',
+                    onConfirm: async () => {
+                      const studentId = bed.studentObj?.dbId || bed.studentDbId;
+                      if (!studentId) return showToast('Student not found', 'error');
+                      const res = await fetch('/api/fees/unpay', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ studentId, month: selectedMonth }) });
+                      if (res.ok) { showToast('Fee marked as unpaid', 'success'); handleRefresh(); }
+                      else { const err = await res.json(); showToast(err.error || 'Failed', 'error'); }
+                    }
+                  });
+                }} onDeallocate={() => handleDeallocateBed(bed)} onTransfer={(sourceBedId, targetBedId) => handleTransferBed(sourceBedId, targetBedId)} onOpenTransferModal={() => setTransferringSourceBed(bed)} />
               ))}
             </div>
           </div>
@@ -1153,6 +1475,14 @@ export default function Rooms() {
       {allocatingBed && (
         <AllocateModal bed={allocatingBed}
           onClose={() => setAllocatingBed(null)} onSuccess={handleRefresh} />
+      )}
+      {transferringSourceBed && (
+        <TransferBedModal
+          sourceBed={transferringSourceBed}
+          rooms={rooms}
+          onClose={() => setTransferringSourceBed(null)}
+          onSuccess={handleRefresh}
+        />
       )}
       {payingBed && (
         <QuickPayModal bed={payingBed} selectedMonth={selectedMonth}
@@ -1212,7 +1542,19 @@ export default function Rooms() {
               </div>
             </div>
 
-            <button className="primary-btn" style={{ width: '100%', justifyContent: 'center', padding: '12px' }} onClick={() => setViewingStudent(null)}>Close</button>
+            <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
+              <button
+                className="secondary-btn"
+                style={{ flex: 1, justifyContent: 'center', padding: '12px', background: 'rgba(239,68,68,0.1)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.25)', fontWeight: 700, borderRadius: 10, cursor: 'pointer' }}
+                onClick={() => {
+                  handleDeallocateBed(viewingStudent);
+                  setViewingStudent(null);
+                }}
+              >
+                <UserX size={15} /> Deallocate Bed
+              </button>
+              <button className="primary-btn" style={{ flex: 1, justifyContent: 'center', padding: '12px' }} onClick={() => setViewingStudent(null)}>Close</button>
+            </div>
           </div>
         </Modal>
       )}
