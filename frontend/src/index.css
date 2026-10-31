@@ -1699,6 +1699,33 @@ select option[value=""],
     to { transform: translateY(0); }
   }
 
+  @keyframes modalTopSlideIn {
+    from {
+      opacity: 0;
+      transform: translateY(-20px) scale(0.98);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  .mobile-top-modal {
+    width: 100%;
+    max-width: 520px;
+    background: var(--modal-bg, #141721);
+    border: 1px solid var(--border-light);
+    border-radius: 20px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+    animation: modalTopSlideIn 0.25s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+  }
+
+  .light-theme .mobile-top-modal {
+    background: #ffffff;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.18);
+  }
+
   .hide-on-mobile {
     display: none !important;
   }

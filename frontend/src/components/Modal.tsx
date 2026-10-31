@@ -7,15 +7,43 @@ interface ModalProps {
   title: string;
   children: React.ReactNode;
   maxWidth?: string;
+  alignTopOnMobile?: boolean;
 }
 
-export default function Modal({ isOpen, onClose, title, children, maxWidth }: ModalProps) {
-  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+export default function Modal({ isOpen, onClose, title, children, maxWidth, alignTopOnMobile }: ModalProps) {
+  const [isMobile, setIsMobile] = useState(
+    typeof window !== 'undefined' ? window.innerWidth <= 768 : false
+  );
+  const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
+  const [viewportHeight, setViewportHeight] = useState(
+    typeof window !== 'undefined' ? window.innerHeight : 800
+  );
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth <= 768);
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Detect virtual keyboard on mobile via visualViewport resize
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.visualViewport) return;
+
+    const handleViewportChange = () => {
+      const vv = window.visualViewport;
+      if (!vv) return;
+      setViewportHeight(vv.height);
+      // When software keyboard opens, visualViewport height shrinks by > 120px
+      const keyboardActive = window.innerHeight - vv.height > 120;
+      setIsKeyboardOpen(keyboardActive);
+    };
+
+    window.visualViewport.addEventListener('resize', handleViewportChange);
+    window.visualViewport.addEventListener('scroll', handleViewportChange);
+    return () => {
+      window.visualViewport?.removeEventListener('resize', handleViewportChange);
+      window.visualViewport?.removeEventListener('scroll', handleViewportChange);
+    };
   }, []);
 
   // Lock body scroll when modal is open
@@ -35,6 +63,8 @@ export default function Modal({ isOpen, onClose, title, children, maxWidth }: Mo
 
   if (!isOpen) return null;
 
+  const shouldAlignTop = isMobile && (alignTopOnMobile || isKeyboardOpen);
+
   return (
     <div
       style={{
@@ -46,20 +76,38 @@ export default function Modal({ isOpen, onClose, title, children, maxWidth }: Mo
         backdropFilter: 'blur(8px)',
         WebkitBackdropFilter: 'blur(8px)',
         display: 'flex',
-        alignItems: isMobile ? 'flex-end' : 'center',
+        alignItems: shouldAlignTop ? 'flex-start' : (isMobile ? 'flex-end' : 'center'),
         justifyContent: 'center',
         zIndex: 2500,
         overflowY: 'auto',
         WebkitOverflowScrolling: 'touch',
-        padding: isMobile ? 0 : '1rem',
+        padding: shouldAlignTop
+          ? 'max(14px, env(safe-area-inset-top)) 12px max(14px, env(safe-area-inset-bottom))'
+          : (isMobile ? 0 : '1rem'),
         animation: 'fadeIn 0.2s ease'
       }}
       onClick={onClose}
     >
       <div
-        className={isMobile ? 'bottom-sheet' : 'glass-panel'}
+        className={shouldAlignTop ? 'mobile-top-modal' : (isMobile ? 'bottom-sheet' : 'glass-panel')}
         style={
-          isMobile
+          shouldAlignTop
+            ? {
+                padding: '16px 16px 20px',
+                width: '100%',
+                maxWidth: maxWidth || '520px',
+                maxHeight: isKeyboardOpen ? `${Math.max(260, viewportHeight - 24)}px` : '85dvh',
+                display: 'flex',
+                flexDirection: 'column',
+                overflow: 'hidden',
+                overscrollBehavior: 'contain',
+                touchAction: 'pan-y',
+                borderRadius: '20px',
+                border: '1px solid var(--border-light)',
+                background: 'var(--modal-bg, #141721)',
+                boxShadow: 'var(--modal-shadow, 0 20px 60px rgba(0,0,0,0.6))',
+              }
+            : isMobile
             ? {
                 padding: '18px 16px 24px',
                 width: '100%',
@@ -90,7 +138,7 @@ export default function Modal({ isOpen, onClose, title, children, maxWidth }: Mo
         }
         onClick={e => e.stopPropagation()}
       >
-        {isMobile && <div className="bottom-sheet-handle" />}
+        {isMobile && !shouldAlignTop && <div className="bottom-sheet-handle" />}
         <div
           style={{
             display: 'flex',

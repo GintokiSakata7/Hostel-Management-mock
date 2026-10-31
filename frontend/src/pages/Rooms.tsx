@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { Calendar, IndianRupee, BedDouble, Layers3, Search, Plus, Printer, Banknote, Smartphone, CheckCircle2, Phone, GraduationCap, User, XCircle, Home, Trash2, GripVertical, UserX, ArrowRightLeft, ChevronDown, ChevronRight, Check, ArrowRight } from 'lucide-react';
+import { Calendar, IndianRupee, BedDouble, Layers3, Search, Plus, Printer, Banknote, Smartphone, CheckCircle2, Phone, GraduationCap, User, XCircle, Home, Trash2, GripVertical, UserX, ArrowRightLeft, ChevronDown, ChevronRight, Check, ArrowRight, X } from 'lucide-react';
 import Modal from '../components/Modal';
 import { useToast } from '../components/ToastContext';
 import { PrintReceiptModal } from './Fees';
@@ -520,6 +520,7 @@ function AllocateModal({ bed, onClose, onSuccess }: { bed: any; onClose: () => v
   const [name, setName] = useState('');
   const [allStudents, setAllStudents] = useState<any[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const isMobile = typeof window !== 'undefined' ? window.innerWidth <= 768 : false;
 
   useEffect(() => {
     fetch('/api/students/names').then(r => r.json()).then(data => setAllStudents(data));
@@ -550,7 +551,7 @@ function AllocateModal({ bed, onClose, onSuccess }: { bed: any; onClose: () => v
     : allStudents;
 
   return (
-    <Modal isOpen onClose={onClose} title={`Allocate Bed ${bed.bedIndex}`}>
+    <Modal isOpen onClose={onClose} title={`Allocate Bed ${bed.bedIndex}`} alignTopOnMobile={true}>
       <form onSubmit={handleSubmit}>
         <div style={{ background: 'rgba(249,115,22,0.08)', border: '1px solid rgba(249,115,22,0.2)', borderRadius: 10, padding: '10px 14px', marginBottom: '1rem' }}>
           <span style={{ fontWeight: 700 }}>Bed {bed.bedIndex}</span>
@@ -558,36 +559,86 @@ function AllocateModal({ bed, onClose, onSuccess }: { bed: any; onClose: () => v
         </div>
 
         <div className="form-group" style={{ position: 'relative' }}>
-          <label>Student Name</label>
-          <input 
-            required 
-            className="custom-input" 
-            value={name} 
-            onChange={e => {
-              setName(e.target.value);
-              setShowSuggestions(true);
-            }} 
-            onFocus={() => setShowSuggestions(true)}
-            placeholder="Start typing student name (e.g. Rishi)…" 
-            autoComplete="off"
-          />
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+            <label style={{ margin: 0, fontWeight: 600 }}>Student Name</label>
+            {name && (
+              <button
+                type="button"
+                onClick={() => { setName(''); setShowSuggestions(true); }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--text-muted)',
+                  fontSize: '0.75rem',
+                  cursor: 'pointer',
+                  padding: '2px 6px',
+                  borderRadius: 4
+                }}
+              >
+                Clear
+              </button>
+            )}
+          </div>
+
+          <div style={{ position: 'relative' }}>
+            <input 
+              required 
+              className="custom-input" 
+              value={name} 
+              onChange={e => {
+                setName(e.target.value);
+                setShowSuggestions(true);
+              }} 
+              onFocus={() => setShowSuggestions(true)}
+              placeholder="Start typing student name (e.g. Rishi)…" 
+              autoComplete="off"
+              style={{ paddingRight: name ? '2.5rem' : '0.85rem' }}
+            />
+            {name && (
+              <button
+                type="button"
+                onClick={() => { setName(''); setShowSuggestions(false); }}
+                style={{
+                  position: 'absolute',
+                  right: 8,
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'rgba(255,255,255,0.1)',
+                  border: 'none',
+                  borderRadius: '50%',
+                  width: 22,
+                  height: 22,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'var(--text-muted)',
+                  cursor: 'pointer'
+                }}
+                title="Clear input"
+              >
+                <X size={12} />
+              </button>
+            )}
+          </div>
 
           {/* Real-time Autocomplete Suggestions Dropdown */}
           {showSuggestions && matchingSuggestions.length > 0 && (
             <div 
               style={{
-                position: 'absolute',
-                top: '100%',
+                position: isMobile ? 'relative' : 'absolute',
+                top: isMobile ? 'auto' : '100%',
                 left: 0,
                 right: 0,
                 zIndex: 100,
-                marginTop: 4,
-                background: 'var(--modal-bg)',
+                marginTop: isMobile ? 8 : 4,
+                marginBottom: isMobile ? 8 : 0,
+                background: 'var(--modal-bg, #141721)',
                 backdropFilter: 'blur(12px)',
                 border: '1px solid var(--border-light)',
                 borderRadius: 12,
-                maxHeight: 200,
+                maxHeight: isMobile ? 140 : 200,
                 overflowY: 'auto',
+                WebkitOverflowScrolling: 'touch',
                 boxShadow: 'var(--modal-shadow)',
                 padding: '4px'
               }}
