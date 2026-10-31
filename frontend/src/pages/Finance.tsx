@@ -5,7 +5,8 @@ import {
   CheckCircle2, XCircle, ArrowUpRight, ArrowDownRight,
   PieChart, BarChart3, Utensils, Zap, Wrench,
   Users, Building, Package, Sparkles, FileSpreadsheet,
-  ChevronDown, ChevronUp
+  ChevronDown, ChevronUp, ChevronLeft, ChevronRight,
+  ArrowRight, Clock
 } from 'lucide-react';
 import { useToast } from '../components/ToastContext';
 import { useSettings } from '../components/SettingsContext';
@@ -874,533 +875,91 @@ const Finance: React.FC = () => {
     }
   };
 
+  // Helper for navigating months
+  const goToPrevMonth = () => {
+    const [yr, mo] = selectedMonth.split('-').map(Number);
+    const d = new Date(yr, mo - 2, 1);
+    setSelectedMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+  };
+
+  const goToNextMonth = () => {
+    const [yr, mo] = selectedMonth.split('-').map(Number);
+    const d = new Date(yr, mo, 1);
+    setSelectedMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+  };
+
+  // Find latest active month if current has 0 records
+  const latestActiveMonth = useMemo(() => {
+    if (!summary?.monthlyTrends) return null;
+    const activeTrends = [...summary.monthlyTrends].reverse().find(t => (t.revenue > 0 || t.expense > 0));
+    return activeTrends || null;
+  }, [summary]);
+
+  // Max value for 6-month chart scaling
+  const maxTrendVal = useMemo(() => {
+    if (!summary?.monthlyTrends || summary.monthlyTrends.length === 0) return 100000;
+    const max = Math.max(...summary.monthlyTrends.map(t => Math.max(t.revenue, t.expense)));
+    return max > 0 ? max : 100000;
+  }, [summary]);
+
+  const totalRev = summary?.totalRevenue || 0;
+  const totalExp = summary?.totalExpense || 0;
+  const netProfit = summary?.netProfit !== undefined ? summary.netProfit : (totalRev - totalExp);
+  const profitMargin = summary?.profitMargin !== undefined ? summary.profitMargin : (totalRev > 0 ? Number(((totalRev - totalExp) / totalRev * 100).toFixed(1)) : 0);
+  const isCurrentMonthEmpty = totalRev === 0 && totalExp === 0;
+
   // Preset items across categories for 1-click quick add chips
   const ALL_PRESET_ITEMS = [
-    { title: 'Vegetables', cat: 'Kitchen & Groceries' },
-    { title: 'Non-Veg Groceries', cat: 'Kitchen & Groceries' },
-    { title: 'Rice & Flours', cat: 'Kitchen & Groceries' },
-    { title: 'Electricity Bill', cat: 'Utilities & Bills' },
-    { title: 'Wifi / Internet Charges', cat: 'Utilities & Bills' },
-    { title: 'Washing Machine Repair', cat: 'Maintenance & Repairs' },
-    { title: 'Hostel Building Rent', cat: 'Rent & Infra' },
-    { title: 'Worker Wages', cat: 'Staff & Wages' },
-    { title: 'Utensils Purchase', cat: 'Rent & Infra' },
-    { title: 'Drinking Water Cans', cat: 'Kitchen & Groceries' },
+    { title: 'Vegetables', cat: 'Kitchen & Groceries', icon: '🥬' },
+    { title: 'Meat & Poultry', cat: 'Kitchen & Groceries', icon: '🍗' },
+    { title: 'Rice & Flours', cat: 'Kitchen & Groceries', icon: '🍚' },
+    { title: 'Electricity Bill', cat: 'Utilities & Bills', icon: '⚡' },
+    { title: 'Wifi Internet', cat: 'Utilities & Bills', icon: '📶' },
+    { title: 'Appliance Repair', cat: 'Maintenance & Repairs', icon: '🔧' },
+    { title: 'Hostel Rent', cat: 'Rent & Infra', icon: '🏢' },
+    { title: 'Staff Wages', cat: 'Staff & Wages', icon: '👥' },
+    { title: 'Water Cans', cat: 'Kitchen & Groceries', icon: '💧' },
   ];
 
   return (
-    <div className="finance-page" style={{ padding: '4px 0', animation: 'fadeIn 0.4s ease' }}>
+    <div className="finance-page">
       
-      {/* ─── PAGE TOP HEADER & ACTIONS ────────────────────────────────────────────── */}
-      <div style={{
-        display: 'flex',
-        flexWrap: 'wrap',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        gap: '16px',
-        marginBottom: '24px',
-        background: 'rgba(255, 255, 255, 0.03)',
-        padding: '16px 20px',
-        borderRadius: '16px',
-        border: '1px solid var(--border-dim)',
-        backdropFilter: 'blur(12px)'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-          <div style={{
-            width: '46px',
-            height: '46px',
-            borderRadius: '12px',
-            background: 'linear-gradient(135deg, rgba(249, 115, 22, 0.2), rgba(245, 158, 11, 0.2))',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            border: '1px solid rgba(249, 115, 22, 0.3)',
-            color: 'var(--primary)'
-          }}>
-            <Wallet size={24} />
+      {/* ─── 1. EXECUTIVE HEADER & FISCAL NAVIGATOR ────────────────────────────── */}
+      <div className="finance-header-card">
+        <div className="finance-header-brand">
+          <div className="finance-brand-icon">
+            <Wallet size={26} />
           </div>
           <div>
-            <h1 style={{ margin: 0, fontSize: '1.45rem', fontWeight: 700, color: '#ffffff' }}>
-              Hostel Hisab-Kitab & Money Tracker
+            <h1 className="finance-brand-title">
+              Finance & Accounting Ledger
             </h1>
-            <p style={{ margin: '3px 0 0 0', fontSize: '0.85rem', color: 'rgba(255, 255, 255, 0.65)' }}>
-              Simple overview of student fee income, daily hostel expenses, and total monthly savings
+            <p className="finance-brand-subtitle">
+              Monitor student revenue collections, daily operating expenditures, and monthly profit margins
             </p>
           </div>
         </div>
 
-        {/* Action Controls */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '12px' }}>
+        {/* Action Controls & Fiscal Navigator */}
+        <div className="finance-header-actions">
+          {/* Fiscal Month Navigator */}
+          <div className="fiscal-navigator">
+            <button
+              onClick={goToPrevMonth}
+              className="fiscal-nav-btn"
+              title="Previous Month"
+            >
+              <ChevronLeft size={16} />
+            </button>
 
-
-          {/* Add Single Expense Button */}
-          <button
-            onClick={() => openSingleCreate()}
-            style={{
-              background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
-              color: '#fff',
-              fontWeight: 700,
-              padding: '9px 16px',
-              borderRadius: '10px',
-              border: 'none',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              boxShadow: '0 4px 14px rgba(34, 197, 94, 0.35)',
-              fontSize: '0.9rem',
-              transition: 'all 0.2s ease'
-            }}
-          >
-            <Plus size={18} />
-            <span>+ Add Expense</span>
-          </button>
-
-          {/* Multi-Row Spreadsheet Quick Entry CTA */}
-          <button
-            onClick={() => setIsBulkModalOpen(true)}
-            style={{
-              background: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)',
-              color: '#fff',
-              fontWeight: 700,
-              padding: '9px 16px',
-              borderRadius: '10px',
-              border: 'none',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              boxShadow: '0 4px 14px rgba(249, 115, 22, 0.35)',
-              fontSize: '0.9rem',
-              transition: 'all 0.2s ease'
-            }}
-          >
-            <FileSpreadsheet size={18} />
-            <span>⚡ Fast Multi-Add</span>
-          </button>
-
-          {/* Download Mart-Style PDF Report */}
-          <button
-            onClick={() => setIsReportModalOpen(true)}
-            title="Download & Print Detailed Customized PDF Financial Statement"
-            style={{
-              background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
-              color: '#ffffff',
-              padding: '9px 16px',
-              borderRadius: '10px',
-              border: 'none',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '0.88rem',
-              fontWeight: 700,
-              gap: '7px',
-              boxShadow: '0 4px 14px rgba(37, 99, 235, 0.35)',
-              transition: 'all 0.2s ease'
-            }}
-          >
-            <Download size={18} />
-            <span>Download PDF Statement</span>
-          </button>
-        </div>
-      </div>
-
-      {/* ─── 1-CLICK COMMON EXPENSES QUICK RIBBON ────────────────────────────────────── */}
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: '10px',
-        overflowX: 'auto',
-        paddingBottom: '12px',
-        marginBottom: '24px',
-        scrollbarWidth: 'none'
-      }}>
-        <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'rgba(255, 255, 255, 0.7)', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <Sparkles size={15} color="#f59e0b" /> 1-Click Common Expense Pickers:
-        </span>
-        {ALL_PRESET_ITEMS.map((item, idx) => (
-          <button
-            key={idx}
-            onClick={() => openSingleCreate(item.title, item.cat)}
-            style={{
-              background: 'rgba(255, 255, 255, 0.05)',
-              border: '1px solid rgba(255, 255, 255, 0.12)',
-              borderRadius: '20px',
-              padding: '6px 14px',
-              color: '#ffffff',
-              fontSize: '0.82rem',
-              fontWeight: 600,
-              cursor: 'pointer',
-              whiteSpace: 'nowrap',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              transition: 'all 0.2s ease'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = 'rgba(249, 115, 22, 0.2)';
-              e.currentTarget.style.borderColor = 'rgba(249, 115, 22, 0.5)';
-              e.currentTarget.style.transform = 'translateY(-1px)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
-              e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.12)';
-              e.currentTarget.style.transform = 'none';
-            }}
-          >
-            <Plus size={13} color="#f97316" />
-            <span>{item.title}</span>
-          </button>
-        ))}
-      </div>
-
-      {/* ─── SUMMARY CARDS (PLAIN ENGLISH & EASY TO READ) ─────────────────────────── */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(auto-fit, minmax(230px, 1fr))',
-        gap: isMobile ? '10px' : '16px',
-        marginBottom: isMobile ? '18px' : '28px'
-      }}>
-        {/* Total Income */}
-        <div style={{
-          padding: isMobile ? '14px 12px' : '22px',
-          borderRadius: isMobile ? '14px' : '20px',
-          background: 'linear-gradient(145deg, rgba(34, 197, 94, 0.1) 0%, rgba(22, 163, 74, 0.03) 100%)',
-          border: '1px solid rgba(34, 197, 94, 0.3)',
-          position: 'relative',
-          overflow: 'hidden',
-          boxShadow: '0 8px 24px rgba(0,0,0,0.2)'
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: isMobile ? '6px' : '10px' }}>
-            <span style={{ fontSize: isMobile ? '0.78rem' : '0.88rem', fontWeight: 700, color: 'rgba(255, 255, 255, 0.8)' }}>
-              {isMobile ? 'Income' : 'Total Income (Kamai)'}
-            </span>
-            <div style={{ width: isMobile ? '32px' : '40px', height: isMobile ? '32px' : '40px', borderRadius: '10px', background: 'rgba(34, 197, 94, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#22c55e' }}>
-              <TrendingUp size={isMobile ? 18 : 22} />
-            </div>
-          </div>
-          <div style={{ fontSize: isMobile ? '1.35rem' : '2rem', fontWeight: 800, color: '#22c55e', letterSpacing: '-0.5px' }}>
-            ₹{(summary?.totalRevenue || 0).toLocaleString('en-IN')}
-          </div>
-          {!isMobile && (
-            <div style={{ fontSize: '0.78rem', color: 'rgba(255, 255, 255, 0.6)', marginTop: '8px', display: 'flex', alignItems: 'center', gap: '5px' }}>
-              <CheckCircle2 size={14} color="#22c55e" />
-              <span>Total student fee payments collected</span>
-            </div>
-          )}
-        </div>
-
-        {/* Total Expenses */}
-        <div style={{
-          padding: isMobile ? '14px 12px' : '22px',
-          borderRadius: isMobile ? '14px' : '20px',
-          background: 'linear-gradient(145deg, rgba(239, 68, 68, 0.1) 0%, rgba(220, 38, 38, 0.03) 100%)',
-          border: '1px solid rgba(239, 68, 68, 0.3)',
-          position: 'relative',
-          overflow: 'hidden',
-          boxShadow: '0 8px 24px rgba(0,0,0,0.2)'
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: isMobile ? '6px' : '10px' }}>
-            <span style={{ fontSize: isMobile ? '0.78rem' : '0.88rem', fontWeight: 700, color: 'rgba(255, 255, 255, 0.8)' }}>
-              {isMobile ? 'Expenses' : 'Total Kharcha (Expenses)'}
-            </span>
-            <div style={{ width: isMobile ? '32px' : '40px', height: isMobile ? '32px' : '40px', borderRadius: '10px', background: 'rgba(239, 68, 68, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ef4444' }}>
-              <TrendingDown size={isMobile ? 18 : 22} />
-            </div>
-          </div>
-          <div style={{ fontSize: isMobile ? '1.35rem' : '2rem', fontWeight: 800, color: '#ef4444', letterSpacing: '-0.5px' }}>
-            ₹{(summary?.totalExpense || 0).toLocaleString('en-IN')}
-          </div>
-          {!isMobile && (
-            <div style={{ fontSize: '0.78rem', color: 'rgba(255, 255, 255, 0.6)', marginTop: '8px' }}>
-              <span>{summary?.expenseCount || 0} expense entries recorded</span>
-            </div>
-          )}
-        </div>
-
-        {/* Net Savings / Profit */}
-        <div style={{
-          padding: isMobile ? '14px 12px' : '22px',
-          borderRadius: isMobile ? '14px' : '20px',
-          background: (summary?.netProfit || 0) >= 0 ? 'linear-gradient(145deg, rgba(59, 130, 246, 0.1) 0%, rgba(37, 99, 235, 0.03) 100%)' : 'linear-gradient(145deg, rgba(239, 68, 68, 0.12) 0%, rgba(220, 38, 38, 0.03) 100%)',
-          border: `1px solid ${(summary?.netProfit || 0) >= 0 ? 'rgba(59, 130, 246, 0.3)' : 'rgba(239, 68, 68, 0.4)'}`,
-          position: 'relative',
-          overflow: 'hidden',
-          boxShadow: '0 8px 24px rgba(0,0,0,0.2)'
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: isMobile ? '6px' : '10px' }}>
-            <span style={{ fontSize: isMobile ? '0.78rem' : '0.88rem', fontWeight: 700, color: 'rgba(255, 255, 255, 0.8)' }}>
-              {isMobile ? 'Net Savings' : 'Net Savings (Money Left)'}
-            </span>
-            <div style={{
-              width: isMobile ? '32px' : '40px', height: isMobile ? '32px' : '40px', borderRadius: '10px',
-              background: (summary?.netProfit || 0) >= 0 ? 'rgba(59, 130, 246, 0.2)' : 'rgba(239, 68, 68, 0.2)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              color: (summary?.netProfit || 0) >= 0 ? '#3b82f6' : '#ef4444'
-            }}>
-              {(summary?.netProfit || 0) >= 0 ? <ArrowUpRight size={isMobile ? 18 : 22} /> : <ArrowDownRight size={isMobile ? 18 : 22} />}
-            </div>
-          </div>
-          <div style={{
-            fontSize: isMobile ? '1.35rem' : '2rem',
-            fontWeight: 800,
-            color: (summary?.netProfit || 0) >= 0 ? '#3b82f6' : '#ef4444',
-            letterSpacing: '-0.5px'
-          }}>
-            ₹{(summary?.netProfit || 0).toLocaleString('en-IN')}
-          </div>
-          {!isMobile && (
-            <div style={{ fontSize: '0.78rem', color: 'rgba(255, 255, 255, 0.6)', marginTop: '8px' }}>
-              <span>Income left after paying all expenses</span>
-            </div>
-          )}
-        </div>
-
-        {/* Profit Margin % */}
-        <div style={{
-          padding: isMobile ? '14px 12px' : '22px',
-          borderRadius: isMobile ? '14px' : '20px',
-          background: 'linear-gradient(145deg, rgba(245, 158, 11, 0.1) 0%, rgba(217, 119, 6, 0.03) 100%)',
-          border: '1px solid rgba(245, 158, 11, 0.3)',
-          position: 'relative',
-          overflow: 'hidden',
-          boxShadow: '0 8px 24px rgba(0,0,0,0.2)'
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: isMobile ? '6px' : '10px' }}>
-            <span style={{ fontSize: isMobile ? '0.78rem' : '0.88rem', fontWeight: 700, color: 'rgba(255, 255, 255, 0.8)' }}>
-              {isMobile ? 'Margin %' : 'Profit Savings Share'}
-            </span>
-            <div style={{ width: isMobile ? '32px' : '40px', height: isMobile ? '32px' : '40px', borderRadius: '10px', background: 'rgba(245, 158, 11, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#f59e0b' }}>
-              <PieChart size={isMobile ? 18 : 22} />
-            </div>
-          </div>
-          <div style={{ fontSize: isMobile ? '1.35rem' : '2rem', fontWeight: 800, color: '#f59e0b', letterSpacing: '-0.5px' }}>
-            {summary?.profitMargin || 0}%
-          </div>
-          {/* Progress Bar */}
-          <div style={{ width: '100%', height: isMobile ? '6px' : '8px', background: 'rgba(255, 255, 255, 0.12)', borderRadius: '4px', marginTop: isMobile ? '8px' : '12px', overflow: 'hidden' }}>
-            <div style={{
-              width: `${Math.max(0, Math.min(100, summary?.profitMargin || 0))}%`,
-              height: '100%',
-              background: 'linear-gradient(90deg, #f59e0b, #22c55e)',
-              borderRadius: '4px',
-              transition: 'width 0.5s ease'
-            }} />
-          </div>
-        </div>
-      </div>
-
-
-      {/* ─── EXECUTIVE FINANCIAL OVERVIEW (6-MONTH AUDIT) ─────────────────── */}
-      <div style={{
-        marginBottom: '28px'
-      }}>
-        {/* 6-Month Income vs Expense Trend Table */}
-        <div className="glass-card" style={{ padding: '22px', borderRadius: '18px', border: '1px solid var(--border-dim)' }}>
-          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '12px', marginBottom: '18px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <BarChart3 size={20} color="var(--accent)" />
-              <h3 style={{ margin: 0, fontSize: '1.08rem', fontWeight: 700, color: '#ffffff' }}>6-Month Profit & Loss Audit</h3>
-            </div>
-            
-            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '14px' }}>
-              {/* Direct Month & Year Filter Dropdown */}
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                background: 'rgba(255, 255, 255, 0.05)',
-                border: '1px solid rgba(249, 115, 22, 0.35)',
-                padding: '5px 12px',
-                borderRadius: '10px'
-              }}>
-                <Calendar size={15} color="#f97316" />
-                <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'rgba(255, 255, 255, 0.75)' }}>Audit Month:</span>
-                <select
-                  value={selectedMonth.split('-')[1] || '09'}
-                  onChange={(e) => {
-                    const yr = selectedMonth.split('-')[0] || '2026';
-                    setSelectedMonth(`${yr}-${e.target.value}`);
-                  }}
-                  style={{
-                    background: '#1e293b',
-                    color: '#ffffff',
-                    border: '1px solid rgba(255, 255, 255, 0.15)',
-                    borderRadius: '6px',
-                    padding: '3px 6px',
-                    fontSize: '0.84rem',
-                    fontWeight: 700,
-                    outline: 'none',
-                    cursor: 'pointer'
-                  }}
-                >
-                  {MONTH_LIST.map(m => (
-                    <option key={m.value} value={m.value}>
-                      {m.label}
-                    </option>
-                  ))}
-                </select>
-
-                <select
-                  value={selectedMonth.split('-')[0] || '2026'}
-                  onChange={(e) => {
-                    const mo = selectedMonth.split('-')[1] || '09';
-                    setSelectedMonth(`${e.target.value}-${mo}`);
-                  }}
-                  style={{
-                    background: '#1e293b',
-                    color: '#ffffff',
-                    border: '1px solid rgba(255, 255, 255, 0.15)',
-                    borderRadius: '6px',
-                    padding: '3px 6px',
-                    fontSize: '0.84rem',
-                    fontWeight: 700,
-                    outline: 'none',
-                    cursor: 'pointer'
-                  }}
-                >
-                  {YEAR_LIST.map(y => (
-                    <option key={y} value={y}>
-                      {y}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <button
-                onClick={() => setIsHistoryExpanded(!isHistoryExpanded)}
-                style={{
-                  background: isHistoryExpanded ? 'rgba(249, 115, 22, 0.2)' : 'rgba(255, 255, 255, 0.05)',
-                  border: isHistoryExpanded ? '1px solid rgba(249, 115, 22, 0.5)' : '1px solid rgba(255, 255, 255, 0.15)',
-                  borderRadius: '8px',
-                  padding: '4px 10px',
-                  color: '#ffffff',
-                  fontSize: '0.78rem',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  transition: 'all 0.2s ease'
-                }}
-              >
-                <span>{isHistoryExpanded ? 'Hide History' : '6-Month History'}</span>
-                {isHistoryExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-              </button>
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '0.78rem', fontWeight: 600 }}>
-                <span style={{ color: '#22c55e' }}>● Income</span>
-                <span style={{ color: '#ef4444' }}>● Kharcha</span>
-              </div>
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {((isHistoryExpanded 
-              ? (summary?.monthlyTrends || [])
-              : (summary?.monthlyTrends || []).filter(t => t.month === selectedMonth)
-            ).length === 0 ? [{
-              month: selectedMonth,
-              label: summary?.monthLabel || 'Selected Month',
-              revenue: summary?.totalRevenue || 0,
-              expense: summary?.totalExpense || 0,
-              profit: summary?.netProfit || 0
-            }] : (isHistoryExpanded 
-              ? (summary?.monthlyTrends || [])
-              : (summary?.monthlyTrends || []).filter(t => t.month === selectedMonth)
-            )).map((t, idx) => (
-              <div
-                key={idx}
-                onClick={() => setSelectedMonth(t.month)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '10px 14px',
-                  borderRadius: '10px',
-                  background: t.month === selectedMonth ? 'rgba(249, 115, 22, 0.15)' : 'rgba(255, 255, 255, 0.02)',
-                  border: t.month === selectedMonth ? '1px solid rgba(249, 115, 22, 0.4)' : '1px solid rgba(255, 255, 255, 0.05)',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease'
-                }}
-                title={`Click to view financial summary for ${t.label}`}
-              >
-                <div>
-                  <div style={{ fontSize: '0.88rem', fontWeight: 700, color: t.month === selectedMonth ? 'var(--primary)' : '#ffffff' }}>
-                    {t.label}
-                  </div>
-                  <div style={{ fontSize: '0.75rem', color: 'rgba(255, 255, 255, 0.5)' }}>
-                    Rev: ₹{t.revenue.toLocaleString('en-IN')} · Exp: ₹{t.expense.toLocaleString('en-IN')}
-                  </div>
-                </div>
-
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{
-                    fontSize: '0.85rem',
-                    fontWeight: 800,
-                    color: t.profit >= 0 ? '#22c55e' : '#ef4444',
-                    background: t.profit >= 0 ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)',
-                    padding: '3px 10px',
-                    borderRadius: '8px',
-                    display: 'inline-block'
-                  }}>
-                    {t.profit >= 0 ? '+' : ''}₹{t.profit.toLocaleString('en-IN')}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* ─── CATEGORY & FILTER NAVIGATION BAR (BELOW MAIN SECTION) ─────────────────── */}
-      <div className="glass-card" style={{
-        padding: '20px 24px',
-        borderRadius: '20px',
-        border: '1px solid var(--border-dim)',
-        marginBottom: '24px',
-        background: 'linear-gradient(145deg, rgba(24, 27, 36, 0.8) 0%, rgba(17, 19, 25, 0.9) 100%)'
-      }}>
-        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '16px', marginBottom: '16px' }}>
-          <div>
-            <h2 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 700, color: '#ffffff', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Filter size={18} color="var(--primary)" /> Category Filter & Quick Actions
-            </h2>
-            <p style={{ margin: '2px 0 0 0', fontSize: '0.8rem', color: 'rgba(255, 255, 255, 0.6)' }}>
-              Select category pill or search to filter transactions below
-            </p>
-          </div>
-
-          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '12px' }}>
-            {/* Month & Year Filter Selector */}
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              background: '#1a1c24',
-              borderRadius: '12px',
-              border: '1px solid rgba(249, 115, 22, 0.4)',
-              padding: '6px 12px'
-            }}>
-              <Calendar size={15} color="#f97316" />
-              <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'rgba(255, 255, 255, 0.75)' }}>Month:</span>
+            <div className="fiscal-current-label">
+              <Calendar size={14} color="var(--primary)" />
               <select
+                className="fiscal-select"
                 value={selectedMonth.split('-')[1] || '09'}
                 onChange={(e) => {
                   const yr = selectedMonth.split('-')[0] || '2026';
                   setSelectedMonth(`${yr}-${e.target.value}`);
-                }}
-                style={{
-                  background: '#0f172a',
-                  color: '#ffffff',
-                  border: '1px solid rgba(255, 255, 255, 0.2)',
-                  borderRadius: '6px',
-                  padding: '4px 8px',
-                  fontSize: '0.85rem',
-                  fontWeight: 700,
-                  outline: 'none',
-                  cursor: 'pointer'
                 }}
               >
                 {MONTH_LIST.map(m => (
@@ -1411,21 +970,11 @@ const Finance: React.FC = () => {
               </select>
 
               <select
+                className="fiscal-select"
                 value={selectedMonth.split('-')[0] || '2026'}
                 onChange={(e) => {
                   const mo = selectedMonth.split('-')[1] || '09';
                   setSelectedMonth(`${e.target.value}-${mo}`);
-                }}
-                style={{
-                  background: '#0f172a',
-                  color: '#ffffff',
-                  border: '1px solid rgba(255, 255, 255, 0.2)',
-                  borderRadius: '6px',
-                  padding: '4px 8px',
-                  fontSize: '0.85rem',
-                  fontWeight: 700,
-                  outline: 'none',
-                  cursor: 'pointer'
                 }}
               >
                 {YEAR_LIST.map(y => (
@@ -1436,88 +985,431 @@ const Finance: React.FC = () => {
               </select>
             </div>
 
+            <button
+              onClick={goToNextMonth}
+              className="fiscal-nav-btn"
+              title="Next Month"
+            >
+              <ChevronRight size={16} />
+            </button>
+          </div>
+
+          {/* Add Single Expense */}
+          <button
+            onClick={() => openSingleCreate()}
+            className="btn-finance-primary"
+            id="btn-add-single-expense"
+          >
+            <Plus size={16} />
+            <span>Record Expense</span>
+          </button>
+
+          {/* Multi-Row Spreadsheet Quick Entry */}
+          <button
+            onClick={() => setIsBulkModalOpen(true)}
+            className="btn-finance-secondary"
+            id="btn-fast-multi-add"
+          >
+            <FileSpreadsheet size={16} />
+            <span>Fast Multi-Add</span>
+          </button>
+
+          {/* Download Statement */}
+          <button
+            onClick={() => setIsReportModalOpen(true)}
+            className="btn-finance-report"
+            id="btn-download-pdf-statement"
+            title="Download & Print Detailed Customized PDF Financial Statement"
+          >
+            <Download size={16} />
+            <span>Statement</span>
+          </button>
+        </div>
+      </div>
+
+      {/* ─── EMPTY CURRENT MONTH HELPER BANNER ───────────────────────────────── */}
+      {isCurrentMonthEmpty && latestActiveMonth && latestActiveMonth.month !== selectedMonth && (
+        <div className="finance-jump-banner">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Sparkles size={16} color="var(--primary)" />
+            <span style={{ fontSize: '0.84rem', color: 'var(--text-main)', fontWeight: 500 }}>
+              Viewing {summary?.monthLabel || selectedMonth} (no recorded expenses yet). Latest active hisab-kitab is in <strong>{latestActiveMonth.label}</strong>.
+            </span>
+          </div>
+          <button
+            onClick={() => setSelectedMonth(latestActiveMonth.month)}
+            className="finance-jump-btn"
+          >
+            <span>Jump to {latestActiveMonth.label} (₹{latestActiveMonth.revenue.toLocaleString('en-IN')})</span>
+            <ArrowRight size={14} />
+          </button>
+        </div>
+      )}
+
+      {/* ─── 2. EXECUTIVE FINANCIAL HUD (4 CARDS) ────────────────────────────── */}
+      <div className="finance-hud-grid">
+        {/* Net Savings / Free Cashflow (Hero Highlight) */}
+        <div className={`finance-kpi-card hero-net ${netProfit < 0 ? 'negative' : ''}`}>
+          <div className="finance-kpi-header">
+            <span className="finance-kpi-label">Net Free Cashflow</span>
+            <div
+              className="finance-kpi-badge"
+              style={{
+                background: netProfit >= 0 ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)',
+                color: netProfit >= 0 ? '#10b981' : '#ef4444'
+              }}
+            >
+              {netProfit >= 0 ? <ArrowUpRight size={20} /> : <ArrowDownRight size={20} />}
+            </div>
+          </div>
+          <div
+            className="finance-kpi-value"
+            style={{ color: netProfit >= 0 ? '#10b981' : '#ef4444' }}
+          >
+            {netProfit >= 0 ? '+' : ''}₹{netProfit.toLocaleString('en-IN')}
+          </div>
+          <div className="finance-kpi-footer">
+            <span style={{
+              background: netProfit >= 0 ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)',
+              color: netProfit >= 0 ? '#10b981' : '#ef4444',
+              padding: '2px 8px',
+              borderRadius: '6px',
+              fontWeight: 800,
+              fontSize: '0.74rem'
+            }}>
+              {profitMargin}% Margin
+            </span>
+            <span>Retained surplus cash</span>
+          </div>
+        </div>
+
+        {/* Total Fee Income */}
+        <div className="finance-kpi-card income-card">
+          <div className="finance-kpi-header">
+            <span className="finance-kpi-label">Collected Income</span>
+            <div className="finance-kpi-badge" style={{ background: 'rgba(59, 130, 246, 0.2)', color: '#3b82f6' }}>
+              <TrendingUp size={20} />
+            </div>
+          </div>
+          <div className="finance-kpi-value" style={{ color: '#3b82f6' }}>
+            ₹{totalRev.toLocaleString('en-IN')}
+          </div>
+          <div className="finance-kpi-footer">
+            <CheckCircle2 size={13} color="#3b82f6" />
+            <span>Student fee payments received</span>
+          </div>
+        </div>
+
+        {/* Total Operating Expenses */}
+        <div className="finance-kpi-card expense-card">
+          <div className="finance-kpi-header">
+            <span className="finance-kpi-label">Operating Expenses</span>
+            <div className="finance-kpi-badge" style={{ background: 'rgba(239, 68, 68, 0.2)', color: '#ef4444' }}>
+              <TrendingDown size={20} />
+            </div>
+          </div>
+          <div className="finance-kpi-value" style={{ color: '#ef4444' }}>
+            ₹{totalExp.toLocaleString('en-IN')}
+          </div>
+          <div className="finance-kpi-footer">
+            <span>{summary?.expenseCount ?? expenses.length} expense transactions billed</span>
+          </div>
+        </div>
+
+        {/* Margin & Cost Efficiency Gauge */}
+        <div className="finance-kpi-card margin-card">
+          <div className="finance-kpi-header">
+            <span className="finance-kpi-label">Cost Burn Efficiency</span>
+            <div className="finance-kpi-badge" style={{ background: 'rgba(245, 158, 11, 0.2)', color: '#f59e0b' }}>
+              <PieChart size={20} />
+            </div>
+          </div>
+          <div className="finance-kpi-value" style={{ color: '#f59e0b' }}>
+            {totalRev > 0 ? (100 - profitMargin).toFixed(1) : 0}%
+          </div>
+          <div style={{
+            width: '100%',
+            height: '6px',
+            background: 'rgba(255, 255, 255, 0.1)',
+            borderRadius: '4px',
+            marginTop: '8px',
+            overflow: 'hidden',
+            display: 'flex'
+          }}>
+            <div
+              style={{
+                width: `${Math.min(100, Math.max(0, totalRev > 0 ? (totalExp / totalRev) * 100 : 0))}%`,
+                height: '100%',
+                background: '#ef4444',
+                transition: 'width 0.4s ease'
+              }}
+              title="Operating Expenses"
+            />
+            <div
+              style={{
+                width: `${Math.min(100, Math.max(0, profitMargin))}%`,
+                height: '100%',
+                background: '#10b981',
+                transition: 'width 0.4s ease'
+              }}
+              title="Net Profit"
+            />
+          </div>
+          <div className="finance-kpi-footer" style={{ justifyContent: 'space-between' }}>
+            <span style={{ color: '#ef4444' }}>● Cost: ₹{totalExp.toLocaleString('en-IN')}</span>
+            <span style={{ color: '#10b981' }}>● Profit: ₹{netProfit.toLocaleString('en-IN')}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* ─── 3. TWO-COLUMN ANALYTICS SECTION ─────────────────────────────────── */}
+      <div className="finance-analytics-grid">
+        {/* Left: 6-Month Cashflow & Profit Trends */}
+        <div className="finance-chart-card">
+          <div className="finance-card-title-row">
+            <h3 className="finance-card-title">
+              <BarChart3 size={19} color="var(--primary)" />
+              <span>6-Month Comparative Cashflow Trends</span>
+            </h3>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '0.76rem', fontWeight: 700 }}>
+              <span style={{ color: '#10b981', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981' }}></span>
+                Revenue
+              </span>
+              <span style={{ color: '#f97316', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#f97316' }}></span>
+                Expense
+              </span>
+            </div>
+          </div>
+
+          <div className="finance-trend-columns">
+            {(summary?.monthlyTrends || []).map((t) => {
+              const revHeight = Math.min(100, Math.max(4, Math.round((t.revenue / maxTrendVal) * 100)));
+              const expHeight = Math.min(100, Math.max(4, Math.round((t.expense / maxTrendVal) * 100)));
+              const isSelected = t.month === selectedMonth;
+
+              return (
+                <div
+                  key={t.month}
+                  onClick={() => setSelectedMonth(t.month)}
+                  className={`finance-trend-col ${isSelected ? 'active' : ''}`}
+                  title={`${t.label}: Revenue ₹${t.revenue.toLocaleString('en-IN')}, Expense ₹${t.expense.toLocaleString('en-IN')}, Net ${t.profit >= 0 ? '+' : ''}₹${t.profit.toLocaleString('en-IN')}`}
+                >
+                  <div className="finance-bar-duo">
+                    <div
+                      className="finance-bar-rev"
+                      style={{ height: `${revHeight}%` }}
+                    />
+                    <div
+                      className="finance-bar-exp"
+                      style={{ height: `${expHeight}%` }}
+                    />
+                  </div>
+                  <div className="finance-trend-month-label">
+                    {t.label}
+                  </div>
+                  <div
+                    className="finance-trend-profit-tag"
+                    style={{ color: t.profit >= 0 ? '#10b981' : '#ef4444' }}
+                  >
+                    {t.profit >= 0 ? '+' : ''}₹{(t.profit / 1000).toFixed(0)}k
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '12px', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+            <span>Click any month column to inspect its ledger</span>
+            <span>Selected Period: <strong style={{ color: 'var(--text-main)' }}>{summary?.monthLabel || selectedMonth}</strong></span>
+          </div>
+        </div>
+
+        {/* Right: Department & Category Spending Breakdown */}
+        <div className="finance-category-card">
+          <div className="finance-card-title-row">
+            <h3 className="finance-card-title">
+              <PieChart size={19} color="#ec4899" />
+              <span>Department Spending Breakdown</span>
+            </h3>
+            <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+              Total ₹{totalExp.toLocaleString('en-IN')}
+            </span>
+          </div>
+
+          <div className="finance-category-list">
+            {(summary?.categoryBreakdown && summary.categoryBreakdown.length > 0) ? (
+              summary.categoryBreakdown.map((catItem) => {
+                const colorConfig = CATEGORY_COLORS[catItem.category] || CATEGORY_COLORS['Miscellaneous'];
+                const isSelected = categoryFilter.toLowerCase() === catItem.category.toLowerCase();
+
+                return (
+                  <div
+                    key={catItem.category}
+                    onClick={() => {
+                      setCategoryFilter(isSelected ? 'All' : catItem.category);
+                    }}
+                    className={`finance-category-row ${isSelected ? 'active' : ''}`}
+                    title={`Click to filter ledger by ${catItem.category}`}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{
+                          color: colorConfig.text,
+                          background: colorConfig.bg,
+                          padding: '4px',
+                          borderRadius: '6px',
+                          display: 'flex'
+                        }}>
+                          {getCategoryIcon(catItem.category)}
+                        </span>
+                        <span style={{ fontWeight: 700, fontSize: '0.86rem', color: 'var(--text-main)' }}>
+                          {catItem.category}
+                        </span>
+                        <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                          ({catItem.count} {catItem.count === 1 ? 'item' : 'items'})
+                        </span>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <span style={{ fontWeight: 800, fontSize: '0.92rem', color: 'var(--text-main)' }}>
+                          ₹{catItem.amount.toLocaleString('en-IN')}
+                        </span>
+                        <span style={{ fontSize: '0.74rem', color: colorConfig.text, marginLeft: '6px', fontWeight: 700 }}>
+                          {catItem.percentage}%
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="finance-cat-progress-track">
+                      <div
+                        className="finance-cat-progress-bar"
+                        style={{
+                          width: `${Math.min(100, Math.max(3, catItem.percentage))}%`,
+                          background: colorConfig.bar
+                        }}
+                      />
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <div style={{ textAlign: 'center', padding: '32px 12px', color: 'var(--text-muted)' }}>
+                <Package size={34} style={{ opacity: 0.35, marginBottom: '8px' }} />
+                <p style={{ margin: 0, fontSize: '0.85rem' }}>No expense categorizations in this period.</p>
+                <button
+                  onClick={() => openSingleCreate()}
+                  style={{
+                    background: 'transparent',
+                    border: '1px dashed var(--primary)',
+                    color: 'var(--primary)',
+                    padding: '5px 12px',
+                    borderRadius: '8px',
+                    fontSize: '0.78rem',
+                    fontWeight: 700,
+                    marginTop: '10px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  + Add First Expense
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* ─── 4. QUICK PRESET EXPENSE DOCK ─────────────────────────────────────── */}
+      <div className="finance-presets-dock">
+        <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--primary)', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <Sparkles size={14} color="#f59e0b" />
+          <span>Quick 1-Tap Pickers:</span>
+        </span>
+        {ALL_PRESET_ITEMS.map((item, idx) => (
+          <button
+            key={idx}
+            onClick={() => openSingleCreate(item.title, item.cat)}
+            className="finance-preset-chip"
+          >
+            <span>{item.icon}</span>
+            <span>{item.title}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* ─── 5. TRANSACTION LEDGER CARD ───────────────────────────────────────── */}
+      <div className="finance-ledger-card">
+        {/* Ledger Filter & Search Header */}
+        <div className="finance-filter-bar">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+            <h2 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Filter size={18} color="var(--primary)" />
+              <span>Expense Audit Ledger</span>
+            </h2>
+            <span style={{
+              background: 'rgba(249, 115, 22, 0.12)',
+              border: '1px solid rgba(249, 115, 22, 0.3)',
+              color: 'var(--primary)',
+              padding: '2px 10px',
+              borderRadius: '12px',
+              fontSize: '0.78rem',
+              fontWeight: 800
+            }}>
+              {expenses.length} {expenses.length === 1 ? 'Record' : 'Records'}
+            </span>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
             {/* Search Input */}
-            <form onSubmit={handleSearchSubmit} style={{ display: 'flex', alignItems: 'center', background: '#1a1c24', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.14)', padding: '8px 14px', width: '260px' }}>
-              <Search size={16} color="rgba(255,255,255,0.5)" style={{ marginRight: '8px' }} />
+            <form onSubmit={handleSearchSubmit} className="finance-search-box">
+              <Search size={15} color="var(--text-muted)" />
               <input
                 type="text"
                 placeholder="Search items, vendor, notes..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  color: '#ffffff',
-                  outline: 'none',
-                  fontSize: '0.88rem',
-                  width: '100%'
-                }}
+                className="finance-search-input"
               />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 0 }}
+                >
+                  <XCircle size={14} />
+                </button>
+              )}
             </form>
           </div>
         </div>
 
         {/* Category Pills Bar */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-          overflowX: 'auto',
-          paddingBottom: '4px',
-          scrollbarWidth: 'none'
-        }}>
+        <div className="finance-category-pills" style={{ marginBottom: '1.25rem' }}>
           <button
             onClick={() => setCategoryFilter('All')}
-            style={{
-              background: categoryFilter === 'All' ? 'var(--primary)' : 'rgba(255, 255, 255, 0.05)',
-              color: categoryFilter === 'All' ? '#ffffff' : 'rgba(255, 255, 255, 0.7)',
-              border: categoryFilter === 'All' ? 'none' : '1px solid rgba(255, 255, 255, 0.12)',
-              borderRadius: '12px',
-              padding: '8px 16px',
-              fontSize: '0.84rem',
-              fontWeight: 700,
-              cursor: 'pointer',
-              whiteSpace: 'nowrap',
-              transition: 'all 0.2s ease',
-              boxShadow: categoryFilter === 'All' ? '0 4px 12px rgba(249, 115, 22, 0.35)' : 'none'
-            }}
+            className={`finance-filter-pill ${categoryFilter === 'All' ? 'active' : ''}`}
           >
-            All Expenses ({expenses.length})
+            All Categories ({allExpenses.length})
           </button>
-          
           {categories.map((c) => {
-            const isSelected = categoryFilter === c.name;
-            const catCount = expenses.filter(e => e.category === c.name).length;
+            const isSelected = categoryFilter.toLowerCase() === c.name.toLowerCase();
+            const catCount = allExpenses.filter(e => e.category.toLowerCase() === c.name.toLowerCase()).length;
+
             return (
               <button
                 key={c.id}
                 onClick={() => setCategoryFilter(c.name)}
-                style={{
-                  background: isSelected ? 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)' : 'rgba(255, 255, 255, 0.05)',
-                  color: isSelected ? '#ffffff' : 'rgba(255, 255, 255, 0.7)',
-                  border: isSelected ? 'none' : '1px solid rgba(255, 255, 255, 0.12)',
-                  borderRadius: '12px',
-                  padding: '8px 14px',
-                  fontSize: '0.84rem',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  whiteSpace: 'nowrap',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  transition: 'all 0.2s ease',
-                  boxShadow: isSelected ? '0 4px 12px rgba(249, 115, 22, 0.35)' : 'none'
-                }}
+                className={`finance-filter-pill ${isSelected ? 'active' : ''}`}
               >
                 {getCategoryIcon(c.name)}
                 <span>{c.name}</span>
                 {catCount > 0 && (
                   <span style={{
-                    background: isSelected ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.1)',
-                    padding: '2px 7px',
-                    borderRadius: '10px',
-                    fontSize: '0.75rem',
-                    fontWeight: 700
+                    background: isSelected ? 'rgba(255, 255, 255, 0.25)' : 'rgba(255, 255, 255, 0.1)',
+                    padding: '1px 6px',
+                    borderRadius: '8px',
+                    fontSize: '0.72rem',
+                    fontWeight: 800
                   }}>
                     {catCount}
                   </span>
@@ -1526,133 +1418,89 @@ const Finance: React.FC = () => {
             );
           })}
         </div>
-      </div>
 
-      {/* ─── TRANSACTION LEDGER TABLE SECTION ───────────────────────────────────── */}
-      <div className="glass-card" style={{ padding: '24px', borderRadius: '20px', border: '1px solid var(--border-dim)' }}>
-        
-        {/* Table Header Controls */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '16px', marginBottom: '20px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <h2 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 700, color: '#ffffff' }}>All Recorded Expenses History</h2>
-            <span style={{ background: 'rgba(249, 115, 22, 0.15)', border: '1px solid rgba(249, 115, 22, 0.3)', color: 'var(--primary)', padding: '3px 12px', borderRadius: '14px', fontSize: '0.8rem', fontWeight: 700 }}>
-              {expenses.length} Records
-            </span>
-          </div>
-
-          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '12px' }}>
-            {/* Search Box */}
-            <form onSubmit={handleSearchSubmit} style={{ display: 'flex', alignItems: 'center', background: '#1a1c24', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.12)', padding: '6px 12px' }}>
-              <Search size={16} color="rgba(255,255,255,0.5)" style={{ marginRight: '8px' }} />
-              <input
-                type="text"
-                placeholder="Search item (e.g. Vegetables, Rent, Wifi)..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  color: '#ffffff',
-                  outline: 'none',
-                  fontSize: '0.88rem',
-                  width: '240px'
-                }}
-              />
-            </form>
-
-
-            {/* Category Filter */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(0,0,0,0.25)', borderRadius: '10px', border: '1px solid var(--border-dim)', padding: '4px 10px' }}>
-              <Filter size={14} color="var(--text-muted)" />
-              <select
-                value={categoryFilter}
-                onChange={(e) => setCategoryFilter(e.target.value)}
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  color: 'var(--text-main)',
-                  fontSize: '0.85rem',
-                  outline: 'none',
-                  cursor: 'pointer'
-                }}
-              >
-                <option value="All" style={{ background: '#18181b', color: '#fff' }}>All Categories</option>
-                {categories.map(c => (
-                  <option key={c.id} value={c.name} style={{ background: '#18181b', color: '#fff' }}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-        </div>
-
-        {/* Ledger Table */}
+        {/* Content Table / Cards */}
         {loading ? (
-          <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)' }}>
-            <RefreshCw size={24} className="spin" style={{ marginBottom: '8px' }} />
+          <div style={{ textAlign: 'center', padding: '48px 0', color: 'var(--text-muted)' }}>
+            <RefreshCw size={26} className="spin" style={{ marginBottom: '10px' }} />
             <p style={{ margin: 0, fontSize: '0.9rem' }}>Loading transaction ledger...</p>
           </div>
         ) : expenses.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '48px 0', color: 'var(--text-muted)' }}>
-            <Package size={42} style={{ opacity: 0.3, marginBottom: '12px' }} />
-            <h3 style={{ margin: 0, fontSize: '1rem', color: 'var(--text-main)' }}>No expense transactions found</h3>
-            <p style={{ margin: '6px 0 16px 0', fontSize: '0.85rem' }}>Start tracking hostel expenses by using Quick Entry or Add Single Expense.</p>
-            <button
-              onClick={() => setIsBulkModalOpen(true)}
-              className="btn"
-              style={{
-                background: 'var(--primary)',
-                color: '#fff',
-                fontWeight: 600,
-                padding: '8px 16px',
-                borderRadius: '8px',
-                border: 'none',
-                cursor: 'pointer'
-              }}
-            >
-              + Launch Multi-Row Quick Entry
-            </button>
+          <div style={{ textAlign: 'center', padding: '52px 20px', color: 'var(--text-muted)' }}>
+            <Package size={44} style={{ opacity: 0.35, marginBottom: '12px' }} />
+            <h3 style={{ margin: 0, fontSize: '1.05rem', color: 'var(--text-main)', fontWeight: 700 }}>
+              No expense transactions found
+            </h3>
+            <p style={{ margin: '6px auto 18px', maxWidth: '420px', fontSize: '0.85rem' }}>
+              {searchQuery || categoryFilter !== 'All' 
+                ? 'No items matched your search filter. Try clearing filters or selecting another category.'
+                : `No expenses have been recorded for ${summary?.monthLabel || selectedMonth}. You can record a single expense or use fast multi-row entry.`}
+            </p>
+
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap' }}>
+              {(searchQuery || categoryFilter !== 'All') ? (
+                <button
+                  onClick={() => { setSearchQuery(''); setCategoryFilter('All'); }}
+                  className="btn-finance-secondary"
+                >
+                  Clear Filters
+                </button>
+              ) : (
+                <>
+                  <button
+                    onClick={() => openSingleCreate()}
+                    className="btn-finance-primary"
+                  >
+                    <Plus size={16} />
+                    <span>+ Add Expense</span>
+                  </button>
+                  <button
+                    onClick={() => setIsBulkModalOpen(true)}
+                    className="btn-finance-secondary"
+                  >
+                    <FileSpreadsheet size={16} />
+                    <span>Fast Multi-Add</span>
+                  </button>
+                </>
+              )}
+            </div>
           </div>
         ) : isMobile ? (
+          /* Mobile Card Layout */
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {expenses.map((exp) => {
               const catColor = CATEGORY_COLORS[exp.category] || CATEGORY_COLORS['Miscellaneous'];
               return (
-                <div
-                  key={exp.id}
-                  style={{
-                    background: 'rgba(255, 255, 255, 0.03)',
-                    border: '1px solid var(--border-dim)',
-                    borderRadius: '14px',
-                    padding: '12px 14px'
-                  }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
+                <div key={exp.id} className="finance-mobile-card">
+                  {/* Top: Title + Amount */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px' }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 700, fontSize: '0.92rem', color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      <div style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--text-main)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {exp.title}
                       </div>
-                      <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-                        {exp.date ? new Date(exp.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : 'N/A'} · {exp.paymentMethod || 'Cash'}
-                        {exp.vendor ? ` · ${exp.vendor}` : ''}
+                      <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <Clock size={12} />
+                        <span>{exp.date ? new Date(exp.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A'}</span>
+                        <span>·</span>
+                        <span style={{ fontWeight: 700, color: exp.paymentMethod === 'Cash' ? '#10b981' : '#60a5fa' }}>{exp.paymentMethod || 'Cash'}</span>
                       </div>
                     </div>
-                    <div style={{ fontSize: '1.15rem', fontWeight: 800, color: '#ef4444', flexShrink: 0 }}>
-                      ₹{exp.amount.toLocaleString('en-IN')}
+                    <div style={{ fontSize: '1.18rem', fontWeight: 800, color: '#ef4444', flexShrink: 0 }}>
+                      -₹{exp.amount.toLocaleString('en-IN')}
                     </div>
                   </div>
 
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '10px', paddingTop: '8px', borderTop: '1px solid rgba(255, 255, 255, 0.05)' }}>
+                  {/* Middle: Badges */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px', flexWrap: 'wrap' }}>
                     <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
                       <span style={{
-                        padding: '3px 8px',
+                        padding: '3px 9px',
                         borderRadius: '10px',
                         background: catColor.bg,
                         color: catColor.text,
                         border: `1px solid ${catColor.border}`,
                         fontSize: '0.72rem',
-                        fontWeight: 600,
+                        fontWeight: 700,
                         display: 'inline-flex',
                         alignItems: 'center',
                         gap: '4px'
@@ -1662,23 +1510,33 @@ const Finance: React.FC = () => {
                       </span>
                       {exp.building && (
                         <span style={{
-                          padding: '2px 7px',
+                          padding: '2px 8px',
                           borderRadius: '6px',
-                          background: 'rgba(249,115,22,0.1)',
+                          background: 'rgba(249, 115, 22, 0.1)',
                           color: 'var(--primary)',
-                          border: '1px solid rgba(249,115,22,0.25)',
-                          fontSize: '0.68rem',
-                          fontWeight: 600
+                          border: '1px solid rgba(249, 115, 22, 0.25)',
+                          fontSize: '0.7rem',
+                          fontWeight: 700
                         }}>
                           {exp.building.name}
                         </span>
                       )}
                     </div>
+
+                    {/* Action buttons */}
                     <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
                       <button
                         onClick={() => openSingleEdit(exp)}
                         className="icon-btn-micro"
                         title="Edit Expense"
+                        style={{
+                          background: 'rgba(255, 255, 255, 0.06)',
+                          border: 'none',
+                          color: 'var(--text-main)',
+                          padding: '6px 8px',
+                          borderRadius: '8px',
+                          cursor: 'pointer'
+                        }}
                       >
                         <Edit2 size={13} />
                       </button>
@@ -1686,78 +1544,107 @@ const Finance: React.FC = () => {
                         onClick={() => handleDeleteExpense(exp.id, exp.title)}
                         className="icon-btn-micro danger"
                         title="Delete Expense"
+                        style={{
+                          background: 'rgba(239, 68, 68, 0.12)',
+                          border: 'none',
+                          color: '#ef4444',
+                          padding: '6px 8px',
+                          borderRadius: '8px',
+                          cursor: 'pointer'
+                        }}
                       >
                         <Trash2 size={13} />
                       </button>
                     </div>
                   </div>
+
+                  {/* Bottom: Vendor / Notes */}
+                  {(exp.vendor || exp.notes) && (
+                    <div style={{
+                      fontSize: '0.76rem',
+                      color: 'var(--text-muted)',
+                      paddingTop: '6px',
+                      borderTop: '1px solid rgba(255, 255, 255, 0.05)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px'
+                    }}>
+                      {exp.vendor && <span style={{ fontWeight: 600, color: 'var(--text-main)' }}>Paid to: {exp.vendor}</span>}
+                      {exp.vendor && exp.notes && <span>•</span>}
+                      {exp.notes && <span>Note: {exp.notes}</span>}
+                    </div>
+                  )}
                 </div>
               );
             })}
           </div>
         ) : (
+          /* Desktop Modern Table Layout */
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.88rem' }}>
+            <table className="finance-table">
               <thead>
-                <tr style={{ borderBottom: '1px solid var(--border-light)', color: 'var(--text-muted)' }}>
-                  <th style={{ padding: '12px 14px', fontWeight: 600 }}>Date</th>
-                  <th style={{ padding: '12px 14px', fontWeight: 600 }}>Title / Description</th>
-                  <th style={{ padding: '12px 14px', fontWeight: 600 }}>Building Scope</th>
-                  <th style={{ padding: '12px 14px', fontWeight: 600 }}>Category</th>
-                  <th style={{ padding: '12px 14px', fontWeight: 600 }}>Payment Mode</th>
-                  <th style={{ padding: '12px 14px', fontWeight: 600 }}>Vendor / Notes</th>
-                  <th style={{ padding: '12px 14px', fontWeight: 600, textAlign: 'right' }}>Amount</th>
-                  <th style={{ padding: '12px 14px', fontWeight: 600, textAlign: 'center' }}>Actions</th>
+                <tr>
+                  <th style={{ width: '110px' }}>Date</th>
+                  <th>Expense Title / Notes</th>
+                  <th style={{ width: '150px' }}>Building Scope</th>
+                  <th style={{ width: '180px' }}>Category</th>
+                  <th style={{ width: '120px' }}>Payment Mode</th>
+                  <th style={{ width: '160px' }}>Vendor / Paid To</th>
+                  <th style={{ textAlign: 'right', width: '130px' }}>Amount (₹)</th>
+                  <th style={{ textAlign: 'center', width: '90px' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {expenses.map((exp) => {
                   const catColor = CATEGORY_COLORS[exp.category] || CATEGORY_COLORS['Miscellaneous'];
                   return (
-                    <tr
-                      key={exp.id}
-                      style={{
-                        borderBottom: '1px solid var(--border-dim)',
-                        transition: 'background 0.2s'
-                      }}
-                      onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.02)'}
-                      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                    >
+                    <tr key={exp.id}>
                       {/* Date */}
-                      <td style={{ padding: '12px 14px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                      <td style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap', fontSize: '0.82rem' }}>
                         {exp.date ? new Date(exp.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A'}
                       </td>
 
-                      {/* Title */}
-                      <td style={{ padding: '12px 14px', fontWeight: 600, color: 'var(--text-main)' }}>
-                        {exp.title}
+                      {/* Title & Notes */}
+                      <td>
+                        <div style={{ fontWeight: 700, color: 'var(--text-main)', fontSize: '0.9rem' }}>
+                          {exp.title}
+                        </div>
+                        {exp.notes && (
+                          <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                            {exp.notes}
+                          </div>
+                        )}
                       </td>
 
-                      {/* Building Scope Badge */}
-                      <td style={{ padding: '12px 14px' }}>
+                      {/* Building Badge */}
+                      <td>
                         <span style={{
-                          padding: '3px 9px',
+                          padding: '3px 8px',
                           borderRadius: '8px',
-                          background: exp.building ? 'rgba(249,115,22,0.12)' : 'rgba(255,255,255,0.06)',
+                          background: exp.building ? 'rgba(249, 115, 22, 0.12)' : 'rgba(255, 255, 255, 0.05)',
                           color: exp.building ? 'var(--primary)' : 'var(--text-muted)',
-                          border: `1px solid ${exp.building ? 'rgba(249,115,22,0.3)' : 'rgba(255,255,255,0.1)'}`,
+                          border: `1px solid ${exp.building ? 'rgba(249, 115, 22, 0.3)' : 'rgba(255, 255, 255, 0.1)'}`,
                           fontSize: '0.74rem',
-                          fontWeight: 600
+                          fontWeight: 700,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px'
                         }}>
-                          {exp.building ? exp.building.name : '🌐 Shared / All'}
+                          <Building size={12} />
+                          {exp.building ? exp.building.name : 'Shared / All'}
                         </span>
                       </td>
 
                       {/* Category Badge */}
-                      <td style={{ padding: '12px 14px' }}>
+                      <td>
                         <span style={{
                           padding: '4px 10px',
                           borderRadius: '12px',
                           background: catColor.bg,
                           color: catColor.text,
                           border: `1px solid ${catColor.border}`,
-                          fontSize: '0.75rem',
-                          fontWeight: 600,
+                          fontSize: '0.76rem',
+                          fontWeight: 700,
                           display: 'inline-flex',
                           alignItems: 'center',
                           gap: '5px'
@@ -1768,62 +1655,68 @@ const Finance: React.FC = () => {
                       </td>
 
                       {/* Payment Method */}
-                      <td style={{ padding: '12px 14px' }}>
+                      <td>
                         <span style={{
                           padding: '3px 8px',
                           borderRadius: '6px',
-                          background: 'rgba(255, 255, 255, 0.06)',
-                          color: 'var(--text-main)',
-                          fontSize: '0.78rem',
-                          fontWeight: 500
+                          background: exp.paymentMethod === 'Cash' ? 'rgba(16, 185, 129, 0.12)' : 'rgba(59, 130, 246, 0.12)',
+                          color: exp.paymentMethod === 'Cash' ? '#10b981' : '#60a5fa',
+                          border: `1px solid ${exp.paymentMethod === 'Cash' ? 'rgba(16, 185, 129, 0.25)' : 'rgba(59, 130, 246, 0.25)'}`,
+                          fontSize: '0.76rem',
+                          fontWeight: 700
                         }}>
-                          {exp.paymentMethod}
+                          {exp.paymentMethod || 'Cash'}
                         </span>
                       </td>
 
-                      {/* Vendor / Notes */}
-                      <td style={{ padding: '12px 14px', color: 'var(--text-muted)', fontSize: '0.82rem' }}>
-                        {exp.vendor && <strong>{exp.vendor}</strong>}
-                        {exp.vendor && exp.notes && ' • '}
-                        {exp.notes && <span>{exp.notes}</span>}
-                        {!exp.vendor && !exp.notes && <span style={{ opacity: 0.4 }}>—</span>}
+                      {/* Vendor */}
+                      <td style={{ color: 'var(--text-muted)', fontSize: '0.84rem' }}>
+                        {exp.vendor ? <strong>{exp.vendor}</strong> : <span style={{ opacity: 0.35 }}>—</span>}
                       </td>
 
                       {/* Amount */}
-                      <td style={{ padding: '12px 14px', textAlign: 'right', fontWeight: 700, color: '#ef4444', fontSize: '0.95rem' }}>
-                        ₹{exp.amount.toLocaleString('en-IN')}
+                      <td style={{ textAlign: 'right', fontWeight: 800, color: '#ef4444', fontSize: '0.96rem' }}>
+                        -₹{exp.amount.toLocaleString('en-IN')}
                       </td>
 
                       {/* Actions */}
-                      <td style={{ padding: '12px 14px', textAlign: 'center' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                      <td style={{ textAlign: 'center' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
                           <button
                             onClick={() => openSingleEdit(exp)}
                             title="Edit Expense"
                             style={{
-                              background: 'rgba(255,255,255,0.06)',
-                              border: 'none',
+                              background: 'rgba(255, 255, 255, 0.05)',
+                              border: '1px solid rgba(255, 255, 255, 0.08)',
                               color: 'var(--text-main)',
                               padding: '6px',
-                              borderRadius: '6px',
-                              cursor: 'pointer'
+                              borderRadius: '8px',
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              transition: 'all 0.2s ease'
                             }}
                           >
-                            <Edit2 size={14} />
+                            <Edit2 size={13} />
                           </button>
                           <button
                             onClick={() => handleDeleteExpense(exp.id, exp.title)}
                             title="Delete Expense"
                             style={{
-                              background: 'rgba(239,68,68,0.1)',
-                              border: 'none',
+                              background: 'rgba(239, 68, 68, 0.1)',
+                              border: '1px solid rgba(239, 68, 68, 0.2)',
                               color: '#ef4444',
                               padding: '6px',
-                              borderRadius: '6px',
-                              cursor: 'pointer'
+                              borderRadius: '8px',
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              transition: 'all 0.2s ease'
                             }}
                           >
-                            <Trash2 size={14} />
+                            <Trash2 size={13} />
                           </button>
                         </div>
                       </td>
