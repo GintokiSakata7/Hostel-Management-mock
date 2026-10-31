@@ -1089,6 +1089,9 @@ app.post('/api/fees/pay', async (req, res) => {
         });
         console.log(`[PostgreSQL Bucket]: PDF Receipt ${receiptNo} stored in database for Fee ${fee.id}`);
 
+        let lastEmailSuccess: boolean | null = null;
+        let lastEmailError: string | null = null;
+
         // 3. Dispatch Detailed Invoice & PDF Receipt via Email
         if (student.name) {
           const targetEmails = new Set<string>();
@@ -1122,19 +1125,30 @@ app.post('/api/fees/pay', async (req, res) => {
             });
 
             if (emailRes.success) {
+              lastEmailSuccess = true;
               await prisma.fee.update({
                 where: { id: fee.id },
                 data: { whatsappStatus: 'SENT_EMAIL' }
               });
               console.log(`[Email Dispatch]: Fee ${fee.id} detailed receipt & invoice sent successfully to ${emailTo}`);
             } else {
+              lastEmailSuccess = false;
+              lastEmailError = emailRes.error || 'Failed to dispatch email';
               await prisma.fee.update({
                 where: { id: fee.id },
                 data: { whatsappStatus: 'FAILED_EMAIL' }
               });
+              console.warn(`[Email Dispatch Warning]: Fee ${fee.id} email delivery failed to ${emailTo}: ${emailRes.error}`);
             }
           }
         }
+
+        return res.json({
+          ...fee,
+          monthLabel: monthLabel(m),
+          emailStatus: lastEmailSuccess === true ? 'SENT' : (lastEmailSuccess === false ? 'FAILED' : 'SKIPPED'),
+          emailError: lastEmailError || undefined
+        });
 
       } catch (pdfErr: any) {
         console.error('[PDF Generation / Dispatch Error]:', pdfErr.message);
@@ -1790,7 +1804,8 @@ app.post('/api/reminders/student/:studentId', async (req, res) => {
     const { studentId } = req.params;
     const result = await executeSingleStudentReminder(studentId);
     if (!result.success) {
-      return res.status(404).json(result);
+      const statusCode = result.message?.includes('not found') ? 404 : 502;
+      return res.status(statusCode).json(result);
     }
     res.json(result);
   } catch (err: any) {
@@ -1806,7 +1821,8 @@ app.post('/api/reminders/send-individual', async (req, res) => {
     }
     const result = await executeSingleStudentReminder(studentId);
     if (!result.success) {
-      return res.status(404).json(result);
+      const statusCode = result.message?.includes('not found') ? 404 : 502;
+      return res.status(statusCode).json(result);
     }
     res.json(result);
   } catch (err: any) {

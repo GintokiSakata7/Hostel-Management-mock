@@ -1,6 +1,14 @@
 {
   "rewrites": [
     {
+      "source": "/api/mail-relay",
+      "destination": "/api/mail-relay"
+    },
+    {
+      "source": "/mail-relay",
+      "destination": "/api/mail-relay"
+    },
+    {
       "source": "/api/:match*",
       "destination": "https://hostel-management-mock.onrender.com/api/:match*"
     },

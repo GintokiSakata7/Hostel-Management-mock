@@ -470,7 +470,16 @@ function QuickPayModal({ bed, selectedMonth, onClose, onSuccess }: { bed: any; s
         body: JSON.stringify({ studentId, month: selectedMonth, amount: form.amount, method: form.method, upiProvider: form.method === 'UPI' ? form.upiProvider : null, transactionRef: form.method === 'UPI' ? form.transactionRef : null, date: form.date })
       });
       if (res.status === 409) { const e = await res.json(); showToast(e.error, 'error'); }
-      else if (res.ok) { showToast(`Payment recorded for ${bed.student}!`, 'success'); onSuccess(); onClose(); }
+      else if (res.ok) {
+        const data = await res.json().catch(() => ({}));
+        if (data.emailStatus === 'FAILED') {
+          showToast(`Payment recorded for ${bed.student}! (Notice: Email delivery failed: ${data.emailError || 'Service timeout'})`, 'warning');
+        } else {
+          showToast(`Payment recorded for ${bed.student}! Invoice & receipt emailed.`, 'success');
+        }
+        onSuccess();
+        onClose();
+      }
       else { showToast('Payment failed', 'error'); }
     } finally { setSaving(false); }
   };

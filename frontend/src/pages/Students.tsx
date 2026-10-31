@@ -55,7 +55,16 @@ function PaymentModal({ student, selectedMonth, onClose, onSuccess }: { student:
         body: JSON.stringify({ studentId: student.dbId, month: selectedMonth, amount: form.amount, method: form.method, upiProvider: form.method === 'UPI' ? form.upiProvider : null, transactionRef: form.method === 'UPI' ? form.transactionRef : null, date: form.date })
       });
       if (res.status === 409) { const e = await res.json(); showToast(e.error, 'error'); }
-      else if (res.ok) { showToast(`Payment recorded for ${monthLabel}! Invoice & receipt emailed.`, 'success'); onSuccess(); onClose(); }
+      else if (res.ok) {
+        const data = await res.json().catch(() => ({}));
+        if (data.emailStatus === 'FAILED') {
+          showToast(`Payment recorded for ${monthLabel}! (Notice: Email delivery failed: ${data.emailError || 'Service timeout'})`, 'warning');
+        } else {
+          showToast(`Payment recorded for ${monthLabel}! Invoice & receipt emailed.`, 'success');
+        }
+        onSuccess();
+        onClose();
+      }
       else { showToast('Payment failed', 'error'); }
     } finally { setSaving(false); }
   };

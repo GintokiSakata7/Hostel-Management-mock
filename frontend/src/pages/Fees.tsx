@@ -53,7 +53,12 @@ function PaymentModal({ student, selectedMonth, onClose, onSuccess }: {
         const err = await res.json();
         showToast(err.error, 'error');
       } else if (res.ok) {
-        showToast(`Payment recorded for ${monthLabel}! Invoice & receipt emailed.`, 'success');
+        const data = await res.json().catch(() => ({}));
+        if (data.emailStatus === 'FAILED') {
+          showToast(`Payment recorded for ${monthLabel}! (Notice: Email delivery failed: ${data.emailError || 'Service timeout'})`, 'warning');
+        } else {
+          showToast(`Payment recorded for ${monthLabel}! Invoice & receipt emailed.`, 'success');
+        }
         onSuccess();
         onClose();
       } else {

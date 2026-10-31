@@ -40,11 +40,72 @@ function createGmailTransporter(port: number = 465, secure: boolean = true) {
     connectionTimeout: 12000,
     greetingTimeout: 10000,
     socketTimeout: 20000,
-  });
+  } as any);
 }
 
 /**
- * Send an email using Gmail with resilient Port 465 -> Port 587 fallback
+ * Dispatch email via Vercel HTTPS Serverless Relay (Port 443).
+ * Critical for cloud platforms like Render Free Tier where direct outbound SMTP
+ * ports (25, 465, 587) are firewalled.
+ */
+async function sendViaVercelRelay(
+  to: string,
+  subject: string,
+  text: string,
+  html?: string,
+  attachments?: { filename: string; content: Buffer }[]
+): Promise<{ success: boolean; error?: string; messageId?: string }> {
+  const relayUrl = process.env.MAIL_RELAY_URL || 'https://hostel-management-mock.vercel.app/mail-relay';
+  const relaySecret = process.env.MAIL_RELAY_SECRET || 'majin-hostel-mail-relay-2026-sec';
+
+  const serializedAttachments = attachments?.map((att) => ({
+    filename: att.filename,
+    content: att.content.toString('base64'),
+    encoding: 'base64',
+  }));
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 18000);
+
+  try {
+    const res = await fetch(relayUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-relay-secret': relaySecret,
+      },
+      body: JSON.stringify({
+        to,
+        subject,
+        text,
+        html,
+        attachments: serializedAttachments,
+      }),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+    const data: any = await res.json().catch(() => ({}));
+    if (res.ok && data.success) {
+      console.log(`[Email Service]: Email delivered successfully via HTTPS Mail Relay (${relayUrl}) to ${to}. Message ID: ${data.messageId}`);
+      return { success: true, messageId: data.messageId };
+    } else {
+      const errorMsg = data.error || `HTTP ${res.status} ${res.statusText}`;
+      console.warn(`[Email Service Relay Warning]: Relay dispatch failed (${errorMsg})`);
+      return { success: false, error: errorMsg };
+    }
+  } catch (err: any) {
+    clearTimeout(timeoutId);
+    console.warn(`[Email Service Relay Error]: Failed to reach relay ${relayUrl}:`, err.message);
+    return { success: false, error: `Relay fetch failed: ${err.message}` };
+  }
+}
+
+/**
+ * Send an email using resilient multi-tier delivery:
+ * Tier 1: HTTPS Mail Relay over Port 443 (ideal for Render cloud environments where SMTP ports 25, 465, 587 are blocked)
+ * Tier 2: Direct Gmail Port 465 (SMTPS direct SSL with IPv4 socket)
+ * Tier 3: Direct Gmail Port 587 (STARTTLS with IPv4 socket)
  */
 export async function sendEmail(
   to: string,
@@ -53,6 +114,20 @@ export async function sendEmail(
   html?: string,
   attachments?: { filename: string; content: Buffer }[]
 ): Promise<{ success: boolean; error?: string; messageId?: string }> {
+  const isRenderCloud = process.env.RENDER === 'true' || !!process.env.RENDER_SERVICE_ID;
+  const relayConfigured = isRenderCloud || !!process.env.MAIL_RELAY_URL;
+
+  // On Render Cloud Free Tier, outbound ports 25, 465, and 587 are blocked at the firewall level.
+  // We prioritize the HTTPS Mail Relay over Port 443 to avoid connection timeouts!
+  if (relayConfigured) {
+    console.log(`[Email Service]: Cloud environment active. Dispatching email via HTTPS Port 443 relay to ${to}...`);
+    const relayRes = await sendViaVercelRelay(to, subject, text, html, attachments);
+    if (relayRes.success) {
+      return relayRes;
+    }
+    console.warn(`[Email Service]: HTTPS Relay failed (${relayRes.error}). Trying direct SMTP transports...`);
+  }
+
   const senderAddress = process.env.EMAIL_ADDRESS || 'rishichepuri764@gmail.com';
   const mailOptions = {
     from: `"Majin Hostel Management" <${senderAddress}>`,
@@ -80,6 +155,16 @@ export async function sendEmail(
       return { success: true, messageId: info.messageId };
     } catch (err587: any) {
       console.error('[Gmail Service Error]: Both Port 465 and Port 587 failed to send email:', err587.message);
+
+      // If we haven't tried the HTTPS relay yet, try it now as final fallback!
+      if (!relayConfigured) {
+        console.log(`[Email Service]: Direct SMTP failed. Attempting fallback via HTTPS Mail Relay to ${to}...`);
+        const finalRelayRes = await sendViaVercelRelay(to, subject, text, html, attachments);
+        if (finalRelayRes.success) {
+          return finalRelayRes;
+        }
+      }
+
       return {
         success: false,
         error: `Port 465 error: ${err465.message} | Port 587 error: ${err587.message}`,

@@ -222,11 +222,21 @@ export async function executeSingleStudentReminder(studentId: string): Promise<{
     dueDayLabel: dueStatus.dueDayLabel,
     nextDueDate: dueStatus.nextDueDate,
     emailStatus: emailRes.success ? 'SENT' : 'FAILED',
+    emailRecipient: emailTo,
+    emailError: emailRes.error || undefined,
   };
+
+  if (!emailRes.success) {
+    return {
+      success: false,
+      message: `Failed to deliver reminder email to ${emailTo}: ${emailRes.error || 'Connection timeout or mail service blocked'}`,
+      result
+    };
+  }
 
   return {
     success: true,
-    message: `Individual reminder successfully sent to ${dueStatus.studentName}`,
+    message: `Fee reminder email successfully delivered to ${dueStatus.studentName} (${emailTo})`,
     result
   };
 }
