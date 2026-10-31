@@ -216,10 +216,10 @@ function PremiumRoomCard({ room, onAllocate, onPay, onPrint, onStudentClick, onU
               <Home size={16} color={statusColor} />
             </div>
             <div>
-              <div style={{ fontWeight: 800, fontSize: '1.05rem', color: '#fff', letterSpacing: -0.3, lineHeight: 1 }}>
+              <div style={{ fontWeight: 800, fontSize: '1.05rem', color: 'var(--text-main)', letterSpacing: -0.3, lineHeight: 1 }}>
                 Room {room.id}
               </div>
-              <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.68rem', marginTop: 3 }}>
+              <div style={{ color: 'var(--text-muted)', fontSize: '0.68rem', marginTop: 3 }}>
                 Floor {room.floor} · {room.capacity}-bed
               </div>
             </div>
@@ -306,7 +306,7 @@ function PremiumRoomCard({ room, onAllocate, onPay, onPrint, onStudentClick, onU
                       style={{ 
                         fontWeight: 700, 
                         fontSize: '0.82rem', 
-                        color: '#fff', 
+                        color: 'var(--text-main)', 
                         overflow: 'hidden', 
                         textOverflow: 'ellipsis', 
                         whiteSpace: 'nowrap',
@@ -317,7 +317,7 @@ function PremiumRoomCard({ room, onAllocate, onPay, onPrint, onStudentClick, onU
                       {studentName}
                     </div>
                   ) : (
-                    <span style={{ fontSize: '0.74rem', color: 'rgba(255,255,255,0.35)', fontStyle: 'italic' }}>
+                    <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
                       Vacant Bed
                     </span>
                   )}
@@ -1597,8 +1597,8 @@ export default function Rooms() {
 
         <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap', width: isMobile ? '100%' : 'auto', justifyContent: isMobile ? 'space-between' : 'flex-end' }}>
           {/* Status Legends */}
-          {[{ color: 'var(--success)', label: 'Paid' }, { color: 'var(--warning)', label: 'Due' }, { color: 'rgba(255,255,255,0.3)', label: 'Empty' }].map(({ color, label }) => (
-            <div key={label} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.74rem', color: 'var(--text-muted)', background: 'rgba(0,0,0,0.3)', padding: '4px 10px', borderRadius: 20, border: '1px solid rgba(255,255,255,0.08)' }}>
+          {[{ color: 'var(--success)', label: 'Paid' }, { color: 'var(--warning)', label: 'Due' }, { color: 'var(--text-muted)', label: 'Empty' }].map(({ color, label }) => (
+            <div key={label} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.74rem', color: 'var(--text-muted)', background: 'var(--border-dim)', padding: '4px 10px', borderRadius: 20, border: '1px solid var(--border-light)' }}>
               <span style={{ width: 8, height: 8, borderRadius: '50%', background: color, boxShadow: `0 0 6px ${color}`, display: 'inline-block' }} />{label}
             </div>
           ))}
@@ -1637,7 +1637,7 @@ export default function Rooms() {
                 {selectedFloor ? `F${selectedFloor}` : 'ALL'}
               </div>
               <div>
-                <div style={{ fontWeight: 800, fontSize: '0.9rem', color: '#fff' }}>
+                <div style={{ fontWeight: 800, fontSize: '0.9rem', color: 'var(--text-main)' }}>
                   {selectedFloor ? formatFloorName(selectedFloor) : 'All Floors'} Summary
                 </div>
                 <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
@@ -1699,7 +1699,7 @@ export default function Rooms() {
             )}
           </div>
 
-          <div className="search-bar" style={{ width: isMobile ? '100%' : 220, background: 'rgba(0,0,0,0.4)' }}>
+          <div className="search-bar" style={{ width: isMobile ? '100%' : 220, background: 'var(--border-dim)' }}>
             <Search size={13} color="var(--text-muted)" />
             <input placeholder="Search room number..." value={search} onChange={e => setSearch(e.target.value)} />
           </div>
@@ -1724,8 +1724,8 @@ export default function Rooms() {
                     alignItems: 'center',
                     marginBottom: '0.875rem',
                     padding: '8px 12px',
-                    background: 'rgba(255,255,255,0.02)',
-                    border: '1px solid rgba(255,255,255,0.07)',
+                    background: 'var(--border-dim)',
+                    border: '1px solid var(--border-light)',
                     borderRadius: 12
                   }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -1739,7 +1739,7 @@ export default function Rooms() {
                         F{floor}
                       </div>
                       <div>
-                        <span style={{ fontWeight: 800, fontSize: '0.88rem', color: '#fff' }}>
+                        <span style={{ fontWeight: 800, fontSize: '0.88rem', color: 'var(--text-main)' }}>
                           {formatFloorName(floor)}
                         </span>
                         <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginLeft: 8 }}>

@@ -38,10 +38,9 @@ export default function Modal({ isOpen, onClose, title, children }: ModalProps) 
     <div
       style={{
         position: 'fixed',
-        top: 0,
-        left: 0,
+        inset: 0,
         width: '100vw',
-        height: '100vh',
+        height: '100dvh',
         background: 'rgba(0, 0, 0, 0.7)',
         backdropFilter: 'blur(8px)',
         WebkitBackdropFilter: 'blur(8px)',
@@ -49,6 +48,9 @@ export default function Modal({ isOpen, onClose, title, children }: ModalProps) 
         alignItems: isMobile ? 'flex-end' : 'center',
         justifyContent: 'center',
         zIndex: 2500,
+        overflowY: 'auto',
+        WebkitOverflowScrolling: 'touch',
+        padding: isMobile ? 0 : '1rem',
         animation: 'fadeIn 0.2s ease'
       }}
       onClick={onClose}
@@ -58,23 +60,29 @@ export default function Modal({ isOpen, onClose, title, children }: ModalProps) 
         style={
           isMobile
             ? {
-                padding: '20px 18px',
+                padding: '18px 16px 24px',
                 width: '100%',
-                maxHeight: '88vh',
+                maxHeight: '88dvh',
                 display: 'flex',
-                flexDirection: 'column'
+                flexDirection: 'column',
+                overflow: 'hidden',
+                overscrollBehavior: 'contain',
+                touchAction: 'pan-y'
               }
             : {
                 width: '100%',
                 maxWidth: '540px',
-                maxHeight: '90vh',
+                maxHeight: 'calc(100dvh - 3rem)',
                 padding: '1.75rem',
                 position: 'relative',
                 boxShadow: '0 24px 64px rgba(0,0,0,0.6)',
                 background: 'rgba(22, 26, 38, 0.94)',
                 backdropFilter: 'blur(20px)',
                 display: 'flex',
-                flexDirection: 'column'
+                flexDirection: 'column',
+                overflow: 'hidden',
+                overscrollBehavior: 'contain',
+                touchAction: 'pan-y'
               }
         }
         onClick={e => e.stopPropagation()}
@@ -98,7 +106,10 @@ export default function Modal({ isOpen, onClose, title, children }: ModalProps) 
           style={{
             overflowY: 'auto',
             WebkitOverflowScrolling: 'touch',
+            touchAction: 'pan-y',
+            overscrollBehavior: 'contain',
             flex: 1,
+            minHeight: 0,
             paddingRight: '4px'
           }}
         >

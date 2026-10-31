@@ -65,7 +65,9 @@ function PageLoadingFallback() {
 function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [isLightMode, setIsLightMode] = useState(false);
+  const [isLightMode, setIsLightMode] = useState<boolean>(() => {
+    return localStorage.getItem('majin_theme') === 'light';
+  });
   const [securityModalOpen, setSecurityModalOpen] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
     return sessionStorage.getItem('majin_admin_auth') === 'true';
@@ -74,8 +76,10 @@ function App() {
   useEffect(() => {
     if (isLightMode) {
       document.body.classList.add('light-theme');
+      localStorage.setItem('majin_theme', 'light');
     } else {
       document.body.classList.remove('light-theme');
+      localStorage.setItem('majin_theme', 'dark');
     }
   }, [isLightMode]);
 

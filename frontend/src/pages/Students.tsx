@@ -20,30 +20,22 @@ const MONTHS = Array.from({ length: 12 }, (_, i) => {
   return { value: `${y}-${m}`, label: d.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' }) };
 });
 
-const COURSES: Record<string, string[]> = {
-  'B.Tech': ['CSE', 'ECE', 'EEE', 'Mechanical', 'Civil', 'AI & DS', 'AI & ML', 'IT', 'Chemical', 'Other'],
-  'B.E.': ['CSE', 'ECE', 'Mechanical', 'Civil', 'EEE', 'IT', 'Other'],
-  'M.Tech': ['CSE', 'ECE', 'Mechanical', 'Civil', 'VLSI', 'Data Science', 'AI', 'Other'],
-  'M.E.': ['CSE', 'Structural', 'Power Systems', 'Other'],
-  'MBA': ['Finance', 'Marketing', 'HR', 'Operations', 'Business Analytics', 'General', 'Other'],
-  'MCA': ['General', 'AI & ML', 'Cyber Security', 'Other'],
-  'BCA': ['General', 'AI', 'Data Science', 'Other'],
-  'B.Sc': ['CS', 'Mathematics', 'Physics', 'Chemistry', 'Statistics', 'Botany', 'Zoology', 'Other'],
-  'M.Sc': ['CS', 'Mathematics', 'Physics', 'Chemistry', 'Statistics', 'Other'],
-  'B.Com': ['General', 'Computers', 'Accounting & Finance', 'Other'],
-  'M.Com': ['General', 'Finance', 'Other'],
-  'Diploma': ['ECE', 'CSE', 'Mechanical', 'Civil', 'EEE', 'Other'],
-};
+const COURSES = ['B.Tech', 'Diploma', 'BOT', 'Masters', 'Hyderabad'];
 
 const EMPTY_FORM = {
-  name: '', gender: '', dob: '', email: '', photoUrl: '',
-  course: 'B.Tech', branch: 'CSE', year: '1st', rollNumber: '',
-  dateOfJoining: '', aadhar: '', aadharCardUrl: '', phone: '',
-  parentName: '', parentPhone: '', parentRelationship: 'Father', parentAltPhone: '', parentAddress: '',
-  emergencyName: '', emergencyPhone: '', emergencyRelationship: 'Parent',
-  state: 'Andhra Pradesh', address: '', pincode: '',
-  securityDeposit: '', feeStatus: 'Pending', status: 'Active',
-  isOnNotice: false, noticeVacateDate: '', noticeReason: ''
+  name: '',
+  phone: '',
+  parentPhone: '',
+  email: '',
+  course: 'B.Tech',
+  aadharCardUrl: '',
+  photoUrl: '',
+  branch: 'General',
+  year: '1st Year',
+  state: 'Hyderabad',
+  dateOfJoining: '',
+  feeStatus: 'Pending',
+  status: 'Active'
 };
 
 
@@ -154,9 +146,9 @@ function StudentDetailCard({ student, selectedMonth, onClose, onRefresh, isMobil
 
   return (
     <>
-      <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: isMobile ? 'flex-end' : 'center', justifyContent: 'center', zIndex: 2000 }}
+      <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: isMobile ? 'flex-end' : 'center', justifyContent: 'center', zIndex: 2000, overflowY: 'auto', WebkitOverflowScrolling: 'touch', padding: isMobile ? 0 : '1rem' }}
         onClick={onClose}>
-        <div className={isMobile ? 'bottom-sheet' : 'glass-heavy'} style={isMobile ? { maxHeight: '92vh', overflowY: 'auto' } : { width: '100%', maxWidth: 620, maxHeight: '92vh', overflowY: 'auto', padding: '1.75rem', position: 'relative', borderRadius: 24, margin: '1rem', border: '1px solid rgba(255,255,255,0.12)', boxShadow: '0 20px 50px rgba(0,0,0,0.6)' }}
+        <div className={isMobile ? 'bottom-sheet' : 'glass-heavy'} style={isMobile ? { maxHeight: '88dvh', overflowY: 'auto', overscrollBehavior: 'contain', touchAction: 'pan-y', WebkitOverflowScrolling: 'touch', padding: '18px 16px 24px' } : { width: '100%', maxWidth: 620, maxHeight: 'calc(100dvh - 3rem)', overflowY: 'auto', overscrollBehavior: 'contain', touchAction: 'pan-y', WebkitOverflowScrolling: 'touch', padding: '1.75rem', position: 'relative', borderRadius: 24, margin: '1rem', border: '1px solid var(--border-light)', boxShadow: '0 20px 50px rgba(0,0,0,0.6)' }}
           onClick={e => e.stopPropagation()}>
           {isMobile && <div className="bottom-sheet-handle" />}
           
@@ -188,11 +180,11 @@ function StudentDetailCard({ student, selectedMonth, onClose, onRefresh, isMobil
 
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                <h2 style={{ margin: 0, fontSize: '1.45rem', fontWeight: 800, letterSpacing: '-0.02em', color: '#fff' }}>{student.name}</h2>
+                <h2 style={{ margin: 0, fontSize: '1.45rem', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text-main)' }}>{student.name}</h2>
                 <span className="status-badge badge-available" style={{ fontSize: '0.72rem', padding: '2px 8px' }}>{student.status}</span>
               </div>
               <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: 3 }}>
-                {student.course}{student.branch ? ` · ${student.branch}` : ''} ({student.year || '1st'} Year)
+                {student.course}
               </div>
               <div style={{ display: 'flex', gap: '8px', marginTop: 8, alignItems: 'center' }}>
                 {student.room !== 'Unallocated' ? (
@@ -250,7 +242,7 @@ function StudentDetailCard({ student, selectedMonth, onClose, onRefresh, isMobil
 
             <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
               <div style={{ textAlign: 'right', marginRight: 4 }}>
-                <div style={{ fontWeight: 800, fontSize: '1.25rem', color: '#fff' }}>₹{monthlyFee.toLocaleString()}</div>
+                <div style={{ fontWeight: 800, fontSize: '1.25rem', color: 'var(--text-main)' }}>₹{monthlyFee.toLocaleString()}</div>
                 <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Due 10th</div>
               </div>
 
@@ -337,12 +329,12 @@ function StudentDetailCard({ student, selectedMonth, onClose, onRefresh, isMobil
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <div className="responsive-grid-2" style={{ gap: '0.75rem' }}>
                 {[
-                  { icon: Phone, label: 'Mobile Number', value: student.phone || '—', color: '#f97316', bg: 'rgba(249,115,22,0.12)' },
+                  { icon: Phone, label: 'Student Mobile (No)', value: student.phone || '—', color: '#f97316', bg: 'rgba(249,115,22,0.12)' },
+                  { icon: Phone, label: 'Parent Mobile (Parent No)', value: student.parentPhone || '—', color: '#10b981', bg: 'rgba(16,185,129,0.12)' },
                   { icon: Mail, label: 'Email Address', value: student.email || '—', color: '#3b82f6', bg: 'rgba(59,130,246,0.12)' },
                   { icon: BedDouble, label: 'Room Allotted', value: student.room, color: '#10b981', bg: 'rgba(16,185,129,0.12)' },
-                  { icon: Calendar, label: 'Date of Joining', value: student.dateOfJoining ? new Date(student.dateOfJoining).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '—', color: '#a855f7', bg: 'rgba(168,85,247,0.12)' },
+                  { icon: Calendar, label: 'Academic / Course', value: student.course || 'B.Tech', color: '#a855f7', bg: 'rgba(168,85,247,0.12)' },
                   { icon: Clock, label: 'Monthly Due Day', value: student.dueDayLabel ? `${student.dueDayLabel} of month` : '10th of month', color: '#eab308', bg: 'rgba(234,179,8,0.12)' },
-                  { icon: Shield, label: 'Aadhaar ID', value: student.aadhar ? `•••• •••• ${student.aadhar.slice(-4)}` : '—', color: '#ec4899', bg: 'rgba(236,72,153,0.12)' },
                 ].map(({ icon: Icon, label, value, color, bg }) => (
                   <div key={label} style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 14, padding: '12px 14px', border: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', gap: '12px' }}>
                     <div style={{ width: 36, height: 36, borderRadius: 10, background: bg, color: color, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -350,7 +342,7 @@ function StudentDetailCard({ student, selectedMonth, onClose, onRefresh, isMobil
                     </div>
                     <div style={{ minWidth: 0, flex: 1 }}>
                       <div style={{ color: 'var(--text-muted)', fontSize: '0.72rem', fontWeight: 500, marginBottom: 2 }}>{label}</div>
-                      <div style={{ fontWeight: 700, fontSize: '0.88rem', color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{value}</div>
+                      <div style={{ fontWeight: 700, fontSize: '0.88rem', color: 'var(--text-main)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{value}</div>
                     </div>
                   </div>
                 ))}
@@ -364,13 +356,10 @@ function StudentDetailCard({ student, selectedMonth, onClose, onRefresh, isMobil
               {/* Aadhaar Card Document */}
               <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 16, padding: '16px', border: '1px solid rgba(255,255,255,0.08)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                  <div style={{ fontWeight: 700, fontSize: '0.9rem', color: '#fff', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <Shield size={18} color="var(--primary)" />
                     <span>Aadhaar Card Attachment</span>
                   </div>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontFamily: 'monospace' }}>
-                    {student.aadhar ? `Aadhaar: ${student.aadhar}` : 'No Aadhaar ID'}
-                  </span>
                 </div>
 
                 {student.aadharCardUrl ? (
@@ -380,7 +369,7 @@ function StudentDetailCard({ student, selectedMonth, onClose, onRefresh, isMobil
                         <FileText size={20} />
                       </div>
                       <div>
-                        <div style={{ fontWeight: 700, fontSize: '0.88rem', color: '#fff' }}>Verified Identity Document</div>
+                        <div style={{ fontWeight: 700, fontSize: '0.88rem', color: 'var(--text-main)' }}>Attached Aadhaar Document</div>
                         <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Click to view or inspect image/PDF</div>
                       </div>
                     </div>
@@ -399,20 +388,16 @@ function StudentDetailCard({ student, selectedMonth, onClose, onRefresh, isMobil
                 )}
               </div>
 
-              {/* Family & Emergency Contact */}
+              {/* Family Contact */}
               <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 16, padding: '16px', border: '1px solid rgba(255,255,255,0.08)' }}>
-                <div style={{ fontWeight: 700, fontSize: '0.9rem', color: '#fff', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-main)', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <User size={18} color="#3b82f6" />
-                  <span>Parent & Guardian Information</span>
+                  <span>Parent Contact Information</span>
                 </div>
                 <div className="responsive-grid-2" style={{ gap: '0.75rem' }}>
                   <div style={{ background: 'rgba(0,0,0,0.2)', padding: '10px 12px', borderRadius: 10 }}>
-                    <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Parent / Guardian Name</div>
-                    <div style={{ fontWeight: 700, fontSize: '0.88rem', color: '#fff', marginTop: 2 }}>{student.parentName || '—'}</div>
-                  </div>
-                  <div style={{ background: 'rgba(0,0,0,0.2)', padding: '10px 12px', borderRadius: 10 }}>
-                    <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Parent Phone</div>
-                    <div style={{ fontWeight: 700, fontSize: '0.88rem', color: '#fff', marginTop: 2, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Parent Phone (Parent No)</div>
+                    <div style={{ fontWeight: 700, fontSize: '0.88rem', color: 'var(--text-main)', marginTop: 2, display: 'flex', alignItems: 'center', gap: '6px' }}>
                       {student.parentPhone ? (
                         <a href={`tel:${student.parentPhone}`} style={{ color: '#60a5fa', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}>
                           <Phone size={13} /> {student.parentPhone}
@@ -421,12 +406,14 @@ function StudentDetailCard({ student, selectedMonth, onClose, onRefresh, isMobil
                     </div>
                   </div>
                   <div style={{ background: 'rgba(0,0,0,0.2)', padding: '10px 12px', borderRadius: 10 }}>
-                    <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>State</div>
-                    <div style={{ fontWeight: 700, fontSize: '0.88rem', color: '#fff', marginTop: 2 }}>{student.state || '—'}</div>
-                  </div>
-                  <div style={{ background: 'rgba(0,0,0,0.2)', padding: '10px 12px', borderRadius: 10 }}>
-                    <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Pincode</div>
-                    <div style={{ fontWeight: 700, fontSize: '0.88rem', color: '#fff', marginTop: 2 }}>{student.pincode || '—'}</div>
+                    <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Student Phone (No)</div>
+                    <div style={{ fontWeight: 700, fontSize: '0.88rem', color: 'var(--text-main)', marginTop: 2 }}>
+                      {student.phone ? (
+                        <a href={`tel:${student.phone}`} style={{ color: '#4ade80', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <Phone size={13} /> {student.phone}
+                        </a>
+                      ) : '—'}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -574,14 +561,10 @@ const F = ({ label, col, hint, error, children }: { label: string; col?: boolean
 
 function AdmissionForm({ student, onClose, onSave, isMobile, onPreviewDoc }: { student: any; onClose: () => void; onSave: () => void; isMobile: boolean; onPreviewDoc: (url: string) => void }) {
   const { showToast } = useToast();
-  const [form, setForm] = useState(student ? { ...EMPTY_FORM, ...student, dob: student.dob ? student.dob.split('T')[0] : '', dateOfJoining: student.dateOfJoining ? student.dateOfJoining.split('T')[0] : '' } : { ...EMPTY_FORM, dateOfJoining: new Date().toISOString().split('T')[0] });
+  const [form, setForm] = useState(student ? { ...EMPTY_FORM, ...student } : { ...EMPTY_FORM, dateOfJoining: new Date().toISOString().split('T')[0] });
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [saving, setSaving] = useState(false);
-  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [uploadingAadhar, setUploadingAadhar] = useState(false);
-  const [expandedSection, setExpandedSection] = useState<string | null>('Personal Details');
-
-  const branches = COURSES[form.course] || ['Other'];
 
   const validateSingleField = (key: string, val: any): string => {
     const v = (val || '').toString().trim();
@@ -590,33 +573,20 @@ function AdmissionForm({ student, onClose, onSave, isMobile, onPreviewDoc }: { s
         if (!v) return 'Full name is required';
         if (v.length < 2) return 'Full name must be at least 2 characters';
         return '';
-      case 'gender':
-        if (!v) return 'Please select student gender';
-        return '';
       case 'phone':
         if (!v) return 'Phone number is required';
-        if (!/^[6-9]\d{9}$/.test(v)) return 'Must be a valid 10-digit mobile number starting with 6-9';
-        return '';
-      case 'email':
-        if (v && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return 'Must be a valid email address (e.g. name@domain.com)';
+        if (!/^[6-9]\d{9}$/.test(v)) return 'Must be a valid 10-digit mobile number';
         return '';
       case 'parentPhone':
-        if (v && !/^[6-9]\d{9}$/.test(v)) return 'Must be a valid 10-digit mobile number starting with 6-9';
+        if (!v) return 'Parent phone number is required';
+        if (!/^[6-9]\d{9}$/.test(v)) return 'Must be a valid 10-digit mobile number';
         return '';
-      case 'parentAltPhone':
-        if (v && !/^[6-9]\d{9}$/.test(v)) return 'Must be a valid 10-digit mobile number starting with 6-9';
+      case 'email':
+        if (!v) return 'Email address is required';
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return 'Must be a valid email address';
         return '';
-      case 'emergencyPhone':
-        if (v && !/^[6-9]\d{9}$/.test(v)) return 'Must be a valid 10-digit mobile number starting with 6-9';
-        return '';
-      case 'aadhar':
-        if (v && !/^\d{12}$/.test(v)) return 'Must be an exact 12-digit Aadhaar number';
-        return '';
-      case 'pincode':
-        if (v && !/^\d{6}$/.test(v)) return 'Must be a 6-digit pincode';
-        return '';
-      case 'dateOfJoining':
-        if (!v) return 'Date of joining is required';
+      case 'course':
+        if (!v) return 'Academic course is required';
         return '';
       default:
         return '';
@@ -635,13 +605,12 @@ function AdmissionForm({ student, onClose, onSave, isMobile, onPreviewDoc }: { s
   const f = (key: string, val: any) => {
     setForm((prev: any) => ({
       ...prev,
-      [key]: val,
-      ...(key === 'course' ? { branch: (COURSES[val] || ['Other'])[0] } : {})
+      [key]: val
     }));
     setTouched(prev => ({ ...prev, [key]: true }));
   };
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, field: 'photoUrl' | 'aadharCardUrl') => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -650,16 +619,12 @@ function AdmissionForm({ student, onClose, onSave, isMobile, onPreviewDoc }: { s
       return;
     }
 
-    const isPhoto = field === 'photoUrl';
-    if (isPhoto) setUploadingPhoto(true);
-    else setUploadingAadhar(true);
-
+    setUploadingAadhar(true);
     try {
       const reader = new FileReader();
       reader.onload = async () => {
         const base64Data = reader.result as string;
-        // Instant local preview in form state
-        f(field, base64Data);
+        f('aadharCardUrl', base64Data);
 
         const res = await fetch('/api/upload', {
           method: 'POST',
@@ -668,340 +633,343 @@ function AdmissionForm({ student, onClose, onSave, isMobile, onPreviewDoc }: { s
         });
         if (res.ok) {
           const data = await res.json();
-          f(field, data.url);
-          showToast(isPhoto ? 'Student photo uploaded successfully!' : 'Aadhaar document attached successfully!', 'success');
+          f('aadharCardUrl', data.url);
+          showToast('Aadhaar photo attached successfully!', 'success');
         } else {
           showToast('Failed to upload file to server', 'error');
         }
-        if (isPhoto) setUploadingPhoto(false);
-        else setUploadingAadhar(false);
+        setUploadingAadhar(false);
       };
       reader.readAsDataURL(file);
     } catch (err: any) {
       showToast('Upload error: ' + err.message, 'error');
-      if (isPhoto) setUploadingPhoto(false);
-      else setUploadingAadhar(false);
+      setUploadingAadhar(false);
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const allKeys = ['name', 'gender', 'phone', 'email', 'parentPhone', 'parentAltPhone', 'emergencyPhone', 'aadhar', 'pincode', 'dateOfJoining'];
+    const requiredKeys = ['name', 'phone', 'parentPhone', 'email', 'course'];
     const newTouched: Record<string, boolean> = {};
-    let firstErrorSection: string | null = null;
     let hasError = false;
 
-    allKeys.forEach(k => {
+    requiredKeys.forEach(k => {
       newTouched[k] = true;
       const err = validateSingleField(k, form[k]);
-      if (err && !hasError) {
-        hasError = true;
-        if (['name', 'gender', 'phone', 'email'].includes(k)) firstErrorSection = 'Personal Details';
-        else if (['parentPhone', 'parentAltPhone'].includes(k)) firstErrorSection = 'Parent / Guardian Information';
-        else if (['emergencyPhone'].includes(k)) firstErrorSection = 'Emergency Contact';
-        else if (['aadhar', 'pincode'].includes(k)) firstErrorSection = 'Address & Identification';
-        else if (['dateOfJoining'].includes(k)) firstErrorSection = 'Admission Details';
-      }
+      if (err) hasError = true;
     });
 
     setTouched(newTouched);
 
     if (hasError) {
-      if (firstErrorSection && isMobile) setExpandedSection(firstErrorSection);
-      showToast('Please resolve the highlighted field errors below', 'error');
+      showToast('Please fill all required fields correctly', 'error');
       return;
     }
 
     setSaving(true);
     try {
-      const url = student ? `/api/students/${student.dbId}` : '/api/students';
-      const res = await fetch(url, { method: student ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) });
-      if (res.ok) { showToast(student ? 'Student updated!' : 'Student added!', 'success'); onSave(); onClose(); }
-      else { const e = await res.json(); showToast(e.error || 'Failed to save student details', 'error'); }
-    } finally { setSaving(false); }
+      const url = student ? `/api/students/${student.dbId || student.id}` : '/api/students';
+      const payload = {
+        ...form,
+        branch: 'General',
+        year: '1st Year',
+        state: 'Hyderabad',
+        dateOfJoining: form.dateOfJoining || new Date().toISOString().split('T')[0]
+      };
+      const res = await fetch(url, {
+        method: student ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (res.ok) {
+        showToast(student ? 'Student updated successfully!' : 'Student added successfully!', 'success');
+        onSave();
+        onClose();
+      } else {
+        const err = await res.json();
+        showToast(err.error || 'Failed to save student', 'error');
+      }
+    } catch (err: any) {
+      showToast('Error: ' + err.message, 'error');
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const renderSection = (title: string, children: React.ReactNode) => (
-    <div style={{ marginBottom: '1.5rem' }}>
-      <div 
-        onClick={() => isMobile && setExpandedSection(expandedSection === title ? null : title)}
-        style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: 'var(--primary)', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '6px', cursor: isMobile ? 'pointer' : 'default' }}>
-        <div style={{ height: 1, flex: 1, background: 'var(--border-dim)' }} />
-        {title}
-        {isMobile && (expandedSection === title ? <ChevronUp size={14} /> : <ChevronDown size={14} />)}
-        <div style={{ height: 1, flex: 1, background: 'var(--border-dim)' }} />
-      </div>
-      {(!isMobile || expandedSection === title) && (
-        <div className="responsive-grid-2" style={{ gap: '0.85rem' }}>{children}</div>
-      )}
-    </div>
-  );
-
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: isMobile ? 'flex-end' : 'center', justifyContent: 'center', zIndex: 2000 }}
-      onClick={onClose}>
-      <div className={isMobile ? 'bottom-sheet' : 'glass-heavy'} style={isMobile ? { height: '90vh' } : { width: '100%', maxWidth: 700, maxHeight: '90vh', overflowY: 'auto', padding: '2rem', position: 'relative', borderRadius: 20, margin: '1rem' }}
-        onClick={e => e.stopPropagation()}>
+    <div
+      style={{
+        position: 'fixed',
+        inset: 0,
+        width: '100vw',
+        height: '100dvh',
+        background: 'rgba(0,0,0,0.7)',
+        backdropFilter: 'blur(8px)',
+        WebkitBackdropFilter: 'blur(8px)',
+        display: 'flex',
+        alignItems: isMobile ? 'flex-end' : 'center',
+        justifyContent: 'center',
+        zIndex: 2500,
+        overflowY: 'auto',
+        WebkitOverflowScrolling: 'touch',
+        padding: isMobile ? 0 : '1rem',
+        animation: 'fadeIn 0.2s ease'
+      }}
+      onClick={onClose}
+    >
+      <div
+        className={isMobile ? 'bottom-sheet' : 'glass-panel'}
+        style={
+          isMobile
+            ? {
+                padding: '18px 16px 24px',
+                width: '100%',
+                maxHeight: '88dvh',
+                display: 'flex',
+                flexDirection: 'column',
+                overflow: 'hidden',
+                overscrollBehavior: 'contain',
+                touchAction: 'pan-y'
+              }
+            : {
+                width: '100%',
+                maxWidth: '560px',
+                maxHeight: 'calc(100dvh - 3rem)',
+                padding: '1.75rem',
+                position: 'relative',
+                boxShadow: '0 24px 64px rgba(0,0,0,0.6)',
+                background: 'rgba(22, 26, 38, 0.96)',
+                backdropFilter: 'blur(20px)',
+                display: 'flex',
+                flexDirection: 'column',
+                overflow: 'hidden',
+                overscrollBehavior: 'contain',
+                touchAction: 'pan-y'
+              }
+        }
+        onClick={e => e.stopPropagation()}
+      >
         {isMobile && <div className="bottom-sheet-handle" />}
-        <button className="icon-btn-small" onClick={onClose} style={{ position: 'absolute', top: 16, right: 16 }}><X size={18} /></button>
-        <h2 style={{ margin: '0 0 1.5rem 0', fontSize: '1.25rem' }}>{student ? 'Edit Student' : 'Add New Student'}</h2>
-        <form onSubmit={handleSubmit} noValidate>
-          {renderSection('Personal Details', (
-            <>
-              {/* Student Photo Upload Box */}
-              <F label="Student Passport Photo" col>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'rgba(255,255,255,0.03)', padding: '12px 16px', borderRadius: 12, border: '1px dashed var(--border-dim)' }}>
-                  {form.photoUrl ? (
-                    <div style={{ position: 'relative' }}>
-                      <img src={form.photoUrl} alt="Preview" onClick={() => onPreviewDoc(form.photoUrl)} title="Click to inspect photo" style={{ width: 64, height: 64, borderRadius: 14, objectFit: 'cover', border: '2px solid var(--primary)', cursor: 'pointer' }} />
-                      <button type="button" onClick={() => f('photoUrl', '')} style={{ position: 'absolute', top: -6, right: -6, background: '#ef4444', color: '#fff', border: 'none', borderRadius: '50%', width: 20, height: 20, cursor: 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
-                    </div>
-                  ) : (
-                    <div style={{ width: 64, height: 64, borderRadius: 14, background: 'rgba(249,115,22,0.1)', border: '1px solid rgba(249,115,22,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)' }}>
-                      <Camera size={26} />
-                    </div>
-                  )}
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 600, fontSize: '0.88rem', marginBottom: 2 }}>{form.photoUrl ? 'Photo Uploaded' : 'Upload Student Passport Photo'}</div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 8 }}>JPG, PNG or WebP formats accepted</div>
-                    <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 14px', background: 'rgba(249,115,22,0.15)', border: '1px solid rgba(249,115,22,0.4)', borderRadius: 8, color: 'var(--primary)', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer' }}>
-                      <Upload size={14} />
-                      <span>{uploadingPhoto ? 'Uploading photo…' : form.photoUrl ? 'Change Photo' : 'Select Photo File'}</span>
-                      <input type="file" accept="image/*" onChange={(e) => handleFileUpload(e, 'photoUrl')} style={{ display: 'none' }} disabled={uploadingPhoto} />
-                    </label>
-                  </div>
-                </div>
-              </F>
 
-              <F label="Full Name *" error={getFieldError('name')}>
-                <input 
-                  required 
-                  className={`custom-input ${getFieldError('name') ? 'input-error' : ''}`} 
-                  value={form.name} 
-                  onChange={e => f('name', e.target.value)} 
-                  onBlur={() => handleFieldBlur('name')} 
-                  placeholder="Student's full name" 
-                />
-              </F>
-              <F label="Gender *" error={getFieldError('gender')}>
-                <select 
-                  required 
-                  className={`custom-input ${getFieldError('gender') ? 'input-error' : ''}`} 
-                  value={form.gender} 
-                  onChange={e => f('gender', e.target.value)} 
-                  onBlur={() => handleFieldBlur('gender')}
-                >
-                  <option value="">Select Gender</option><option>Male</option><option>Female</option><option>Other</option>
-                </select>
-              </F>
-              <F label="Date of Birth"><input type="date" className="custom-input" value={form.dob} onChange={e => f('dob', e.target.value)} /></F>
-              <F label="Phone Number *" error={getFieldError('phone')} hint="10-digit mobile">
-                <input 
-                  required 
-                  className={`custom-input ${getFieldError('phone') ? 'input-error' : ''}`} 
-                  value={form.phone} 
-                  onChange={e => f('phone', e.target.value.replace(/\D/g, '').slice(0, 10))} 
-                  onBlur={() => handleFieldBlur('phone')} 
-                  placeholder="10-digit mobile number" 
-                  maxLength={10} 
-                />
-              </F>
-              <F label="Email Address" error={getFieldError('email')}>
-                <input 
-                  type="email" 
-                  className={`custom-input ${getFieldError('email') ? 'input-error' : ''}`} 
-                  value={form.email} 
-                  onChange={e => f('email', e.target.value)} 
-                  onBlur={() => handleFieldBlur('email')} 
-                  placeholder="Student email address" 
-                />
-              </F>
-            </>
-          ))}
-          {renderSection('Academic Details', (
-            <>
-              <F label="Course">
-                <select className="custom-input" value={form.course} onChange={e => f('course', e.target.value)}>
-                  {Object.keys(COURSES).map(c => <option key={c}>{c}</option>)}
-                </select>
-              </F>
-              <F label="Branch / Specialization">
-                <select className="custom-input" value={form.branch} onChange={e => f('branch', e.target.value)}>
-                  {branches.map(b => <option key={b}>{b}</option>)}
-                </select>
-              </F>
-              <F label="Year of Study">
-                <select className="custom-input" value={form.year} onChange={e => f('year', e.target.value)}>
-                  <option>1st</option><option>2nd</option><option>3rd</option><option>4th</option><option>5th</option><option>Other</option>
-                </select>
-              </F>
-              <F label="Roll / ID Number"><input className="custom-input" value={form.rollNumber} onChange={e => f('rollNumber', e.target.value)} placeholder="College ID / Roll No." /></F>
-            </>
-          ))}
-          {renderSection('Admission Details', (
-            <>
-              <F label="Date of Joining *" error={getFieldError('dateOfJoining')}>
-                <input 
-                  type="date" 
-                  required 
-                  className={`custom-input ${getFieldError('dateOfJoining') ? 'input-error' : ''}`} 
-                  value={form.dateOfJoining} 
-                  onChange={e => f('dateOfJoining', e.target.value)} 
-                  onBlur={() => handleFieldBlur('dateOfJoining')} 
-                />
-              </F>
-              <F label="Security Deposit (₹)"><input type="number" min="0" step="100" className="custom-input" value={form.securityDeposit} onChange={e => f('securityDeposit', e.target.value)} placeholder="e.g. 5000" /></F>
-              
-              <F label="Notice Period / Vacating Hostel" col>
-                <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 12, padding: '12px 14px', border: '1px solid var(--border-dim)' }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.82rem', fontWeight: 600 }}>
-                    <input 
-                      type="checkbox" 
-                      checked={form.isOnNotice} 
-                      onChange={e => f('isOnNotice', e.target.checked)}
-                      style={{ width: 16, height: 16, accentColor: 'var(--primary)', cursor: 'pointer' }}
-                    />
-                    <span>Student is on Notice Period / Plans to Vacate Hostel</span>
-                  </label>
-                  {form.isOnNotice && (
-                    <div style={{ display: 'flex', gap: '10px', marginTop: 10, flexWrap: 'wrap' }}>
-                      <div style={{ flex: 1, minWidth: 160 }}>
-                        <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Expected Vacating Date</label>
-                        <input type="date" className="custom-input" value={form.noticeVacateDate} onChange={e => f('noticeVacateDate', e.target.value)} />
-                      </div>
-                      <div style={{ flex: 1, minWidth: 160 }}>
-                        <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Reason for Leaving</label>
-                        <input className="custom-input" value={form.noticeReason} onChange={e => f('noticeReason', e.target.value)} placeholder="e.g. Course completed / Relocating" />
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </F>
-            </>
-          ))}
-          {renderSection('Parent / Guardian Information', (
-            <>
-              <F label="Parent / Guardian Name"><input className="custom-input" value={form.parentName} onChange={e => f('parentName', e.target.value)} placeholder="Full name" /></F>
-              <F label="Relationship">
-                <select className="custom-input" value={form.parentRelationship} onChange={e => f('parentRelationship', e.target.value)}>
-                  <option>Father</option><option>Mother</option><option>Guardian</option><option>Other</option>
-                </select>
-              </F>
-              <F label="Contact Number" error={getFieldError('parentPhone')} hint="10-digit mobile">
-                <input 
-                  className={`custom-input ${getFieldError('parentPhone') ? 'input-error' : ''}`} 
-                  value={form.parentPhone} 
-                  onChange={e => f('parentPhone', e.target.value.replace(/\D/g, '').slice(0, 10))} 
-                  onBlur={() => handleFieldBlur('parentPhone')} 
-                  placeholder="10-digit mobile number" 
-                  maxLength={10} 
-                />
-              </F>
-              <F label="Alternate Number" error={getFieldError('parentAltPhone')} hint="10-digit mobile">
-                <input 
-                  className={`custom-input ${getFieldError('parentAltPhone') ? 'input-error' : ''}`} 
-                  value={form.parentAltPhone} 
-                  onChange={e => f('parentAltPhone', e.target.value.replace(/\D/g, '').slice(0, 10))} 
-                  onBlur={() => handleFieldBlur('parentAltPhone')} 
-                  placeholder="10-digit alternate mobile" 
-                  maxLength={10} 
-                />
-              </F>
-              <F label="Parent Address" col><input className="custom-input" value={form.parentAddress} onChange={e => f('parentAddress', e.target.value)} placeholder="Full address" /></F>
-            </>
-          ))}
-          {renderSection('Emergency Contact', (
-            <>
-              <F label="Contact Name"><input className="custom-input" value={form.emergencyName} onChange={e => f('emergencyName', e.target.value)} placeholder="Emergency contact name" /></F>
-              <F label="Relationship"><input className="custom-input" value={form.emergencyRelationship} onChange={e => f('emergencyRelationship', e.target.value)} placeholder="e.g. Uncle" /></F>
-              <F label="Phone Number" col error={getFieldError('emergencyPhone')} hint="10-digit mobile">
-                <input 
-                  className={`custom-input ${getFieldError('emergencyPhone') ? 'input-error' : ''}`} 
-                  value={form.emergencyPhone} 
-                  onChange={e => f('emergencyPhone', e.target.value.replace(/\D/g, '').slice(0, 10))} 
-                  onBlur={() => handleFieldBlur('emergencyPhone')} 
-                  placeholder="10-digit emergency mobile" 
-                  maxLength={10} 
-                />
-              </F>
-            </>
-          ))}
-          {renderSection('Address & Identification', (
-            <>
-              <F label="Aadhaar Number" error={getFieldError('aadhar')} hint="12-digit UID">
-                <input 
-                  className={`custom-input ${getFieldError('aadhar') ? 'input-error' : ''}`} 
-                  value={form.aadhar} 
-                  onChange={e => f('aadhar', e.target.value.replace(/\D/g, '').slice(0, 12))} 
-                  onBlur={() => handleFieldBlur('aadhar')} 
-                  placeholder="12-digit Aadhaar number" 
-                  maxLength={12} 
-                />
-              </F>
-              
-              {/* Aadhaar Card Document Attachment Box */}
-              <F label="Aadhaar Card Document Attachment" col>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'rgba(255,255,255,0.03)', padding: '12px 16px', borderRadius: 12, border: '1px dashed var(--border-dim)' }}>
-                  {form.aadharCardUrl ? (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1 }}>
-                      <FileText size={24} color="var(--primary)" />
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontWeight: 600, fontSize: '0.85rem', color: 'var(--success)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                          <CheckCircle size={14} /> Document Attached
-                        </div>
-                        <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {form.aadharCardUrl}
-                        </div>
-                      </div>
-                      <button type="button" onClick={() => onPreviewDoc(form.aadharCardUrl)} style={{ color: 'var(--primary)', background: 'none', border: 'none', padding: 0, fontSize: '0.78rem', fontWeight: 600, textDecoration: 'underline', marginRight: 8, cursor: 'pointer' }}>View</button>
-                      <button type="button" onClick={() => f('aadharCardUrl', '')} style={{ background: 'rgba(239,68,68,0.15)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 6, padding: '4px 8px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600 }}>Remove</button>
-                    </div>
-                  ) : (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', width: '100%' }}>
-                      <div style={{ width: 44, height: 44, borderRadius: 10, background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
-                        <FileText size={20} />
-                      </div>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontWeight: 600, fontSize: '0.85rem', marginBottom: 2 }}>Upload Aadhaar Card / ID Proof</div>
-                        <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: 6 }}>Upload image (JPG/PNG) or PDF copy of Aadhaar Card</div>
-                        <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '5px 12px', background: 'rgba(255,255,255,0.08)', border: '1px solid var(--border-dim)', borderRadius: 8, color: '#fff', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer' }}>
-                          <Upload size={13} />
-                          <span>{uploadingAadhar ? 'Uploading document…' : 'Attach Aadhaar File'}</span>
-                          <input type="file" accept="image/*,application/pdf" onChange={(e) => handleFileUpload(e, 'aadharCardUrl')} style={{ display: 'none' }} disabled={uploadingAadhar} />
-                        </label>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </F>
+        {/* Modal Header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexShrink: 0 }}>
+          <h2 style={{ margin: 0, fontSize: isMobile ? '1.15rem' : '1.3rem', fontWeight: 800, color: 'var(--text-main)' }}>
+            {student ? 'Edit Student' : 'Add New Student'}
+          </h2>
+          <button className="icon-btn-small" onClick={onClose} aria-label="Close modal">
+            <X size={18} />
+          </button>
+        </div>
 
-              <F label="State">
-                <select className="custom-input" value={form.state} onChange={e => f('state', e.target.value)}>
-                  <option value="">Select State</option>
-                  <option>Andhra Pradesh</option><option>Telangana</option><option>Tamil Nadu</option>
-                  <option>Karnataka</option><option>Kerala</option><option>Maharashtra</option>
-                  <option>Gujarat</option><option>Rajasthan</option><option>Delhi</option><option>Other</option>
-                </select>
-              </F>
-              <F label="Address" col><input className="custom-input" value={form.address} onChange={e => f('address', e.target.value)} placeholder="Full address" /></F>
-              <F label="Pincode" error={getFieldError('pincode')} hint="6-digit pincode">
-                <input 
-                  className={`custom-input ${getFieldError('pincode') ? 'input-error' : ''}`} 
-                  value={form.pincode} 
-                  onChange={e => f('pincode', e.target.value.replace(/\D/g, '').slice(0, 6))} 
-                  onBlur={() => handleFieldBlur('pincode')} 
-                  placeholder="6-digit pincode" 
-                  maxLength={6} 
-                />
-              </F>
-            </>
-          ))}
+        {/* Scrollable Form Body */}
+        <form
+          onSubmit={handleSubmit}
+          noValidate
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '1rem',
+            overflowY: 'auto',
+            WebkitOverflowScrolling: 'touch',
+            touchAction: 'pan-y',
+            overscrollBehavior: 'contain',
+            flex: 1,
+            minHeight: 0,
+            paddingRight: '4px'
+          }}
+        >
+          {/* Full Name */}
+          <F label="Full Name *" error={getFieldError('name')}>
+            <input
+              required
+              className={`custom-input ${getFieldError('name') ? 'input-error' : ''}`}
+              value={form.name}
+              onChange={e => f('name', e.target.value)}
+              onBlur={() => handleFieldBlur('name')}
+              placeholder="Student's full name"
+              autoFocus={!isMobile}
+            />
+          </F>
 
-          <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
-            <button type="button" className="custom-select" style={{ flex: 1 }} onClick={onClose}>Cancel</button>
-            <button type="submit" className="primary-btn" style={{ flex: 1, justifyContent: 'center' }} disabled={saving || uploadingPhoto || uploadingAadhar}>
-              {saving ? 'Saving…' : student ? 'Update Student' : '+ Add Student'}
+          {/* Student Phone & Parent Phone */}
+          <div className="responsive-grid-2" style={{ gap: '0.85rem' }}>
+            <F label="Phone Number (No) *" error={getFieldError('phone')} hint="10-digit mobile">
+              <input
+                required
+                type="tel"
+                className={`custom-input ${getFieldError('phone') ? 'input-error' : ''}`}
+                value={form.phone}
+                onChange={e => f('phone', e.target.value.replace(/\D/g, '').slice(0, 10))}
+                onBlur={() => handleFieldBlur('phone')}
+                placeholder="Student 10-digit mobile"
+                maxLength={10}
+              />
+            </F>
+
+            <F label="Parent Phone (Parent No) *" error={getFieldError('parentPhone')} hint="10-digit mobile">
+              <input
+                required
+                type="tel"
+                className={`custom-input ${getFieldError('parentPhone') ? 'input-error' : ''}`}
+                value={form.parentPhone}
+                onChange={e => f('parentPhone', e.target.value.replace(/\D/g, '').slice(0, 10))}
+                onBlur={() => handleFieldBlur('parentPhone')}
+                placeholder="Parent 10-digit mobile"
+                maxLength={10}
+              />
+            </F>
+          </div>
+
+          {/* Email Address & Academic / Course */}
+          <div className="responsive-grid-2" style={{ gap: '0.85rem' }}>
+            <F label="Email Address *" error={getFieldError('email')}>
+              <input
+                required
+                type="email"
+                className={`custom-input ${getFieldError('email') ? 'input-error' : ''}`}
+                value={form.email}
+                onChange={e => f('email', e.target.value)}
+                onBlur={() => handleFieldBlur('email')}
+                placeholder="student@domain.com"
+              />
+            </F>
+
+            <F label="Academic / Course *" error={getFieldError('course')}>
+              <select
+                required
+                className="custom-input"
+                value={form.course}
+                onChange={e => f('course', e.target.value)}
+              >
+                {COURSES.map(c => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </F>
+          </div>
+
+          {/* Aadhaar Card Photo Upload */}
+          <F label="Aadhaar Card Photo" col>
+            <div style={{
+              background: 'rgba(255,255,255,0.03)',
+              border: '1px dashed var(--border-light)',
+              borderRadius: 14,
+              padding: '14px 16px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px'
+            }}>
+              {form.aadharCardUrl ? (
+                <div style={{ position: 'relative', flexShrink: 0 }}>
+                  <img
+                    src={form.aadharCardUrl}
+                    alt="Aadhaar Document Preview"
+                    onClick={() => onPreviewDoc(form.aadharCardUrl)}
+                    title="Click to inspect photo"
+                    style={{
+                      width: 64,
+                      height: 64,
+                      borderRadius: 12,
+                      objectFit: 'cover',
+                      border: '2px solid var(--primary)',
+                      cursor: 'pointer'
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => f('aadharCardUrl', '')}
+                    style={{
+                      position: 'absolute',
+                      top: -6,
+                      right: -6,
+                      background: '#ef4444',
+                      color: '#fff',
+                      border: 'none',
+                      borderRadius: '50%',
+                      width: 20,
+                      height: 20,
+                      cursor: 'pointer',
+                      fontSize: 12,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
+                    title="Remove Aadhaar Photo"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ) : (
+                <div style={{
+                  width: 50,
+                  height: 50,
+                  borderRadius: 12,
+                  background: 'rgba(249,115,22,0.12)',
+                  border: '1px solid rgba(249,115,22,0.3)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'var(--primary)',
+                  flexShrink: 0
+                }}>
+                  <Camera size={24} />
+                </div>
+              )}
+
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontWeight: 700, fontSize: '0.86rem', color: 'var(--text-main)', marginBottom: 2 }}>
+                  {form.aadharCardUrl ? 'Aadhaar Photo Attached' : 'Upload Aadhaar Card Photo'}
+                </div>
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: 8 }}>
+                  JPG, PNG or WebP formats accepted (under 12MB)
+                </div>
+                <label style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '6px 14px',
+                  background: 'rgba(249,115,22,0.15)',
+                  border: '1px solid rgba(249,115,22,0.4)',
+                  borderRadius: 8,
+                  color: 'var(--primary)',
+                  fontSize: '0.78rem',
+                  fontWeight: 700,
+                  cursor: 'pointer'
+                }}>
+                  <Upload size={13} />
+                  <span>{uploadingAadhar ? 'Uploading photo…' : form.aadharCardUrl ? 'Change Photo' : 'Select Photo File'}</span>
+                  <input
+                    type="file"
+                    accept="image/*,application/pdf"
+                    onChange={handleFileUpload}
+                    style={{ display: 'none' }}
+                    disabled={uploadingAadhar}
+                  />
+                </label>
+              </div>
+            </div>
+          </F>
+
+          {/* Action Buttons */}
+          <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem', flexShrink: 0 }}>
+            <button
+              type="button"
+              className="ghost-btn"
+              style={{ flex: 1, minHeight: 42, justifyContent: 'center' }}
+              onClick={onClose}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="primary-btn"
+              style={{ flex: 1.5, minHeight: 42, justifyContent: 'center' }}
+              disabled={saving || uploadingAadhar}
+            >
+              {saving ? 'Saving…' : student ? '✓ Update Student' : '+ Add Student'}
             </button>
           </div>
         </form>
@@ -1343,7 +1311,7 @@ export default function Students() {
           }}>
             <select className="custom-select" style={{ minWidth: 125, fontSize: '0.78rem', padding: '6px 10px' }} value={courseFilter} onChange={e => setCourseFilter(e.target.value)}>
               <option value="all">All Courses</option>
-              {Object.keys(COURSES).map(c => <option key={c} value={c.toLowerCase()}>{c}</option>)}
+              {COURSES.map(c => <option key={c} value={c.toLowerCase()}>{c}</option>)}
             </select>
 
             {(['all', 'Paid', 'Pending'] as const).map(f => (
