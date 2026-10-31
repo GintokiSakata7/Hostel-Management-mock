@@ -157,15 +157,15 @@ export default function Complaints() {
       </div>
 
       {/* Stats */}
-      <div className="responsive-grid-3" style={{ gap: '1rem', marginBottom: '1.5rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: isMobile ? '0.5rem' : '1rem', marginBottom: '1.25rem' }}>
         {[
           { label: 'Pending', count: pending.length, color: 'var(--danger)' },
           { label: 'In Progress', count: inProgress.length, color: 'var(--warning)' },
           { label: 'Resolved', count: resolved.length, color: 'var(--success)' },
         ].map(({ label, count, color }) => (
-          <div key={label} className="glass-panel" style={{ padding: '1rem', textAlign: 'center' }}>
-            <div style={{ fontSize: '1.6rem', fontWeight: 700, color }}>{count}</div>
-            <div style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>{label}</div>
+          <div key={label} className="glass-panel" style={{ padding: isMobile ? '0.75rem 0.5rem' : '1rem', textAlign: 'center' }}>
+            <div style={{ fontSize: isMobile ? '1.3rem' : '1.6rem', fontWeight: 700, color }}>{count}</div>
+            <div style={{ color: 'var(--text-muted)', fontSize: isMobile ? '0.72rem' : '0.78rem' }}>{label}</div>
           </div>
         ))}
       </div>

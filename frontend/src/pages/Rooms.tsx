@@ -1285,16 +1285,27 @@ export default function Rooms() {
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
       {/* Top Header & Tab Navigation */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <h1 className="page-title" style={{ margin: 0, fontSize: '1.4rem' }}>Hostel Virtual Workspace</h1>
-          <div style={{ display: 'flex', background: 'rgba(255,255,255,0.06)', borderRadius: 12, padding: 3, border: '1px solid rgba(255,255,255,0.1)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: isMobile ? 'wrap' : 'nowrap', width: isMobile ? '100%' : 'auto' }}>
+          <h1 className="page-title" style={{ margin: 0, fontSize: isMobile ? '1.25rem' : '1.4rem' }}>Hostel Virtual Workspace</h1>
+          <div style={{
+            display: 'flex',
+            background: 'rgba(255,255,255,0.06)',
+            borderRadius: 12,
+            padding: 3,
+            border: '1px solid rgba(255,255,255,0.1)',
+            overflowX: 'auto',
+            maxWidth: isMobile ? '100%' : 'none',
+            WebkitOverflowScrolling: 'touch',
+            scrollbarWidth: 'none'
+          }}>
             <button
               onClick={() => setSelectedFloor(null)}
               style={{
                 padding: '5px 14px', borderRadius: 9, border: 'none',
                 background: selectedFloor === null ? 'var(--primary)' : 'transparent',
                 color: selectedFloor === null ? '#fff' : 'var(--text-muted)',
-                fontWeight: 700, fontSize: '0.78rem', cursor: 'pointer', transition: 'all 0.2s'
+                fontWeight: 700, fontSize: '0.78rem', cursor: 'pointer', transition: 'all 0.2s',
+                whiteSpace: 'nowrap', flexShrink: 0
               }}
             >
               All Floors
@@ -1307,7 +1318,8 @@ export default function Rooms() {
                   padding: '5px 14px', borderRadius: 9, border: 'none',
                   background: selectedFloor === f ? 'var(--primary)' : 'transparent',
                   color: selectedFloor === f ? '#fff' : 'var(--text-muted)',
-                  fontWeight: 700, fontSize: '0.78rem', cursor: 'pointer', transition: 'all 0.2s'
+                  fontWeight: 700, fontSize: '0.78rem', cursor: 'pointer', transition: 'all 0.2s',
+                  whiteSpace: 'nowrap', flexShrink: 0
                 }}
               >
                 {formatFloorName(f)}
@@ -1316,14 +1328,13 @@ export default function Rooms() {
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap', width: isMobile ? '100%' : 'auto', justifyContent: isMobile ? 'space-between' : 'flex-end' }}>
           {/* Status Legends */}
           {[{ color: 'var(--success)', label: 'Paid' }, { color: 'var(--warning)', label: 'Pending' }, { color: 'rgba(255,255,255,0.3)', label: 'Empty' }].map(({ color, label }) => (
             <div key={label} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.76rem', color: 'var(--text-muted)', background: 'rgba(0,0,0,0.3)', padding: '4px 10px', borderRadius: 20, border: '1px solid rgba(255,255,255,0.08)' }}>
               <span style={{ width: 8, height: 8, borderRadius: '50%', background: color, boxShadow: `0 0 8px ${color}`, display: 'inline-block' }} />{label}
             </div>
           ))}
-
 
           {/* Month selector */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(255,255,255,0.06)', border: '1px solid var(--border-dim)', borderRadius: 10, padding: '6px 12px' }}>
@@ -1337,7 +1348,7 @@ export default function Rooms() {
       </div>
 
       {/* Main Full-Width Virtual Workspace Canvas */}
-      <div className="velozty-canvas-container" style={{ padding: '1.5rem', width: '100%' }}>
+      <div className="velozty-canvas-container" style={{ padding: isMobile ? '1rem 0.75rem' : '1.5rem', width: '100%' }}>
         {/* Workspace Search & Title */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem', gap: '1rem', flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
@@ -1368,7 +1379,7 @@ export default function Rooms() {
             )}
           </div>
 
-          <div className="search-bar" style={{ width: 220, background: 'rgba(0,0,0,0.4)' }}>
+          <div className="search-bar" style={{ width: isMobile ? '100%' : 220, background: 'rgba(0,0,0,0.4)' }}>
             <Search size={13} color="var(--text-muted)" />
             <input placeholder="Search room number..." value={search} onChange={e => setSearch(e.target.value)} />
           </div>
@@ -1391,7 +1402,7 @@ export default function Rooms() {
                     <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{floorRooms.length} rooms</span>
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.25rem' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.25rem' }}>
                     {floorRooms.map((room, i) => (
                       <div key={room.id} className="velozty-room-box" style={{ animationDelay: `${i * 0.04}s`, animation: 'slideInUp 0.3s ease-out both' }}>
                         <PremiumRoomCard

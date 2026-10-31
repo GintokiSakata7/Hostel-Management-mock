@@ -108,6 +108,13 @@ const Finance: React.FC = () => {
   const [allExpenses, setAllExpenses] = useState<Expense[]>([]);
   const [categories, setCategories] = useState<ExpenseCategory[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [isMobile, setIsMobile] = useState<boolean>(window.innerWidth <= 768);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Filters
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -1051,122 +1058,128 @@ const Finance: React.FC = () => {
       {/* ─── SUMMARY CARDS (PLAIN ENGLISH & EASY TO READ) ─────────────────────────── */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))',
-        gap: '16px',
-        marginBottom: '28px'
+        gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(auto-fit, minmax(230px, 1fr))',
+        gap: isMobile ? '10px' : '16px',
+        marginBottom: isMobile ? '18px' : '28px'
       }}>
         {/* Total Income */}
         <div style={{
-          padding: '22px',
-          borderRadius: '20px',
+          padding: isMobile ? '14px 12px' : '22px',
+          borderRadius: isMobile ? '14px' : '20px',
           background: 'linear-gradient(145deg, rgba(34, 197, 94, 0.1) 0%, rgba(22, 163, 74, 0.03) 100%)',
           border: '1px solid rgba(34, 197, 94, 0.3)',
           position: 'relative',
           overflow: 'hidden',
           boxShadow: '0 8px 24px rgba(0,0,0,0.2)'
         }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-            <span style={{ fontSize: '0.88rem', fontWeight: 700, color: 'rgba(255, 255, 255, 0.8)' }}>
-              Total Income (Kamai)
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: isMobile ? '6px' : '10px' }}>
+            <span style={{ fontSize: isMobile ? '0.78rem' : '0.88rem', fontWeight: 700, color: 'rgba(255, 255, 255, 0.8)' }}>
+              {isMobile ? 'Income' : 'Total Income (Kamai)'}
             </span>
-            <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: 'rgba(34, 197, 94, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#22c55e' }}>
-              <TrendingUp size={22} />
+            <div style={{ width: isMobile ? '32px' : '40px', height: isMobile ? '32px' : '40px', borderRadius: '10px', background: 'rgba(34, 197, 94, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#22c55e' }}>
+              <TrendingUp size={isMobile ? 18 : 22} />
             </div>
           </div>
-          <div style={{ fontSize: '2rem', fontWeight: 800, color: '#22c55e', letterSpacing: '-0.5px' }}>
+          <div style={{ fontSize: isMobile ? '1.35rem' : '2rem', fontWeight: 800, color: '#22c55e', letterSpacing: '-0.5px' }}>
             ₹{(summary?.totalRevenue || 0).toLocaleString('en-IN')}
           </div>
-          <div style={{ fontSize: '0.78rem', color: 'rgba(255, 255, 255, 0.6)', marginTop: '8px', display: 'flex', alignItems: 'center', gap: '5px' }}>
-            <CheckCircle2 size={14} color="#22c55e" />
-            <span>Total student fee payments collected</span>
-          </div>
+          {!isMobile && (
+            <div style={{ fontSize: '0.78rem', color: 'rgba(255, 255, 255, 0.6)', marginTop: '8px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+              <CheckCircle2 size={14} color="#22c55e" />
+              <span>Total student fee payments collected</span>
+            </div>
+          )}
         </div>
 
         {/* Total Expenses */}
         <div style={{
-          padding: '22px',
-          borderRadius: '20px',
+          padding: isMobile ? '14px 12px' : '22px',
+          borderRadius: isMobile ? '14px' : '20px',
           background: 'linear-gradient(145deg, rgba(239, 68, 68, 0.1) 0%, rgba(220, 38, 38, 0.03) 100%)',
           border: '1px solid rgba(239, 68, 68, 0.3)',
           position: 'relative',
           overflow: 'hidden',
           boxShadow: '0 8px 24px rgba(0,0,0,0.2)'
         }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-            <span style={{ fontSize: '0.88rem', fontWeight: 700, color: 'rgba(255, 255, 255, 0.8)' }}>
-              Total Kharcha (Expenses)
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: isMobile ? '6px' : '10px' }}>
+            <span style={{ fontSize: isMobile ? '0.78rem' : '0.88rem', fontWeight: 700, color: 'rgba(255, 255, 255, 0.8)' }}>
+              {isMobile ? 'Expenses' : 'Total Kharcha (Expenses)'}
             </span>
-            <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: 'rgba(239, 68, 68, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ef4444' }}>
-              <TrendingDown size={22} />
+            <div style={{ width: isMobile ? '32px' : '40px', height: isMobile ? '32px' : '40px', borderRadius: '10px', background: 'rgba(239, 68, 68, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ef4444' }}>
+              <TrendingDown size={isMobile ? 18 : 22} />
             </div>
           </div>
-          <div style={{ fontSize: '2rem', fontWeight: 800, color: '#ef4444', letterSpacing: '-0.5px' }}>
+          <div style={{ fontSize: isMobile ? '1.35rem' : '2rem', fontWeight: 800, color: '#ef4444', letterSpacing: '-0.5px' }}>
             ₹{(summary?.totalExpense || 0).toLocaleString('en-IN')}
           </div>
-          <div style={{ fontSize: '0.78rem', color: 'rgba(255, 255, 255, 0.6)', marginTop: '8px' }}>
-            <span>{summary?.expenseCount || 0} expense entries recorded</span>
-          </div>
+          {!isMobile && (
+            <div style={{ fontSize: '0.78rem', color: 'rgba(255, 255, 255, 0.6)', marginTop: '8px' }}>
+              <span>{summary?.expenseCount || 0} expense entries recorded</span>
+            </div>
+          )}
         </div>
 
         {/* Net Savings / Profit */}
         <div style={{
-          padding: '22px',
-          borderRadius: '20px',
+          padding: isMobile ? '14px 12px' : '22px',
+          borderRadius: isMobile ? '14px' : '20px',
           background: (summary?.netProfit || 0) >= 0 ? 'linear-gradient(145deg, rgba(59, 130, 246, 0.1) 0%, rgba(37, 99, 235, 0.03) 100%)' : 'linear-gradient(145deg, rgba(239, 68, 68, 0.12) 0%, rgba(220, 38, 38, 0.03) 100%)',
           border: `1px solid ${(summary?.netProfit || 0) >= 0 ? 'rgba(59, 130, 246, 0.3)' : 'rgba(239, 68, 68, 0.4)'}`,
           position: 'relative',
           overflow: 'hidden',
           boxShadow: '0 8px 24px rgba(0,0,0,0.2)'
         }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-            <span style={{ fontSize: '0.88rem', fontWeight: 700, color: 'rgba(255, 255, 255, 0.8)' }}>
-              Net Savings (Money Left)
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: isMobile ? '6px' : '10px' }}>
+            <span style={{ fontSize: isMobile ? '0.78rem' : '0.88rem', fontWeight: 700, color: 'rgba(255, 255, 255, 0.8)' }}>
+              {isMobile ? 'Net Savings' : 'Net Savings (Money Left)'}
             </span>
             <div style={{
-              width: '40px', height: '40px', borderRadius: '12px',
+              width: isMobile ? '32px' : '40px', height: isMobile ? '32px' : '40px', borderRadius: '10px',
               background: (summary?.netProfit || 0) >= 0 ? 'rgba(59, 130, 246, 0.2)' : 'rgba(239, 68, 68, 0.2)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               color: (summary?.netProfit || 0) >= 0 ? '#3b82f6' : '#ef4444'
             }}>
-              {(summary?.netProfit || 0) >= 0 ? <ArrowUpRight size={22} /> : <ArrowDownRight size={22} />}
+              {(summary?.netProfit || 0) >= 0 ? <ArrowUpRight size={isMobile ? 18 : 22} /> : <ArrowDownRight size={isMobile ? 18 : 22} />}
             </div>
           </div>
           <div style={{
-            fontSize: '2rem',
+            fontSize: isMobile ? '1.35rem' : '2rem',
             fontWeight: 800,
             color: (summary?.netProfit || 0) >= 0 ? '#3b82f6' : '#ef4444',
             letterSpacing: '-0.5px'
           }}>
             ₹{(summary?.netProfit || 0).toLocaleString('en-IN')}
           </div>
-          <div style={{ fontSize: '0.78rem', color: 'rgba(255, 255, 255, 0.6)', marginTop: '8px' }}>
-            <span>Income left after paying all expenses</span>
-          </div>
+          {!isMobile && (
+            <div style={{ fontSize: '0.78rem', color: 'rgba(255, 255, 255, 0.6)', marginTop: '8px' }}>
+              <span>Income left after paying all expenses</span>
+            </div>
+          )}
         </div>
 
         {/* Profit Margin % */}
         <div style={{
-          padding: '22px',
-          borderRadius: '20px',
+          padding: isMobile ? '14px 12px' : '22px',
+          borderRadius: isMobile ? '14px' : '20px',
           background: 'linear-gradient(145deg, rgba(245, 158, 11, 0.1) 0%, rgba(217, 119, 6, 0.03) 100%)',
           border: '1px solid rgba(245, 158, 11, 0.3)',
           position: 'relative',
           overflow: 'hidden',
           boxShadow: '0 8px 24px rgba(0,0,0,0.2)'
         }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-            <span style={{ fontSize: '0.88rem', fontWeight: 700, color: 'rgba(255, 255, 255, 0.8)' }}>
-              Profit Savings Share
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: isMobile ? '6px' : '10px' }}>
+            <span style={{ fontSize: isMobile ? '0.78rem' : '0.88rem', fontWeight: 700, color: 'rgba(255, 255, 255, 0.8)' }}>
+              {isMobile ? 'Margin %' : 'Profit Savings Share'}
             </span>
-            <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: 'rgba(245, 158, 11, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#f59e0b' }}>
-              <PieChart size={22} />
+            <div style={{ width: isMobile ? '32px' : '40px', height: isMobile ? '32px' : '40px', borderRadius: '10px', background: 'rgba(245, 158, 11, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#f59e0b' }}>
+              <PieChart size={isMobile ? 18 : 22} />
             </div>
           </div>
-          <div style={{ fontSize: '2rem', fontWeight: 800, color: '#f59e0b', letterSpacing: '-0.5px' }}>
+          <div style={{ fontSize: isMobile ? '1.35rem' : '2rem', fontWeight: 800, color: '#f59e0b', letterSpacing: '-0.5px' }}>
             {summary?.profitMargin || 0}%
           </div>
           {/* Progress Bar */}
-          <div style={{ width: '100%', height: '8px', background: 'rgba(255, 255, 255, 0.12)', borderRadius: '4px', marginTop: '12px', overflow: 'hidden' }}>
+          <div style={{ width: '100%', height: isMobile ? '6px' : '8px', background: 'rgba(255, 255, 255, 0.12)', borderRadius: '4px', marginTop: isMobile ? '8px' : '12px', overflow: 'hidden' }}>
             <div style={{
               width: `${Math.max(0, Math.min(100, summary?.profitMargin || 0))}%`,
               height: '100%',
@@ -1600,6 +1613,87 @@ const Finance: React.FC = () => {
             >
               + Launch Multi-Row Quick Entry
             </button>
+          </div>
+        ) : isMobile ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {expenses.map((exp) => {
+              const catColor = CATEGORY_COLORS[exp.category] || CATEGORY_COLORS['Miscellaneous'];
+              return (
+                <div
+                  key={exp.id}
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.03)',
+                    border: '1px solid var(--border-dim)',
+                    borderRadius: '14px',
+                    padding: '12px 14px'
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 700, fontSize: '0.92rem', color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {exp.title}
+                      </div>
+                      <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                        {exp.date ? new Date(exp.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : 'N/A'} · {exp.paymentMethod || 'Cash'}
+                        {exp.vendor ? ` · ${exp.vendor}` : ''}
+                      </div>
+                    </div>
+                    <div style={{ fontSize: '1.15rem', fontWeight: 800, color: '#ef4444', flexShrink: 0 }}>
+                      ₹{exp.amount.toLocaleString('en-IN')}
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '10px', paddingTop: '8px', borderTop: '1px solid rgba(255, 255, 255, 0.05)' }}>
+                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
+                      <span style={{
+                        padding: '3px 8px',
+                        borderRadius: '10px',
+                        background: catColor.bg,
+                        color: catColor.text,
+                        border: `1px solid ${catColor.border}`,
+                        fontSize: '0.72rem',
+                        fontWeight: 600,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px'
+                      }}>
+                        {getCategoryIcon(exp.category)}
+                        {exp.category}
+                      </span>
+                      {exp.building && (
+                        <span style={{
+                          padding: '2px 7px',
+                          borderRadius: '6px',
+                          background: 'rgba(249,115,22,0.1)',
+                          color: 'var(--primary)',
+                          border: '1px solid rgba(249,115,22,0.25)',
+                          fontSize: '0.68rem',
+                          fontWeight: 600
+                        }}>
+                          {exp.building.name}
+                        </span>
+                      )}
+                    </div>
+                    <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
+                      <button
+                        onClick={() => openSingleEdit(exp)}
+                        className="icon-btn-micro"
+                        title="Edit Expense"
+                      >
+                        <Edit2 size={13} />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteExpense(exp.id, exp.title)}
+                        className="icon-btn-micro danger"
+                        title="Delete Expense"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         ) : (
           <div style={{ overflowX: 'auto' }}>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Building2, ChevronDown, Check, Plus, Globe } from 'lucide-react';
 import { useBuilding } from './BuildingContext';
 import { useToast } from './ToastContext';
@@ -11,6 +11,13 @@ export default function WorkspaceSelector() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [newBuildingName, setNewBuildingName] = useState('');
   const [saving, setSaving] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const handleAddBuilding = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,6 +45,113 @@ export default function WorkspaceSelector() {
     }
   };
 
+  const renderBuildingList = () => (
+    <>
+      <div style={{ padding: '6px 4px', fontSize: '0.72rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+        Switch Building Workspace
+      </div>
+
+      {/* All Buildings Option */}
+      <div
+        onClick={() => {
+          setSelectedBuildingId('all');
+          setOpen(false);
+        }}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '12px 14px',
+          borderRadius: '12px',
+          cursor: 'pointer',
+          background: selectedBuildingId === 'all' ? 'rgba(249,115,22,0.18)' : 'rgba(255,255,255,0.03)',
+          color: selectedBuildingId === 'all' ? 'var(--primary)' : '#fff',
+          fontSize: '0.88rem',
+          fontWeight: selectedBuildingId === 'all' ? 700 : 500,
+          marginBottom: '8px',
+          transition: 'background 0.15s ease',
+          border: selectedBuildingId === 'all' ? '1px solid rgba(249,115,22,0.35)' : '1px solid transparent'
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <Globe size={18} />
+          <span>All Buildings (Global View)</span>
+        </div>
+        {selectedBuildingId === 'all' && <Check size={18} />}
+      </div>
+
+      <div style={{ height: '1px', background: 'rgba(255,255,255,0.08)', margin: '8px 0' }} />
+
+      {/* Individual Buildings */}
+      <div style={{ maxHeight: isMobile ? '300px' : '220px', overflowY: 'auto' }}>
+        {buildings.map(b => {
+          const isSelected = selectedBuildingId === b.id;
+          return (
+            <div
+              key={b.id}
+              onClick={() => {
+                setSelectedBuildingId(b.id);
+                setOpen(false);
+              }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '12px 14px',
+                borderRadius: '12px',
+                cursor: 'pointer',
+                background: isSelected ? 'rgba(249,115,22,0.18)' : 'rgba(255,255,255,0.02)',
+                color: isSelected ? 'var(--primary)' : '#fff',
+                fontSize: '0.88rem',
+                fontWeight: isSelected ? 700 : 500,
+                marginBottom: '6px',
+                transition: 'background 0.15s ease',
+                border: isSelected ? '1px solid rgba(249,115,22,0.35)' : '1px solid transparent'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
+                <Building2 size={18} color={isSelected ? 'var(--primary)' : 'var(--text-muted)'} />
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.name}</div>
+                  {b.totalBeds !== undefined && (
+                    <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{b.totalBeds} Beds · {b.availableBeds} Free</div>
+                  )}
+                </div>
+              </div>
+              {isSelected && <Check size={18} />}
+            </div>
+          );
+        })}
+      </div>
+
+      <div style={{ height: '1px', background: 'rgba(255,255,255,0.08)', margin: '8px 0' }} />
+
+      {/* Add Building Option */}
+      <div
+        onClick={() => {
+          setOpen(false);
+          setShowAddModal(true);
+        }}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          padding: '12px 14px',
+          borderRadius: '12px',
+          cursor: 'pointer',
+          color: 'var(--primary)',
+          fontSize: '0.88rem',
+          fontWeight: 700,
+          background: 'rgba(249,115,22,0.1)',
+          transition: 'background 0.15s ease'
+        }}
+      >
+        <Plus size={18} />
+        <span>Add New Building</span>
+      </div>
+    </>
+  );
+
   return (
     <>
       <div style={{ position: 'relative' }}>
@@ -47,166 +161,68 @@ export default function WorkspaceSelector() {
           style={{
             display: 'inline-flex',
             alignItems: 'center',
-            gap: '8px',
-            padding: '6px 14px',
+            gap: isMobile ? '5px' : '8px',
+            padding: isMobile ? '5px 10px' : '6px 14px',
             background: 'rgba(249,115,22,0.12)',
             border: '1px solid rgba(249,115,22,0.3)',
-            borderRadius: '12px',
+            borderRadius: '10px',
             color: '#fff',
             fontWeight: 700,
-            fontSize: '0.82rem',
+            fontSize: isMobile ? '0.75rem' : '0.82rem',
             cursor: 'pointer',
             transition: 'all 0.2s ease',
-            boxShadow: '0 4px 12px rgba(249,115,22,0.1)'
+            boxShadow: '0 4px 12px rgba(249,115,22,0.1)',
+            whiteSpace: 'nowrap'
           }}
-          onMouseOver={e => e.currentTarget.style.background = 'rgba(249,115,22,0.2)'}
-          onMouseOut={e => e.currentTarget.style.background = 'rgba(249,115,22,0.12)'}
         >
           {selectedBuildingId === 'all' ? (
-            <Globe size={15} color="var(--primary)" />
+            <Globe size={14} color="var(--primary)" />
           ) : (
-            <Building2 size={15} color="var(--primary)" />
+            <Building2 size={14} color="var(--primary)" />
           )}
-          <span style={{ maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <span style={{ maxWidth: isMobile ? 80 : 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {activeBuildingName}
           </span>
-          <ChevronDown size={14} color="var(--text-muted)" style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+          <ChevronDown size={13} color="var(--text-muted)" style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', flexShrink: 0 }} />
         </button>
 
-        {open && (
-          <div
-            style={{
-              position: 'absolute',
-              top: '100%',
-              left: 0,
-              marginTop: '6px',
-              width: '260px',
-              background: 'rgba(20, 24, 36, 0.96)',
-              backdropFilter: 'blur(16px)',
-              border: '1px solid rgba(255, 255, 255, 0.15)',
-              borderRadius: '16px',
-              boxShadow: '0 20px 40px rgba(0,0,0,0.7)',
-              padding: '6px',
-              zIndex: 3000,
-              animation: 'fadeIn 0.15s ease-out'
-            }}
-          >
-            <div style={{ padding: '6px 10px', fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Switch Building Workspace
-            </div>
-
-            {/* All Buildings Option */}
+        {/* Desktop dropdown with backdrop */}
+        {!isMobile && open && (
+          <>
             <div
-              onClick={() => {
-                setSelectedBuildingId('all');
-                setOpen(false);
-              }}
+              style={{ position: 'fixed', inset: 0, zIndex: 2999 }}
+              onClick={() => setOpen(false)}
+            />
+            <div
               style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '10px 12px',
-                borderRadius: '10px',
-                cursor: 'pointer',
-                background: selectedBuildingId === 'all' ? 'rgba(249,115,22,0.18)' : 'transparent',
-                color: selectedBuildingId === 'all' ? 'var(--primary)' : '#fff',
-                fontSize: '0.85rem',
-                fontWeight: selectedBuildingId === 'all' ? 700 : 500,
-                marginBottom: '4px',
-                transition: 'background 0.15s ease'
-              }}
-              onMouseOver={e => {
-                if (selectedBuildingId !== 'all') e.currentTarget.style.background = 'rgba(255,255,255,0.06)';
-              }}
-              onMouseOut={e => {
-                if (selectedBuildingId !== 'all') e.currentTarget.style.background = 'transparent';
+                position: 'absolute',
+                top: '100%',
+                left: 0,
+                marginTop: '6px',
+                width: '280px',
+                background: 'rgba(18, 22, 34, 0.98)',
+                backdropFilter: 'blur(20px)',
+                WebkitBackdropFilter: 'blur(20px)',
+                border: '1px solid rgba(255, 255, 255, 0.15)',
+                borderRadius: '16px',
+                boxShadow: '0 20px 40px rgba(0,0,0,0.7)',
+                padding: '10px',
+                zIndex: 3000,
+                animation: 'fadeIn 0.15s ease-out'
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <Globe size={16} />
-                <span>All Buildings (Global View)</span>
-              </div>
-              {selectedBuildingId === 'all' && <Check size={16} />}
+              {renderBuildingList()}
             </div>
-
-            <div style={{ height: '1px', background: 'rgba(255,255,255,0.08)', margin: '4px 0' }} />
-
-            {/* Individual Buildings */}
-            <div style={{ maxHeight: '180px', overflowY: 'auto' }}>
-              {buildings.map(b => {
-                const isSelected = selectedBuildingId === b.id;
-                return (
-                  <div
-                    key={b.id}
-                    onClick={() => {
-                      setSelectedBuildingId(b.id);
-                      setOpen(false);
-                    }}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      padding: '9px 12px',
-                      borderRadius: '10px',
-                      cursor: 'pointer',
-                      background: isSelected ? 'rgba(249,115,22,0.18)' : 'transparent',
-                      color: isSelected ? 'var(--primary)' : '#fff',
-                      fontSize: '0.84rem',
-                      fontWeight: isSelected ? 700 : 500,
-                      marginBottom: '2px',
-                      transition: 'background 0.15s ease'
-                    }}
-                    onMouseOver={e => {
-                      if (!isSelected) e.currentTarget.style.background = 'rgba(255,255,255,0.06)';
-                    }}
-                    onMouseOut={e => {
-                      if (!isSelected) e.currentTarget.style.background = 'transparent';
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
-                      <Building2 size={16} color={isSelected ? 'var(--primary)' : 'var(--text-muted)'} />
-                      <div style={{ minWidth: 0 }}>
-                        <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.name}</div>
-                        {b.totalBeds !== undefined && (
-                          <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>{b.totalBeds} Beds · {b.availableBeds} Free</div>
-                        )}
-                      </div>
-                    </div>
-                    {isSelected && <Check size={16} />}
-                  </div>
-                );
-              })}
-            </div>
-
-            <div style={{ height: '1px', background: 'rgba(255,255,255,0.08)', margin: '4px 0' }} />
-
-            {/* Add Building Option */}
-            <div
-              onClick={() => {
-                setOpen(false);
-                setShowAddModal(true);
-              }}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '8px 12px',
-                borderRadius: '10px',
-                cursor: 'pointer',
-                color: 'var(--primary)',
-                fontSize: '0.82rem',
-                fontWeight: 700,
-                transition: 'background 0.15s ease'
-              }}
-              onMouseOver={e => e.currentTarget.style.background = 'rgba(249,115,22,0.12)'}
-              onMouseOut={e => e.currentTarget.style.background = 'transparent'}
-            >
-              <Plus size={16} />
-              <span>Add New Building</span>
-            </div>
-          </div>
+          </>
         )}
       </div>
+
+      {/* Mobile bottom sheet modal */}
+      {isMobile && open && (
+        <Modal isOpen={open} onClose={() => setOpen(false)} title="Select Workspace">
+          {renderBuildingList()}
+        </Modal>
+      )}
 
       {/* Add New Building Modal */}
       {showAddModal && (

@@ -25,9 +25,20 @@ const TABS = [
   { id: 'data', label: 'Data & Export', icon: Database },
 ];
 
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+  return isMobile;
+}
+
 function SectionCard({ title, icon: Icon, children }: { title: string; icon: any; children: React.ReactNode }) {
+  const isMobile = useIsMobile();
   return (
-    <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-dim)', borderRadius: 16, padding: '1.5rem' }}>
+    <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-dim)', borderRadius: 16, padding: isMobile ? '1.15rem 0.85rem' : '1.5rem' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1.25rem', paddingBottom: '0.875rem', borderBottom: '1px solid var(--border-dim)' }}>
         <div style={{ width: 32, height: 32, borderRadius: 8, background: 'rgba(249,115,22,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <Icon size={16} color="var(--primary)" />
@@ -88,6 +99,7 @@ function ProfileTab({ settings, onSave }: { settings: any; onSave: (s: any) => v
 // ─── FEE TAB ─────────────────────────────────────────────────────────────────
 function FeeTab({ settings, onSave }: { settings: any; onSave: (s: any) => void }) {
   const { showToast } = useToast();
+  const isMobile = useIsMobile();
   const [form, setForm] = useState(settings);
   const [saving, setSaving] = useState(false);
   const [bulkMonth, setBulkMonth] = useState(MONTHS[6]?.value || '');
@@ -219,13 +231,13 @@ function FeeTab({ settings, onSave }: { settings: any; onSave: (s: any) => void 
             ))}
           </div>
         </div>
-        <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
           <div style={{ fontSize: '0.8rem', color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: 6 }}>
             <Clock size={14} /> Active Cron Schedule: <strong>Daily at {reminderTime} IST (Asia/Kolkata)</strong>
           </div>
           <button 
             className="primary-btn" 
-            style={{ justifyContent: 'center', minWidth: 160 }}
+            style={{ justifyContent: 'center', minWidth: 160, width: isMobile ? '100%' : 'auto' }}
             onClick={handleSaveSchedule} 
             disabled={savingSchedule}>
             <Save size={14} /> {savingSchedule ? 'Saving Schedule…' : 'Save Cron Schedule'}
@@ -268,6 +280,7 @@ function FeeTab({ settings, onSave }: { settings: any; onSave: (s: any) => void 
 // ─── FLOOR PLAN TAB ───────────────────────────────────────────────────────────
 function FloorPlanTab() {
   const { showToast } = useToast();
+  const isMobile = useIsMobile();
   const [buildings, setBuildings] = useState<any[]>([]);
   const [selectedBuilding, setSelectedBuilding] = useState<any>(null);
   const [floorData, setFloorData] = useState<any>(null);
@@ -337,16 +350,25 @@ function FloorPlanTab() {
   };
 
   return (
-    <div style={{ display: 'flex', gap: '1.25rem', height: '100%', minHeight: 500 }}>
+    <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '1.25rem', height: '100%', minHeight: isMobile ? 'auto' : 500 }}>
       {/* Building sidebar */}
-      <div style={{ width: 220, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
+      <div style={{
+        width: isMobile ? '100%' : 220,
+        flexShrink: 0,
+        display: 'flex',
+        flexDirection: isMobile ? 'row' : 'column',
+        gap: '0.6rem',
+        overflowX: isMobile ? 'auto' : 'visible',
+        paddingBottom: isMobile ? '6px' : 0,
+        WebkitOverflowScrolling: 'touch'
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: isMobile ? 0 : '0.25rem', flexShrink: 0 }}>
           <span style={{ fontWeight: 700, fontSize: '0.78rem', color: 'var(--text-muted)', letterSpacing: 1 }}>BUILDINGS</span>
           <button className="icon-btn-small" title="Add Building" onClick={() => setShowAddBuilding(v => !v)}><Plus size={14} /></button>
         </div>
 
         {showAddBuilding && (
-          <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border-dim)', borderRadius: 10, padding: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+          <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border-dim)', borderRadius: 10, padding: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', minWidth: isMobile ? 200 : 'auto', flexShrink: 0 }}>
             <input className="custom-input" style={{ fontSize: '0.8rem' }} value={newBuildingName} onChange={e => setNewBuildingName(e.target.value)} placeholder="Building name…" onKeyDown={e => e.key === 'Enter' && addBuilding()} autoFocus />
             <div style={{ display: 'flex', gap: '6px' }}>
               <button className="primary-btn" style={{ flex: 1, justifyContent: 'center', fontSize: '0.75rem', padding: '4px 8px', minHeight: 28 }} onClick={addBuilding} disabled={loading}><Plus size={12} /> Add</button>
@@ -360,7 +382,9 @@ function FloorPlanTab() {
             padding: '0.875rem 1rem', borderRadius: 12, cursor: 'pointer',
             border: `1px solid ${selectedBuilding?.id === b.id ? 'var(--primary)' : 'var(--border-dim)'}`,
             background: selectedBuilding?.id === b.id ? 'rgba(249,115,22,0.1)' : 'rgba(255,255,255,0.02)',
-            transition: 'all 0.2s'
+            transition: 'all 0.2s',
+            minWidth: isMobile ? 180 : 'auto',
+            flexShrink: 0
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>

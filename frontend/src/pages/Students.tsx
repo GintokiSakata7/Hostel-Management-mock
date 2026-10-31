@@ -1249,18 +1249,18 @@ export default function Students() {
         </div>
 
         {/* Filters */}
-        <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.25rem', flexWrap: 'wrap' }}>
-          <div className="search-bar" style={{ flex: 1, minWidth: 200 }}>
+        <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.25rem', flexWrap: 'wrap', alignItems: 'center' }}>
+          <div className="search-bar" style={{ flex: '1 1 180px', minWidth: 160 }}>
             <Search size={16} color="var(--text-muted)" />
             <input placeholder="Search by name or room…" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
           </div>
-          <select className="custom-select" value={courseFilter} onChange={e => setCourseFilter(e.target.value)}>
+          <select className="custom-select" style={{ flex: '1 1 120px' }} value={courseFilter} onChange={e => setCourseFilter(e.target.value)}>
             <option value="all">All Courses</option>
             {Object.keys(COURSES).map(c => <option key={c} value={c.toLowerCase()}>{c}</option>)}
           </select>
-          <div style={{ display: 'flex', gap: '4px' }}>
+          <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
             {(['all', 'Paid', 'Pending'] as const).map(f => (
-              <button key={f} onClick={() => setFeeFilter(f)} style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid', fontSize: '0.8rem', cursor: 'pointer', transition: 'all 0.2s', borderColor: feeFilter === f ? 'var(--primary)' : 'var(--border-dim)', background: feeFilter === f ? 'rgba(249,115,22,0.1)' : 'transparent', color: feeFilter === f ? 'var(--primary)' : 'var(--text-muted)' }}>
+              <button key={f} onClick={() => setFeeFilter(f)} style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid', fontSize: '0.8rem', cursor: 'pointer', transition: 'all 0.2s', borderColor: feeFilter === f ? 'var(--primary)' : 'var(--border-dim)', background: feeFilter === f ? 'rgba(249,115,22,0.1)' : 'transparent', color: feeFilter === f ? 'var(--primary)' : 'var(--text-muted)' }}>
                 {f === 'all' ? 'All' : f}
               </button>
             ))}
@@ -1436,15 +1436,15 @@ export default function Students() {
             ) : filtered.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>No {residentTab === 'vacated' ? 'vacated' : 'active'} students found</div>
             ) : filtered.map(student => (
-              <div key={student.dbId} className="glass" style={{ padding: '1rem', borderRadius: 12, marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '1rem', animation: 'slideInUp 0.3s ease-out', cursor: 'pointer' }} onClick={() => setViewingStudent(student)}>
+              <div key={student.dbId} className="glass" style={{ padding: '0.85rem', borderRadius: 14, marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.85rem', animation: 'slideInUp 0.3s ease-out', cursor: 'pointer', border: '1px solid var(--border-dim)' }} onClick={() => setViewingStudent(student)}>
                 {student.photoUrl ? (
-                  <img src={student.photoUrl} alt={student.name} className="avatar-small" style={{ width: 40, height: 40, objectFit: 'cover' }} />
+                  <img src={student.photoUrl} alt={student.name} className="avatar-small" style={{ width: 42, height: 42, objectFit: 'cover', borderRadius: 12 }} />
                 ) : (
-                  <div className="avatar-small" style={{ width: 40, height: 40, fontSize: '1.1rem' }}>{student.name.charAt(0)}</div>
+                  <div className="avatar-small" style={{ width: 42, height: 42, fontSize: '1.1rem', borderRadius: 12 }}>{student.name.charAt(0)}</div>
                 )}
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                    <div style={{ fontWeight: 600 }}>{student.name}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                    <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>{student.name}</div>
                     {residentTab === 'active' && student.feeStatus === 'Pending' && (
                       <button
                         type="button"
@@ -1472,21 +1472,35 @@ export default function Students() {
                     )}
                     {student.isOnNotice && (
                       <span style={{ fontSize: '0.68rem', fontWeight: 600, color: '#ef4444', background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 4, padding: '2px 6px' }}>
-                        ⚠️ Notice ({student.noticeVacateDate ? new Date(student.noticeVacateDate).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' }) : 'Next Month'})
+                        ⚠️ Notice
                       </span>
                     )}
                   </div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{student.course} · Room {student.room}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: 3, flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{student.course} · Room {student.room}</span>
+                    <span className={student.feeStatus === 'Paid' ? 'status-badge badge-paid' : student.feeStatus === 'Pending' ? 'status-badge badge-pending' : 'status-badge'} style={{ fontSize: '0.66rem', padding: '1px 6px' }}>
+                      {student.feeStatus}
+                    </span>
+                  </div>
                 </div>
-                <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                <div style={{ display: 'flex', gap: '4px', alignItems: 'center', flexShrink: 0 }}>
                   {residentTab === 'active' ? (
-                    <button 
-                      className="icon-btn-small delete" 
-                      title="Remove Student" 
-                      onClick={(e) => { e.stopPropagation(); handleVacateStudent(student); }}
-                    >
-                      <UserMinus size={14} />
-                    </button>
+                    <>
+                      <button 
+                        className="icon-btn-small" 
+                        title="Edit Student" 
+                        onClick={(e) => { e.stopPropagation(); setEditingStudent(student); setShowForm(true); }}
+                      >
+                        <Edit2 size={14} />
+                      </button>
+                      <button 
+                        className="icon-btn-small delete" 
+                        title="Remove Student" 
+                        onClick={(e) => { e.stopPropagation(); handleVacateStudent(student); }}
+                      >
+                        <UserMinus size={14} />
+                      </button>
+                    </>
                   ) : (
                     <>
                       <button 

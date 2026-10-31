@@ -498,14 +498,14 @@ export default function Fees() {
           <h1 className="page-title" style={{ margin: '0 0 4px 0' }}>Fees Management</h1>
           <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>Monthly fee tracking · ₹{monthlyFee.toLocaleString()}/student</p>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
           <button 
             className="primary-btn" 
             disabled={triggeringReminders}
             onClick={handleSendReminders}
             style={{ background: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)', boxShadow: '0 4px 14px rgba(249,115,22,0.3)', gap: '8px' }}>
             {triggeringReminders ? <Clock size={16} className="animate-spin" /> : <Send size={16} />}
-            {triggeringReminders ? 'Sending Reminders…' : 'Send Fee Reminders Now (7 PM IST)'}
+            {triggeringReminders ? 'Sending Reminders…' : isMobile ? 'Send Reminders' : 'Send Fee Reminders Now (7 PM IST)'}
           </button>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-dim)', borderRadius: 10, padding: '8px 12px' }}>
             <Calendar size={16} color="var(--primary)" />

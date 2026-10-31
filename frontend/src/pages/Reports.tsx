@@ -446,6 +446,7 @@ const TABS = [
 
 export default function Reports() {
   const [activeTab, setActiveTab] = useState('students');
+  const isMobile = useIsMobile();
 
   return (
     <div className="animate-fade-in">
@@ -470,7 +471,7 @@ export default function Reports() {
       </div>
 
       {/* Tab content */}
-      <div className="glass-panel" style={{ padding: '1.5rem' }}>
+      <div className="glass-panel" style={{ padding: isMobile ? '1rem 0.85rem' : '1.5rem' }}>
         {activeTab === 'students' && <StudentReport />}
         {activeTab === 'rooms' && <RoomReport />}
         {activeTab === 'fees' && <FeeReport />}
