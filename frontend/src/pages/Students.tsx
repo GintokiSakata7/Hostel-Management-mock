@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   Search, UserPlus, Edit2, Trash2, X, IndianRupee, Calendar, Printer,
-  User, BedDouble, Phone, Mail, Shield, ChevronDown, ChevronUp, Clock, Send, MessageSquare, PhoneCall,
+  User, Users, BedDouble, Phone, Mail, Shield, ChevronDown, ChevronUp, Clock, Send, MessageSquare, PhoneCall,
   Upload, FileText, Camera, CheckCircle, Eye, ExternalLink, UserMinus, RotateCcw, UserCheck, Archive
 } from 'lucide-react';
 import Modal from '../components/Modal';
@@ -268,11 +268,21 @@ function StudentDetailCard({ student, selectedMonth, onClose, onRefresh, isMobil
           </div>
 
           {/* Navigation Tabs Bar */}
-          <div style={{ display: 'flex', background: 'rgba(255,255,255,0.04)', padding: '4px', borderRadius: 12, border: '1px solid var(--border-dim)', marginBottom: '1.25rem', gap: '4px' }}>
+          <div style={{
+            display: 'flex',
+            background: 'rgba(255,255,255,0.04)',
+            padding: '4px',
+            borderRadius: 12,
+            border: '1px solid var(--border-dim)',
+            marginBottom: '1.25rem',
+            gap: '4px',
+            overflowX: 'auto',
+            WebkitOverflowScrolling: 'touch'
+          }}>
             {[
               { id: 'overview', label: 'Overview', icon: User },
-              { id: 'docs', label: 'Documents & Family', icon: Shield },
-              { id: 'notice', label: 'Notice Period', icon: Clock, badge: student.isOnNotice ? 'Active' : undefined },
+              { id: 'docs', label: isMobile ? 'Docs' : 'Documents & Family', icon: Shield },
+              { id: 'notice', label: isMobile ? 'Notice' : 'Notice Period', icon: Clock, badge: student.isOnNotice ? 'Active' : undefined },
               { id: 'history', label: 'Payments', icon: Calendar, count: student.fees?.length || 0 },
             ].map(tab => {
               const Icon = tab.icon;
@@ -282,12 +292,13 @@ function StudentDetailCard({ student, selectedMonth, onClose, onRefresh, isMobil
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id as any)}
                   style={{
-                    flex: 1,
+                    flex: isMobile ? '0 0 auto' : 1,
+                    whiteSpace: 'nowrap',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: '6px',
-                    padding: '8px 10px',
+                    padding: '8px 12px',
                     borderRadius: 9,
                     border: 'none',
                     background: isActive ? 'var(--primary)' : 'transparent',
@@ -1166,102 +1177,189 @@ export default function Students() {
   return (
     <div className="animate-fade-in">
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'center', flexDirection: isMobile ? 'column' : 'row', gap: '1rem', marginBottom: '1.25rem' }}>
         <div>
-          <h1 className="page-title" style={{ margin: '0 0 4px 0' }}>Student Management</h1>
-          <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>{activeCount} active residents · {vacatedCount} vacated · Monthly fee ₹{monthlyFee.toLocaleString()}</p>
+          <h1 className="page-title" style={{ margin: '0 0 4px 0', fontSize: isMobile ? '1.35rem' : '1.6rem' }}>Resident Management</h1>
+          <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.82rem' }}>
+            {activeCount} Active Residents · {vacatedCount} Vacated · Monthly fee ₹{monthlyFee.toLocaleString('en-IN')}
+          </p>
         </div>
-        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', width: isMobile ? '100%' : 'auto', justifyContent: isMobile ? 'space-between' : 'flex-end', flexWrap: 'wrap' }}>
           {/* Month selector */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-dim)', borderRadius: 10, padding: '8px 12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-dim)', borderRadius: 10, padding: '8px 12px', flex: isMobile ? 1 : 'none' }}>
             <Calendar size={14} color="var(--primary)" />
-            <select className="custom-select" style={{ background: 'transparent', border: 'none', padding: 0, color: 'var(--text-main)', fontSize: '0.85rem' }}
+            <select className="custom-select" style={{ background: 'transparent', border: 'none', padding: 0, color: 'var(--text-main)', fontSize: '0.82rem', width: '100%', cursor: 'pointer' }}
               value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)}>
               {MONTHS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
             </select>
           </div>
-          <button className="primary-btn" onClick={() => { setEditingStudent(null); setShowForm(true); }}>
-            <UserPlus size={16} /> Add Student
+          <button className="primary-btn" style={{ minHeight: 38, padding: '8px 16px' }} onClick={() => { setEditingStudent(null); setShowForm(true); }}>
+            <UserPlus size={15} /> Add Student
           </button>
         </div>
       </div>
 
-      {/* Stats chips */}
-      <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
-        {[
-          { label: 'Active Residents', value: activeCount, color: 'var(--primary)' },
-          { label: 'Fee Paid', value: paidCount, color: 'var(--success)' },
-          { label: 'Fee Pending', value: pendingCount, color: 'var(--warning)' },
-          { label: 'Vacated / Left', value: vacatedCount, color: '#ef4444' },
-        ].map(({ label, value, color }) => (
-          <div key={label} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border-dim)', borderRadius: 12, padding: '8px 16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ color, fontWeight: 700, fontSize: '1.1rem' }}>{value}</span>
-            <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{label}</span>
-          </div>
-        ))}
-      </div>
+      {/* Stats Cards: 2x2 Interactive KPI Grid on Mobile, Flex Chips on Desktop */}
+      {isMobile ? (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.65rem', marginBottom: '1.25rem' }}>
+          {[
+            { label: 'Active Residents', value: activeCount, color: 'var(--primary)', tab: 'active', filter: 'all', icon: Users, sub: 'Currently enrolled' },
+            { label: 'Pending Dues', value: pendingCount, color: 'var(--warning)', tab: 'active', filter: 'Pending', icon: Clock, sub: 'Needs follow-up' },
+            { label: 'Fee Paid', value: paidCount, color: 'var(--success)', tab: 'active', filter: 'Paid', icon: CheckCircle, sub: 'Cleared this month' },
+            { label: 'Former / Vacated', value: vacatedCount, color: '#ef4444', tab: 'vacated', filter: 'all', icon: Archive, sub: 'Left hostel' },
+          ].map(({ label, value, color, tab, filter, icon: Icon, sub }) => (
+            <div
+              key={label}
+              onClick={() => {
+                setResidentTab(tab as any);
+                setFeeFilter(filter as any);
+              }}
+              style={{
+                background: (residentTab === tab && (feeFilter === filter || (filter === 'all' && feeFilter === 'all')))
+                  ? 'rgba(249,115,22,0.1)'
+                  : 'rgba(255,255,255,0.03)',
+                border: (residentTab === tab && (feeFilter === filter || (filter === 'all' && feeFilter === 'all')))
+                  ? '1px solid var(--primary)'
+                  : '1px solid var(--border-dim)',
+                borderRadius: 14,
+                padding: '10px 12px',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between'
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                <span style={{ color: 'var(--text-muted)', fontSize: '0.72rem', fontWeight: 600 }}>{label}</span>
+                <Icon size={13} color={color} />
+              </div>
+              <div style={{ fontSize: '1.35rem', fontWeight: 800, color, lineHeight: 1.1 }}>{value}</div>
+              <div style={{ fontSize: '0.66rem', color: 'rgba(255,255,255,0.3)', marginTop: 3 }}>{sub}</div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+          {[
+            { label: 'Active Residents', value: activeCount, color: 'var(--primary)' },
+            { label: 'Fee Paid', value: paidCount, color: 'var(--success)' },
+            { label: 'Fee Pending', value: pendingCount, color: 'var(--warning)' },
+            { label: 'Vacated / Left', value: vacatedCount, color: '#ef4444' },
+          ].map(({ label, value, color }) => (
+            <div key={label} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border-dim)', borderRadius: 12, padding: '8px 16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ color, fontWeight: 700, fontSize: '1.1rem' }}>{value}</span>
+              <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{label}</span>
+            </div>
+          ))}
+        </div>
+      )}
 
-      {/* Table Panel */}
-      <div className="glass-panel" style={{ padding: '1.5rem' }}>
+      {/* Main Panel */}
+      <div className="glass-panel" style={{ padding: isMobile ? '1rem 0.85rem' : '1.5rem' }}>
 
         {/* Tab Switcher: Active Residents vs Vacated Residents */}
-        <div style={{ display: 'flex', gap: '8px', marginBottom: '1.25rem', borderBottom: '1px solid var(--border-dim)', paddingBottom: '0.75rem' }}>
+        <div style={{
+          display: 'flex',
+          background: 'rgba(255,255,255,0.04)',
+          borderRadius: 12,
+          padding: 3,
+          border: '1px solid var(--border-dim)',
+          marginBottom: '1rem',
+          width: isMobile ? '100%' : 'fit-content'
+        }}>
           <button 
             type="button"
             onClick={() => setResidentTab('active')}
             style={{
-              padding: '8px 16px',
-              borderRadius: 10,
-              border: '1px solid',
-              borderColor: residentTab === 'active' ? 'var(--primary)' : 'var(--border-dim)',
-              background: residentTab === 'active' ? 'rgba(249,115,22,0.15)' : 'transparent',
-              color: residentTab === 'active' ? 'var(--primary)' : 'var(--text-muted)',
+              flex: isMobile ? 1 : 'none',
+              padding: '7px 16px',
+              borderRadius: 9,
+              border: 'none',
+              background: residentTab === 'active' ? 'var(--primary)' : 'transparent',
+              color: residentTab === 'active' ? '#fff' : 'var(--text-muted)',
               fontWeight: 700,
-              fontSize: '0.85rem',
+              fontSize: '0.82rem',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
-              gap: '8px'
+              justifyContent: 'center',
+              gap: '6px',
+              transition: 'all 0.15s ease'
             }}
           >
-            <UserCheck size={16} /> Active Residents ({activeCount})
+            <UserCheck size={14} /> Active Residents ({activeCount})
           </button>
           <button 
             type="button"
             onClick={() => setResidentTab('vacated')}
             style={{
-              padding: '8px 16px',
-              borderRadius: 10,
-              border: '1px solid',
-              borderColor: residentTab === 'vacated' ? '#ef4444' : 'var(--border-dim)',
-              background: residentTab === 'vacated' ? 'rgba(239,68,68,0.15)' : 'transparent',
-              color: residentTab === 'vacated' ? '#ef4444' : 'var(--text-muted)',
+              flex: isMobile ? 1 : 'none',
+              padding: '7px 16px',
+              borderRadius: 9,
+              border: 'none',
+              background: residentTab === 'vacated' ? '#ef4444' : 'transparent',
+              color: residentTab === 'vacated' ? '#fff' : 'var(--text-muted)',
               fontWeight: 700,
-              fontSize: '0.85rem',
+              fontSize: '0.82rem',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
-              gap: '8px'
+              justifyContent: 'center',
+              gap: '6px',
+              transition: 'all 0.15s ease'
             }}
           >
-            <Archive size={16} /> Former / Vacated Residents ({vacatedCount})
+            <Archive size={14} /> Vacated ({vacatedCount})
           </button>
         </div>
 
-        {/* Filters */}
-        <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.25rem', flexWrap: 'wrap', alignItems: 'center' }}>
-          <div className="search-bar" style={{ flex: '1 1 180px', minWidth: 160 }}>
-            <Search size={16} color="var(--text-muted)" />
-            <input placeholder="Search by name or room…" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+        {/* Search & Quick Filters */}
+        <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '0.75rem', marginBottom: '1.25rem', alignItems: isMobile ? 'stretch' : 'center' }}>
+          <div className="search-bar" style={{ width: isMobile ? '100%' : 260 }}>
+            <Search size={15} color="var(--text-muted)" />
+            <input placeholder="Search resident or room…" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+            {searchTerm && (
+              <button onClick={() => setSearchTerm('')} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 0 }}>
+                <X size={14} />
+              </button>
+            )}
           </div>
-          <select className="custom-select" style={{ flex: '1 1 120px' }} value={courseFilter} onChange={e => setCourseFilter(e.target.value)}>
-            <option value="all">All Courses</option>
-            {Object.keys(COURSES).map(c => <option key={c} value={c.toLowerCase()}>{c}</option>)}
-          </select>
-          <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+
+          <div style={{
+            display: 'flex',
+            gap: '6px',
+            alignItems: 'center',
+            overflowX: 'auto',
+            paddingBottom: isMobile ? 2 : 0,
+            WebkitOverflowScrolling: 'touch',
+            scrollbarWidth: 'none'
+          }}>
+            <select className="custom-select" style={{ minWidth: 125, fontSize: '0.78rem', padding: '6px 10px' }} value={courseFilter} onChange={e => setCourseFilter(e.target.value)}>
+              <option value="all">All Courses</option>
+              {Object.keys(COURSES).map(c => <option key={c} value={c.toLowerCase()}>{c}</option>)}
+            </select>
+
             {(['all', 'Paid', 'Pending'] as const).map(f => (
-              <button key={f} onClick={() => setFeeFilter(f)} style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid', fontSize: '0.8rem', cursor: 'pointer', transition: 'all 0.2s', borderColor: feeFilter === f ? 'var(--primary)' : 'var(--border-dim)', background: feeFilter === f ? 'rgba(249,115,22,0.1)' : 'transparent', color: feeFilter === f ? 'var(--primary)' : 'var(--text-muted)' }}>
-                {f === 'all' ? 'All' : f}
+              <button
+                key={f}
+                onClick={() => setFeeFilter(f)}
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: 8,
+                  border: '1px solid',
+                  fontSize: '0.78rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  flexShrink: 0,
+                  transition: 'all 0.15s',
+                  borderColor: feeFilter === f ? 'var(--primary)' : 'var(--border-dim)',
+                  background: feeFilter === f ? 'rgba(249,115,22,0.15)' : 'rgba(255,255,255,0.03)',
+                  color: feeFilter === f ? 'var(--primary)' : 'var(--text-muted)'
+                }}
+              >
+                {f === 'all' ? 'All Fees' : f === 'Paid' ? '✓ Paid Only' : '⚡ Due Only'}
               </button>
             ))}
           </div>
@@ -1428,93 +1526,293 @@ export default function Students() {
         </div>
         </div>
 
-        {/* Mobile List View */}
+        {/* Dedicated Mobile Resident Card Architecture */}
         {isMobile && (
-          <div className="mobile-card-list">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
             {loading ? (
-              <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>Loading…</div>
+              <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-muted)' }}>
+                <div style={{ width: 36, height: 36, border: '3px solid rgba(249,115,22,0.2)', borderTopColor: 'var(--primary)', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 12px' }} />
+                Loading residents list…
+              </div>
             ) : filtered.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>No {residentTab === 'vacated' ? 'vacated' : 'active'} students found</div>
+              <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-muted)', background: 'rgba(255,255,255,0.02)', borderRadius: 16, border: '1px solid var(--border-dim)' }}>
+                <User size={36} style={{ opacity: 0.2, margin: '0 auto 8px' }} />
+                <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>No {residentTab === 'vacated' ? 'vacated' : 'active'} residents found</div>
+                <div style={{ fontSize: '0.75rem', marginTop: 4 }}>Try adjusting your search or fee filters</div>
+              </div>
             ) : filtered.map(student => (
-              <div key={student.dbId} className="glass" style={{ padding: '0.85rem', borderRadius: 14, marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.85rem', animation: 'slideInUp 0.3s ease-out', cursor: 'pointer', border: '1px solid var(--border-dim)' }} onClick={() => setViewingStudent(student)}>
-                {student.photoUrl ? (
-                  <img src={student.photoUrl} alt={student.name} className="avatar-small" style={{ width: 42, height: 42, objectFit: 'cover', borderRadius: 12 }} />
-                ) : (
-                  <div className="avatar-small" style={{ width: 42, height: 42, fontSize: '1.1rem', borderRadius: 12 }}>{student.name.charAt(0)}</div>
-                )}
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                    <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>{student.name}</div>
-                    {residentTab === 'active' && student.feeStatus === 'Pending' && (
-                      <button
-                        type="button"
-                        disabled={sendingReminderId === student.dbId}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleSendIndividualReminder(student);
-                        }}
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '3px',
-                          padding: '2px 7px',
-                          borderRadius: '4px',
-                          background: 'rgba(249,115,22,0.15)',
-                          border: '1px solid rgba(249,115,22,0.3)',
-                          color: 'var(--primary)',
-                          fontSize: '0.7rem',
-                          fontWeight: 600,
-                          cursor: 'pointer'
-                        }}
-                      >
-                        {sendingReminderId === student.dbId ? <Clock size={10} className="animate-spin" /> : <Send size={10} />} Remind
-                      </button>
+              <div
+                key={student.dbId}
+                className="glass-panel"
+                style={{
+                  padding: '14px',
+                  borderRadius: 16,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '12px',
+                  border: (student.feeStatus === 'Pending' && residentTab === 'active')
+                    ? '1px solid rgba(249,115,22,0.35)'
+                    : '1px solid var(--border-dim)',
+                  background: (student.feeStatus === 'Pending' && residentTab === 'active')
+                    ? 'linear-gradient(180deg, rgba(249,115,22,0.05) 0%, rgba(255,255,255,0.01) 100%)'
+                    : 'rgba(255,255,255,0.02)',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                {/* Top Row: Avatar + Name + Fee Badge */}
+                <div
+                  style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', cursor: 'pointer' }}
+                  onClick={() => setViewingStudent(student)}
+                >
+                  <div style={{ position: 'relative', flexShrink: 0 }}>
+                    {student.photoUrl ? (
+                      <img
+                        src={student.photoUrl}
+                        alt={student.name}
+                        style={{ width: 48, height: 48, borderRadius: 14, objectFit: 'cover', border: '1.5px solid var(--border-dim)' }}
+                      />
+                    ) : (
+                      <div style={{
+                        width: 48, height: 48, borderRadius: 14,
+                        background: 'linear-gradient(135deg, rgba(249,115,22,0.2), rgba(99,102,241,0.2))',
+                        border: '1.5px solid rgba(255,255,255,0.1)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontWeight: 800, fontSize: '1.2rem', color: '#fff'
+                      }}>
+                        {student.name.charAt(0).toUpperCase()}
+                      </div>
                     )}
-                    {student.isOnNotice && (
-                      <span style={{ fontSize: '0.68rem', fontWeight: 600, color: '#ef4444', background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 4, padding: '2px 6px' }}>
-                        ⚠️ Notice
-                      </span>
+                    {student.room !== 'Unallocated' && (
+                      <span style={{
+                        position: 'absolute', bottom: -3, right: -3,
+                        width: 12, height: 12, borderRadius: '50%',
+                        background: student.feeStatus === 'Paid' ? 'var(--success)' : 'var(--warning)',
+                        border: '2px solid #090b10',
+                        boxShadow: `0 0 6px ${student.feeStatus === 'Paid' ? 'var(--success)' : 'var(--warning)'}`
+                      }} />
                     )}
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: 3, flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{student.course} · Room {student.room}</span>
-                    <span className={student.feeStatus === 'Paid' ? 'status-badge badge-paid' : student.feeStatus === 'Pending' ? 'status-badge badge-pending' : 'status-badge'} style={{ fontSize: '0.66rem', padding: '1px 6px' }}>
-                      {student.feeStatus}
-                    </span>
+
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '6px' }}>
+                      <div style={{ fontWeight: 800, fontSize: '0.98rem', color: '#fff', letterSpacing: -0.2 }}>
+                        {student.name}
+                      </div>
+                      {residentTab === 'active' ? (
+                        <span className={student.feeStatus === 'Paid' ? 'status-badge badge-paid' : 'status-badge badge-pending'} style={{ fontSize: '0.68rem', padding: '3px 8px', flexShrink: 0 }}>
+                          {student.feeStatus === 'Paid' ? '✓ Paid' : `⚡ Due`}
+                        </span>
+                      ) : (
+                        <span style={{ fontSize: '0.68rem', padding: '3px 8px', borderRadius: 8, background: 'rgba(239,68,68,0.15)', color: '#ef4444', fontWeight: 700, flexShrink: 0 }}>
+                          Vacated
+                        </span>
+                      )}
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: 4, flexWrap: 'wrap' }}>
+                      <span style={{
+                        fontSize: '0.72rem',
+                        fontWeight: 700,
+                        color: student.room !== 'Unallocated' ? 'var(--primary)' : 'var(--danger)',
+                        background: student.room !== 'Unallocated' ? 'rgba(249,115,22,0.12)' : 'rgba(239,68,68,0.12)',
+                        padding: '2px 8px',
+                        borderRadius: 6
+                      }}>
+                        🏠 {student.room !== 'Unallocated' ? `Room ${student.room}` : 'Unallocated'}
+                      </span>
+
+                      <span style={{ fontSize: '0.73rem', color: 'var(--text-muted)' }}>
+                        {student.course}{student.branch ? ` · ${student.branch}` : ''}
+                      </span>
+
+                      {student.isOnNotice && (
+                        <span style={{
+                          fontSize: '0.68rem',
+                          fontWeight: 700,
+                          color: '#ef4444',
+                          background: 'rgba(239,68,68,0.15)',
+                          border: '1px solid rgba(239,68,68,0.3)',
+                          borderRadius: 6,
+                          padding: '2px 6px'
+                        }}>
+                          ⚠️ Notice
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
-                <div style={{ display: 'flex', gap: '4px', alignItems: 'center', flexShrink: 0 }}>
+
+                {/* Due Banner with 1-Tap Remind */}
+                {residentTab === 'active' && student.feeStatus === 'Pending' && (
+                  <div style={{
+                    background: 'rgba(249,115,22,0.1)',
+                    border: '1px solid rgba(249,115,22,0.25)',
+                    borderRadius: 10,
+                    padding: '8px 12px',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.78rem', color: 'var(--primary)' }}>
+                      <IndianRupee size={14} />
+                      <span>Due: <strong>₹{(student.totalPendingAmount || monthlyFee).toLocaleString('en-IN')}</strong></span>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={sendingReminderId === student.dbId}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleSendIndividualReminder(student);
+                      }}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        padding: '4px 10px',
+                        borderRadius: 6,
+                        background: 'var(--primary)',
+                        border: 'none',
+                        color: '#fff',
+                        fontSize: '0.72rem',
+                        fontWeight: 700,
+                        cursor: sendingReminderId === student.dbId ? 'not-allowed' : 'pointer'
+                      }}
+                    >
+                      {sendingReminderId === student.dbId ? <Clock size={11} className="animate-spin" /> : <Send size={11} />}
+                      <span>{sendingReminderId === student.dbId ? 'Sending…' : 'Remind'}</span>
+                    </button>
+                  </div>
+                )}
+
+                {/* Action Footer */}
+                <div style={{
+                  display: 'flex',
+                  gap: '8px',
+                  alignItems: 'center',
+                  paddingTop: '6px',
+                  borderTop: '1px solid rgba(255,255,255,0.05)'
+                }}>
+                  <button
+                    onClick={() => setViewingStudent(student)}
+                    style={{
+                      flex: 1,
+                      minHeight: 36,
+                      borderRadius: 8,
+                      background: 'rgba(255,255,255,0.04)',
+                      border: '1px solid var(--border-dim)',
+                      color: 'var(--text-main)',
+                      fontSize: '0.76rem',
+                      fontWeight: 700,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 5,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <Eye size={13} color="var(--primary)" /> Profile
+                  </button>
+
+                  {student.phone && (
+                    <a
+                      href={`tel:${student.phone}`}
+                      onClick={(e) => e.stopPropagation()}
+                      style={{
+                        minHeight: 36,
+                        padding: '0 12px',
+                        borderRadius: 8,
+                        background: 'rgba(34,197,94,0.1)',
+                        border: '1px solid rgba(34,197,94,0.3)',
+                        color: '#4ade80',
+                        fontSize: '0.76rem',
+                        fontWeight: 700,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 4,
+                        textDecoration: 'none'
+                      }}
+                    >
+                      <Phone size={13} /> Call
+                    </a>
+                  )}
+
                   {residentTab === 'active' ? (
                     <>
-                      <button 
-                        className="icon-btn-small" 
-                        title="Edit Student" 
+                      <button
                         onClick={(e) => { e.stopPropagation(); setEditingStudent(student); setShowForm(true); }}
+                        style={{
+                          width: 36,
+                          height: 36,
+                          borderRadius: 8,
+                          background: 'rgba(255,255,255,0.04)',
+                          border: '1px solid var(--border-dim)',
+                          color: 'var(--text-muted)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          cursor: 'pointer'
+                        }}
+                        title="Edit Resident"
                       >
                         <Edit2 size={14} />
                       </button>
-                      <button 
-                        className="icon-btn-small delete" 
-                        title="Remove Student" 
+                      <button
                         onClick={(e) => { e.stopPropagation(); handleVacateStudent(student); }}
+                        style={{
+                          width: 36,
+                          height: 36,
+                          borderRadius: 8,
+                          background: 'rgba(239,68,68,0.1)',
+                          border: '1px solid rgba(239,68,68,0.3)',
+                          color: 'var(--danger)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          cursor: 'pointer'
+                        }}
+                        title="Vacate Resident"
                       >
                         <UserMinus size={14} />
                       </button>
                     </>
                   ) : (
                     <>
-                      <button 
-                        className="icon-btn-small" 
-                        title="Re-admit Student" 
+                      <button
                         onClick={(e) => { e.stopPropagation(); handleReadmitStudent(student); }}
-                        style={{ color: '#4ade80' }}
+                        style={{
+                          flex: 1,
+                          minHeight: 36,
+                          borderRadius: 8,
+                          background: 'rgba(34,197,94,0.12)',
+                          border: '1px solid rgba(34,197,94,0.3)',
+                          color: '#4ade80',
+                          fontSize: '0.76rem',
+                          fontWeight: 700,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: 4,
+                          cursor: 'pointer'
+                        }}
                       >
-                        <RotateCcw size={14} />
+                        <RotateCcw size={13} /> Re-admit
                       </button>
-                      <button 
-                        className="icon-btn-small delete" 
-                        title="Permanently Delete Student" 
+                      <button
                         onClick={(e) => { e.stopPropagation(); handlePermanentDelete(student); }}
+                        style={{
+                          width: 36,
+                          height: 36,
+                          borderRadius: 8,
+                          background: 'rgba(239,68,68,0.1)',
+                          border: '1px solid rgba(239,68,68,0.3)',
+                          color: 'var(--danger)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          cursor: 'pointer'
+                        }}
+                        title="Permanently Delete"
                       >
                         <Trash2 size={14} />
                       </button>
