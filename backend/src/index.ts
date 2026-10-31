@@ -232,22 +232,58 @@ app.get('/api/stats', async (req, res) => {
 
 app.get('/api/activities', async (req, res) => {
   const { buildingId } = req.query as { buildingId?: string };
-  const feeWhere: any = buildingId && buildingId !== 'all'
+  const filterByBuilding = buildingId && buildingId !== 'all';
+  const studentWhere: any = filterByBuilding
     ? { student: { beds: { some: { room: { buildingId } } } } }
     : {};
-  const recentFees = await prisma.fee.findMany({
-    where: feeWhere,
-    take: 3, orderBy: { date: 'desc' },
-    include: { student: true }
-  });
-  const activities = recentFees.map(f => ({
-    id: f.id,
-    action: 'Fee Received',
-    details: `₹${f.amount} from ${f.student.name} (${monthLabel(f.month)})`,
-    time: f.date.toLocaleDateString('en-IN'),
-    type: 'fee'
-  }));
-  res.json(activities);
+
+  try {
+    const [recentFees, recentComplaints] = await Promise.all([
+      prisma.fee.findMany({
+        where: { ...studentWhere, status: 'Completed' },
+        take: 4,
+        orderBy: { date: 'desc' },
+        include: { student: true }
+      }),
+      prisma.complaint.findMany({
+        where: studentWhere,
+        take: 4,
+        orderBy: { date: 'desc' },
+        include: { student: { include: { beds: { include: { room: true } } } } }
+      })
+    ]);
+
+    const feeActivities = recentFees.map(f => ({
+      id: f.id,
+      action: 'Fee Payment Received',
+      details: `₹${f.amount.toLocaleString('en-IN')} from ${f.student.name} (${monthLabel(f.month)})`,
+      time: f.date ? f.date.toLocaleDateString('en-IN') : 'Recently',
+      rawDate: f.date ? f.date.toISOString() : new Date().toISOString(),
+      type: 'fee'
+    }));
+
+    const complaintActivities = recentComplaints.map(c => {
+      const roomNum = c.student?.beds?.[0]?.room?.roomNumber;
+      return {
+        id: c.id,
+        action: `Complaint: ${c.title}`,
+        details: `${c.student?.name || 'Resident'}${roomNum ? ` · Room ${roomNum}` : ''} · [${c.status.toUpperCase()}]`,
+        time: c.date ? c.date.toLocaleDateString('en-IN') : 'Recently',
+        rawDate: c.date ? c.date.toISOString() : new Date().toISOString(),
+        type: 'complaint',
+        status: c.status
+      };
+    });
+
+    const combined = [...feeActivities, ...complaintActivities]
+      .sort((a, b) => new Date(b.rawDate).getTime() - new Date(a.rawDate).getTime())
+      .slice(0, 6);
+
+    res.json(combined);
+  } catch (err: any) {
+    console.error('Error fetching activities:', err);
+    res.json([]);
+  }
 });
 
 // ─── STUDENTS (optimized — scoped fee queries, computed due status uses settings) ─
