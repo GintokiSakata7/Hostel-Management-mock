@@ -1,5 +1,11 @@
 import dotenv from 'dotenv';
 dotenv.config({ override: true });
+import dns from 'dns';
+try {
+  dns.setDefaultResultOrder('ipv4first');
+} catch (e) {
+  // Ignore in environments where setDefaultResultOrder is unavailable
+}
 import express from 'express';
 import cors from 'cors';
 import { PrismaClient } from '@prisma/client';
@@ -8,7 +14,7 @@ import path from 'path';
 import { initReminderScheduler, executeFeeReminderDispatch, executeSingleStudentReminder, getReminderScheduleSettings, updateReminderScheduleTime } from './services/reminderScheduler';
 import { calculateStudentDueStatus, getOrdinal } from './services/billingHelper';
 import { generateFeeReceiptPDFBuffer } from './services/pdfService';
-import { sendPaymentReceiptEmail } from './services/emailService';
+import { sendPaymentReceiptEmail, sendEmail } from './services/emailService';
 import { createFinanceRouter } from './routes/financeRoutes';
 
 const app = express();
@@ -1827,6 +1833,27 @@ app.post('/api/reminders/settings', (req, res) => {
     res.json({ success: true, settings: newSettings });
   } catch (err: any) {
     res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+// Diagnostic endpoint to verify live SMTP delivery
+app.post('/api/reminders/test-email', async (req, res) => {
+  try {
+    const to = req.body?.to || process.env.EMAIL_ADDRESS || 'rishichepuri764@gmail.com';
+    const result = await sendEmail(
+      to,
+      'Majin Hostel - Deployment Email Connectivity Verification',
+      'This is an automated verification email from the Majin Hostel Management backend confirming that outbound Gmail SMTP over IPv4 is active, connected, and functioning properly.',
+      '<div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #22c55e; border-radius: 12px; background: #f0fdf4;">' +
+        '<h2 style="color: #15803d; margin-top: 0;">✓ Deployment Email Service Online</h2>' +
+        '<p>This email confirms that the deployed backend on Render has successfully resolved and connected to Google SMTP via IPv4 (Port 465 / 587).</p>' +
+        '<p>Timestamp: <strong>' + new Date().toISOString() + '</strong></p>' +
+        '<p>Sender: <strong>' + (process.env.EMAIL_ADDRESS || 'rishichepuri764@gmail.com') + '</strong></p>' +
+      '</div>'
+    );
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 

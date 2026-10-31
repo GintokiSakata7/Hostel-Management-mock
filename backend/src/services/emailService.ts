@@ -1,18 +1,50 @@
 import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
+import dns from 'dns';
+
 dotenv.config();
 
-// Setup transporter with connection pooling and standard Gmail SMTP
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.EMAIL_ADDRESS || 'test@gmail.com',
-    pass: process.env.EMAIL_APP_PASSWORD || 'password123',
-  },
-});
+// CRITICAL for Cloud Deployments (Render, AWS, DigitalOcean, etc.):
+// Render container environments do not have an outbound IPv6 route. Node 17+ defaults
+// to verbatim DNS ordering, which resolves smtp.gmail.com to IPv6 addresses (2607:f8b0:...).
+// Attempting to connect to IPv6 yields "ENETUNREACH" and connection timeouts.
+// Setting IPv4-first globally forces Node.js to use IPv4 addresses.
+try {
+  dns.setDefaultResultOrder('ipv4first');
+} catch (e) {
+  // Ignore if unsupported in older Node runtimes
+}
 
 /**
- * Send an email using Gmail
+ * Creates a Gmail SMTP transporter with explicit IPv4 socket resolution.
+ * Supports Port 465 (SMTPS direct SSL) and Port 587 (STARTTLS).
+ */
+function createGmailTransporter(port: number = 465, secure: boolean = true) {
+  const user = process.env.EMAIL_ADDRESS || 'rishichepuri764@gmail.com';
+  const pass = process.env.EMAIL_APP_PASSWORD || 'kwazstzjmszvircf';
+
+  return nodemailer.createTransport({
+    host: process.env.SMTP_HOST || 'smtp.gmail.com',
+    port,
+    secure,
+    auth: {
+      user,
+      pass,
+    },
+    // CRITICAL: Forces IPv4 socket (prevents ENETUNREACH on Render)
+    family: 4,
+    tls: {
+      rejectUnauthorized: false,
+      minVersion: 'TLSv1.2',
+    },
+    connectionTimeout: 12000,
+    greetingTimeout: 10000,
+    socketTimeout: 20000,
+  });
+}
+
+/**
+ * Send an email using Gmail with resilient Port 465 -> Port 587 fallback
  */
 export async function sendEmail(
   to: string,
@@ -21,23 +53,38 @@ export async function sendEmail(
   html?: string,
   attachments?: { filename: string; content: Buffer }[]
 ): Promise<{ success: boolean; error?: string; messageId?: string }> {
-  try {
-    const senderAddress = process.env.EMAIL_ADDRESS || 'test@gmail.com';
-    const mailOptions = {
-      from: `"Majin Hostel Management" <${senderAddress}>`,
-      to,
-      subject,
-      text,
-      html,
-      attachments,
-    };
+  const senderAddress = process.env.EMAIL_ADDRESS || 'rishichepuri764@gmail.com';
+  const mailOptions = {
+    from: `"Majin Hostel Management" <${senderAddress}>`,
+    to,
+    subject,
+    text,
+    html,
+    attachments,
+  };
 
-    const info = await transporter.sendMail(mailOptions);
-    console.log(`[Gmail Service]: Email sent successfully to ${to}. Message ID: ${info.messageId}`);
+  // Primary Attempt: Port 465 (Direct SSL over IPv4)
+  try {
+    const transporter465 = createGmailTransporter(465, true);
+    const info = await transporter465.sendMail(mailOptions);
+    console.log(`[Gmail Service]: Email sent successfully via Port 465 (IPv4) to ${to}. Message ID: ${info.messageId}`);
     return { success: true, messageId: info.messageId };
-  } catch (err: any) {
-    console.error('[Gmail Service Error]:', err.message);
-    return { success: false, error: err.message };
+  } catch (err465: any) {
+    console.warn(`[Gmail Service Warning]: Port 465 attempt failed (${err465.message}). Retrying via Port 587 (STARTTLS, IPv4)...`);
+
+    // Fallback Attempt: Port 587 (STARTTLS over IPv4)
+    try {
+      const transporter587 = createGmailTransporter(587, false);
+      const info = await transporter587.sendMail(mailOptions);
+      console.log(`[Gmail Service]: Email sent successfully via Port 587 (IPv4) to ${to}. Message ID: ${info.messageId}`);
+      return { success: true, messageId: info.messageId };
+    } catch (err587: any) {
+      console.error('[Gmail Service Error]: Both Port 465 and Port 587 failed to send email:', err587.message);
+      return {
+        success: false,
+        error: `Port 465 error: ${err465.message} | Port 587 error: ${err587.message}`,
+      };
+    }
   }
 }
 

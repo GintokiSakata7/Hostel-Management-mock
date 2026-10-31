@@ -9,6 +9,7 @@ export interface StudentDueStatus {
   studentId: string;
   studentName: string;
   phone: string | null;
+  email: string | null;
   roomName: string;
   course: string;
   dateOfJoining: Date;
@@ -147,6 +148,7 @@ export function calculateStudentDueStatus(
     studentId: student.id,
     studentName: student.name,
     phone: student.phone,
+    email: student.email || null,
     roomName,
     course: student.course,
     dateOfJoining: joinDate,

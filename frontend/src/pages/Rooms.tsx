@@ -582,13 +582,13 @@ function AllocateModal({ bed, onClose, onSuccess }: { bed: any; onClose: () => v
                 right: 0,
                 zIndex: 100,
                 marginTop: 4,
-                background: 'rgba(22, 26, 38, 0.96)',
+                background: 'var(--modal-bg)',
                 backdropFilter: 'blur(12px)',
-                border: '1px solid rgba(255, 255, 255, 0.15)',
+                border: '1px solid var(--border-light)',
                 borderRadius: 12,
                 maxHeight: 200,
                 overflowY: 'auto',
-                boxShadow: '0 12px 36px rgba(0,0,0,0.6)',
+                boxShadow: 'var(--modal-shadow)',
                 padding: '4px'
               }}
             >
@@ -607,7 +607,7 @@ function AllocateModal({ bed, onClose, onSuccess }: { bed: any; onClose: () => v
                     justifyContent: 'space-between',
                     alignItems: 'center',
                     fontSize: '0.85rem',
-                    color: '#fff',
+                    color: 'var(--text-main)',
                     transition: 'background 0.15s ease'
                   }}
                   onMouseOver={e => e.currentTarget.style.background = 'rgba(249,115,22,0.18)'}
@@ -845,7 +845,7 @@ function EditBuildingModal({
                     className="custom-input"
                     value={buildingName}
                     onChange={e => setBuildingName(e.target.value)}
-                    style={{ padding: '5px 10px', fontSize: '1rem', fontWeight: 700, width: 220, background: 'rgba(0,0,0,0.3)' }}
+                    style={{ padding: '5px 10px', fontSize: '1rem', fontWeight: 700, width: 220 }}
                   />
                   <button type="submit" disabled={saving} style={{
                     background: 'var(--primary)', border: 'none', color: '#fff',
@@ -854,7 +854,7 @@ function EditBuildingModal({
                     {saving ? '…' : 'Save'}
                   </button>
                   <button type="button" onClick={() => { setIsRenaming(false); setBuildingName(building.name); }} style={{
-                    background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)',
+                    background: 'var(--border-dim)', border: '1px solid var(--border-light)',
                     color: 'var(--text-muted)', padding: '4px 10px', borderRadius: 8, fontSize: '0.78rem', cursor: 'pointer'
                   }}>
                     Cancel
@@ -862,16 +862,16 @@ function EditBuildingModal({
                 </form>
               ) : (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <h2 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, letterSpacing: -0.5 }}>
+                  <h2 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, letterSpacing: -0.5, color: 'var(--text-main)' }}>
                     {building.name}
                   </h2>
                   <button type="button" onClick={() => setIsRenaming(true)} style={{
-                    background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)',
+                    background: 'var(--border-dim)', border: '1px solid var(--border-light)',
                     color: 'var(--text-muted)', padding: '2px 8px', borderRadius: 6, fontSize: '0.68rem',
                     fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s'
                   }}
                     onMouseOver={e => { e.currentTarget.style.color = 'var(--primary)'; e.currentTarget.style.borderColor = 'rgba(249,115,22,0.4)'; }}
-                    onMouseOut={e => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.12)'; }}
+                    onMouseOut={e => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.borderColor = 'var(--border-light)'; }}
                   >
                     ✎ Rename
                   </button>
@@ -951,18 +951,18 @@ function EditBuildingModal({
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                       <div style={{
                         width: 32, height: 32, borderRadius: 10,
-                        background: isActive ? 'rgba(249,115,22,0.2)' : 'rgba(255,255,255,0.04)',
+                        background: isActive ? 'rgba(249,115,22,0.18)' : 'var(--border-dim)',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        border: `1px solid ${isActive ? 'rgba(249,115,22,0.4)' : 'rgba(255,255,255,0.08)'}`,
+                        border: `1px solid ${isActive ? 'rgba(249,115,22,0.4)' : 'var(--border-light)'}`,
                         transition: 'all 0.2s'
                       }}>
                         <Layers3 size={14} color={isActive ? 'var(--primary)' : 'var(--text-muted)'} />
                       </div>
                       <div style={{ textAlign: 'left' }}>
-                        <div style={{ fontWeight: 700, fontSize: '0.85rem', color: isActive ? '#fff' : 'var(--text-muted)' }}>
+                        <div style={{ fontWeight: 700, fontSize: '0.85rem', color: isActive ? 'var(--primary)' : 'var(--text-main)' }}>
                           Floor {f}
                         </div>
-                        <div style={{ fontSize: '0.68rem', color: isActive ? 'rgba(249,115,22,0.8)' : 'rgba(255,255,255,0.35)' }}>
+                        <div style={{ fontSize: '0.68rem', color: isActive ? 'var(--primary)' : 'var(--text-muted)' }}>
                           {fRooms.length} room{fRooms.length !== 1 ? 's' : ''} · {fOcc}/{fBeds} beds
                         </div>
                       </div>
@@ -986,11 +986,11 @@ function EditBuildingModal({
             {/* Floor Header */}
             <div style={{
               display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-              padding: '18px 24px', borderBottom: '1px solid rgba(255,255,255,0.06)',
-              background: 'rgba(255,255,255,0.015)'
+              padding: '18px 24px', borderBottom: '1px solid var(--border-light)',
+              background: 'var(--border-dim)'
             }}>
               <div>
-                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, letterSpacing: -0.3 }}>
+                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, letterSpacing: -0.3, color: 'var(--text-main)' }}>
                   Floor {activeTabFloor}
                 </h3>
                 <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 2 }}>
@@ -999,7 +999,7 @@ function EditBuildingModal({
               </div>
               {floorBeds > 0 && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <div style={{ width: 80, height: 5, borderRadius: 4, background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}>
+                  <div style={{ width: 80, height: 5, borderRadius: 4, background: 'var(--border-light)', overflow: 'hidden' }}>
                     <div style={{
                       height: '100%', borderRadius: 4, transition: 'width 0.5s ease',
                       width: `${Math.round((floorOccupied / floorBeds) * 100)}%`,
@@ -1022,13 +1022,13 @@ function EditBuildingModal({
                 }}>
                   <div style={{
                     width: 64, height: 64, borderRadius: 16, margin: '0 auto 16px',
-                    background: 'rgba(255,255,255,0.03)', border: '2px dashed rgba(255,255,255,0.1)',
+                    background: 'var(--border-dim)', border: '2px dashed var(--border-light)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center'
                   }}>
-                    <Home size={24} color="rgba(255,255,255,0.2)" />
+                    <Home size={24} color="var(--text-muted)" />
                   </div>
-                  <div style={{ fontWeight: 600, marginBottom: 4 }}>No rooms on Floor {activeTabFloor}</div>
-                  <div style={{ fontSize: '0.78rem', opacity: 0.6 }}>Use the form below to add the first room.</div>
+                  <div style={{ fontWeight: 600, marginBottom: 4, color: 'var(--text-main)' }}>No rooms on Floor {activeTabFloor}</div>
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Use the form below to add the first room.</div>
                 </div>
               ) : (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '12px' }}>
@@ -1053,7 +1053,7 @@ function EditBuildingModal({
                               <Home size={16} color={roomColor} />
                             </div>
                             <div>
-                              <div style={{ fontWeight: 800, fontSize: '0.95rem', color: '#fff' }}>
+                              <div style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--text-main)' }}>
                                 Room {room.id}
                               </div>
                               <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
@@ -1079,7 +1079,7 @@ function EditBuildingModal({
 
                         {/* Occupancy Mini Bar */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-                          <div style={{ flex: 1, height: 3, borderRadius: 3, background: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
+                          <div style={{ flex: 1, height: 3, borderRadius: 3, background: 'var(--border-light)', overflow: 'hidden' }}>
                             <div style={{
                               height: '100%', borderRadius: 3, width: `${occPct}%`,
                               background: roomColor, transition: 'width 0.4s ease'
@@ -1091,8 +1091,8 @@ function EditBuildingModal({
                         {/* Bed Capacity Controller */}
                         <div style={{
                           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                          background: 'rgba(0,0,0,0.25)', borderRadius: 10, padding: '6px 10px',
-                          border: '1px solid rgba(255,255,255,0.06)'
+                          background: 'var(--border-dim)', borderRadius: 10, padding: '6px 10px',
+                          border: '1px solid var(--border-light)'
                         }}>
                           <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600 }}>Beds</span>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
@@ -1106,7 +1106,7 @@ function EditBuildingModal({
                               −
                             </button>
                             <span style={{
-                              fontWeight: 800, fontSize: '0.9rem', color: '#fff',
+                              fontWeight: 800, fontSize: '0.9rem', color: 'var(--text-main)',
                               minWidth: 36, textAlign: 'center', display: 'inline-block'
                             }}>
                               {room.capacity}
@@ -1139,7 +1139,7 @@ function EditBuildingModal({
                     value={newRoomNumber}
                     onChange={e => setNewRoomNumber(e.target.value)}
                     placeholder={`Room number (e.g. ${activeTabFloor}01)`}
-                    style={{ padding: '10px 14px', fontSize: '0.85rem', width: '100%', background: 'rgba(0,0,0,0.35)' }}
+                    style={{ padding: '10px 14px', fontSize: '0.85rem', width: '100%' }}
                   />
                 </div>
                 <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
