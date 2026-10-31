@@ -15,6 +15,9 @@
   --border-light: rgba(255, 255, 255, 0.15);
   --border-dim: rgba(255, 255, 255, 0.06);
 
+  --modal-bg: #141722;
+  --modal-shadow: 0 24px 64px rgba(0, 0, 0, 0.6);
+
   --sidebar-collapsed: 76px;
   --sidebar-expanded: 220px;
   --sidebar-transition: 0.35s cubic-bezier(0.4, 0, 0.2, 1);
@@ -27,6 +30,8 @@
   --text-muted: #4a5568;
   --border-light: rgba(0, 0, 0, 0.12);
   --border-dim: rgba(0, 0, 0, 0.07);
+  --modal-bg: #ffffff;
+  --modal-shadow: 0 24px 64px rgba(0, 0, 0, 0.12);
   --success: #16a34a;
   --warning: #d97706;
   --danger: #dc2626;
@@ -812,6 +817,29 @@ select option[value=""],
 .custom-input.input-error {
   border-color: #ef4444 !important;
   box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2) !important;
+}
+
+.light-theme .custom-input,
+.light-theme .custom-select,
+.light-theme select.custom-input,
+.light-theme textarea.custom-input {
+  background: #ffffff !important;
+  border-color: rgba(0, 0, 0, 0.16) !important;
+  color: #1a202c !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.light-theme .custom-input:focus,
+.light-theme .custom-select:focus,
+.light-theme select.custom-input:focus,
+.light-theme textarea.custom-input:focus {
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.18) !important;
+}
+
+.light-theme .custom-input::placeholder,
+.light-theme textarea.custom-input::placeholder {
+  color: rgba(0, 0, 0, 0.42) !important;
 }
 
 /* ===================== ROOMS PAGE ===================== */
@@ -2867,32 +2895,41 @@ select option[value=""],
 
 @media (max-width: 768px) {
   .finance-header-card {
-    padding: 1rem;
+    padding: 0.875rem;
     flex-direction: column;
     align-items: stretch;
-    gap: 1rem;
+    gap: 0.875rem;
   }
   .finance-header-actions {
-    justify-content: stretch;
-  }
-  .finance-header-actions > * {
-    flex: 1;
-    justify-content: center;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    gap: 8px;
   }
   .fiscal-navigator {
-    width: 100%;
+    width: 100% !important;
     justify-content: space-between;
+  }
+  .finance-action-buttons-wrap {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    width: 100%;
+  }
+  .finance-action-buttons-wrap > .btn-finance-report {
+    grid-column: span 2;
+    justify-content: center;
   }
   .finance-hud-grid {
     grid-template-columns: 1fr 1fr;
-    gap: 10px;
+    gap: 8px;
   }
   .finance-kpi-card {
-    padding: 12px;
+    padding: 10px 12px;
     border-radius: 14px;
   }
   .finance-kpi-value {
-    font-size: 1.35rem;
+    font-size: 1.25rem;
   }
   .finance-trend-columns {
     gap: 4px;
@@ -2907,6 +2944,56 @@ select option[value=""],
     width: 100%;
     min-width: unset;
   }
+  .finance-mobile-card {
+    padding: 12px;
+    border-radius: 14px;
+  }
+}
+
+.light-theme .finance-mobile-card {
+  background: #ffffff !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04) !important;
+}
+
+.light-theme .finance-mobile-card:hover {
+  border-color: rgba(249, 115, 22, 0.4) !important;
+}
+
+.light-theme .finance-jump-banner {
+  background: linear-gradient(90deg, rgba(249, 115, 22, 0.1) 0%, rgba(245, 158, 11, 0.04) 100%);
+  border-color: rgba(249, 115, 22, 0.25);
+}
+
+.light-theme .btn-finance-report {
+  background: rgba(37, 99, 235, 0.1);
+  border-color: rgba(37, 99, 235, 0.3);
+  color: #2563eb;
+}
+
+.light-theme .btn-finance-report:hover {
+  background: rgba(37, 99, 235, 0.18);
+  color: #1d4ed8;
+}
+
+.light-theme .finance-kpi-card.hero-net .finance-kpi-value {
+  color: #047857 !important;
+}
+
+.light-theme .finance-kpi-card.hero-net.negative .finance-kpi-value {
+  color: #dc2626 !important;
+}
+
+.light-theme .finance-kpi-card.income-card .finance-kpi-value {
+  color: #1d4ed8 !important;
+}
+
+.light-theme .finance-kpi-card.expense-card .finance-kpi-value {
+  color: #dc2626 !important;
+}
+
+.light-theme .finance-kpi-card.margin-card .finance-kpi-value {
+  color: #d97706 !important;
 }
 
 /* ===== Building & Floor Mobile Optimizations ===== */

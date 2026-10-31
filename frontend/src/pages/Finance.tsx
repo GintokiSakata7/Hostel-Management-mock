@@ -11,6 +11,7 @@ import {
 import { useToast } from '../components/ToastContext';
 import { useSettings } from '../components/SettingsContext';
 import { useBuilding } from '../components/BuildingContext';
+import Modal from '../components/Modal';
 
 
 interface Expense {
@@ -994,36 +995,38 @@ const Finance: React.FC = () => {
             </button>
           </div>
 
-          {/* Add Single Expense */}
-          <button
-            onClick={() => openSingleCreate()}
-            className="btn-finance-primary"
-            id="btn-add-single-expense"
-          >
-            <Plus size={16} />
-            <span>Record Expense</span>
-          </button>
+          <div className="finance-action-buttons-wrap">
+            {/* Add Single Expense */}
+            <button
+              onClick={() => openSingleCreate()}
+              className="btn-finance-primary"
+              id="btn-add-single-expense"
+            >
+              <Plus size={16} />
+              <span>Record Expense</span>
+            </button>
 
-          {/* Multi-Row Spreadsheet Quick Entry */}
-          <button
-            onClick={() => setIsBulkModalOpen(true)}
-            className="btn-finance-secondary"
-            id="btn-fast-multi-add"
-          >
-            <FileSpreadsheet size={16} />
-            <span>Fast Multi-Add</span>
-          </button>
+            {/* Multi-Row Spreadsheet Quick Entry */}
+            <button
+              onClick={() => setIsBulkModalOpen(true)}
+              className="btn-finance-secondary"
+              id="btn-fast-multi-add"
+            >
+              <FileSpreadsheet size={16} />
+              <span>Fast Multi-Add</span>
+            </button>
 
-          {/* Download Statement */}
-          <button
-            onClick={() => setIsReportModalOpen(true)}
-            className="btn-finance-report"
-            id="btn-download-pdf-statement"
-            title="Download & Print Detailed Customized PDF Financial Statement"
-          >
-            <Download size={16} />
-            <span>Statement</span>
-          </button>
+            {/* Download Statement */}
+            <button
+              onClick={() => setIsReportModalOpen(true)}
+              className="btn-finance-report"
+              id="btn-download-pdf-statement"
+              title="Download & Print Detailed Customized PDF Financial Statement"
+            >
+              <Download size={16} />
+              <span>Statement</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -1730,1081 +1733,692 @@ const Finance: React.FC = () => {
       </div>
 
       {/* ─── MODAL 1: MULTI-ROW SPREADSHEET QUICK ENTRY ────────────────────────────── */}
-      {isBulkModalOpen && (
-        <div style={{
-          position: 'fixed',
-          top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(0, 0, 0, 0.82)',
-          backdropFilter: 'blur(12px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000,
-          padding: '20px',
-          animation: 'modalBackdropIn 0.25s ease'
-        }}>
+      <Modal
+        isOpen={isBulkModalOpen}
+        onClose={() => setIsBulkModalOpen(false)}
+        title="Multi-Row Quick Expense Adder"
+        maxWidth="1080px"
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          {/* Preset Buttons Ribbon */}
           <div style={{
-            width: '100%',
-            maxWidth: '1120px',
-            maxHeight: '88vh',
+            padding: '10px 14px',
+            background: 'var(--border-dim)',
+            border: '1px solid var(--border-light)',
+            borderRadius: '14px',
             display: 'flex',
-            flexDirection: 'column',
-            borderRadius: '24px',
-            background: 'linear-gradient(145deg, #13141a 0%, #0d0e12 100%)',
-            border: '1px solid rgba(255, 255, 255, 0.12)',
-            overflow: 'hidden',
-            boxShadow: '0 30px 80px rgba(0,0,0,0.8), 0 0 60px rgba(249, 115, 22, 0.15)'
+            alignItems: 'center',
+            gap: '8px',
+            overflowX: 'auto',
+            scrollbarWidth: 'none'
           }}>
-            {/* Modal Header */}
-            <div style={{
-              padding: '20px 28px',
-              borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              background: 'linear-gradient(90deg, rgba(249, 115, 22, 0.08) 0%, rgba(0, 0, 0, 0) 100%)'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                <div style={{
-                  width: '42px',
-                  height: '42px',
-                  borderRadius: '12px',
-                  background: 'linear-gradient(135deg, #f97316, #ea580c)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#fff',
-                  boxShadow: '0 4px 14px rgba(249, 115, 22, 0.4)'
-                }}>
-                  <FileSpreadsheet size={22} />
-                </div>
-                <div>
-                  <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, color: '#fff' }}>
-                    Multi-Row Quick Expense Adder
-                  </h3>
-                  <p style={{ margin: '2px 0 0 0', fontSize: '0.82rem', color: 'rgba(255, 255, 255, 0.6)' }}>
-                    Add multiple hostel expenses at once. Click preset chips below to prefill rows rapidly.
-                  </p>
-                </div>
-              </div>
-
+            <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--primary)', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '5px' }}>
+              <Sparkles size={14} /> + Preset Row:
+            </span>
+            {categories.flatMap(c => (c.presetItems || []).map(p => ({ title: p, cat: c.name }))).slice(0, 12).map((preset, idx) => (
               <button
-                onClick={() => setIsBulkModalOpen(false)}
+                key={idx}
+                type="button"
+                onClick={() => addPresetToBulk(preset.title, preset.cat)}
                 style={{
-                  background: 'rgba(255, 255, 255, 0.06)',
-                  border: '1px solid rgba(255, 255, 255, 0.1)',
-                  color: 'rgba(255, 255, 255, 0.7)',
-                  borderRadius: '50%',
-                  width: '36px',
-                  height: '36px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = 'rgba(239, 68, 68, 0.2)';
-                  e.currentTarget.style.color = '#ef4444';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.06)';
-                  e.currentTarget.style.color = 'rgba(255, 255, 255, 0.7)';
-                }}
-              >
-                <XCircle size={20} />
-              </button>
-            </div>
-
-            {/* Quick Preset Buttons Ribbon */}
-            <div style={{
-              padding: '12px 28px',
-              background: 'rgba(0, 0, 0, 0.4)',
-              borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px',
-              overflowX: 'auto',
-              scrollbarWidth: 'none'
-            }}>
-              <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--primary)', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Sparkles size={14} /> + Add Preset Row:
-              </span>
-              {categories.flatMap(c => (c.presetItems || []).map(p => ({ title: p, cat: c.name }))).slice(0, 12).map((preset, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => addPresetToBulk(preset.title, preset.cat)}
-                  style={{
-                    background: 'rgba(249, 115, 22, 0.08)',
-                    border: '1px solid rgba(249, 115, 22, 0.25)',
-                    borderRadius: '16px',
-                    padding: '5px 12px',
-                    color: '#fff',
-                    fontSize: '0.78rem',
-                    fontWeight: 500,
-                    cursor: 'pointer',
-                    whiteSpace: 'nowrap',
-                    transition: 'all 0.2s ease',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'rgba(249, 115, 22, 0.25)';
-                    e.currentTarget.style.transform = 'translateY(-1px)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'rgba(249, 115, 22, 0.08)';
-                    e.currentTarget.style.transform = 'none';
-                  }}
-                >
-                  <Plus size={12} color="#f97316" />
-                  <span>{preset.title}</span>
-                </button>
-              ))}
-            </div>
-
-            {/* Modal Body: Multi-row Table */}
-            <div style={{ padding: '24px 28px', overflowY: 'auto', flex: 1 }}>
-              <div style={{
-                borderRadius: '16px',
-                border: '1px solid rgba(255, 255, 255, 0.08)',
-                background: 'rgba(0, 0, 0, 0.25)',
-                overflow: 'hidden'
-              }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
-                  <thead>
-                    <tr style={{
-                      background: 'rgba(255, 255, 255, 0.04)',
-                      color: 'rgba(255, 255, 255, 0.6)',
-                      borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-                      fontSize: '0.78rem',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.5px'
-                    }}>
-                      <th style={{ padding: '12px 14px', width: '36px', textAlign: 'center' }}>#</th>
-                      <th style={{ padding: '12px 14px', minWidth: '200px' }}>Item Title *</th>
-                      <th style={{ padding: '12px 14px', minWidth: '180px' }}>Category</th>
-                      <th style={{ padding: '12px 14px', width: '140px' }}>Amount (₹) *</th>
-                      <th style={{ padding: '12px 14px', width: '150px' }}>Date</th>
-                      <th style={{ padding: '12px 14px', width: '120px' }}>Mode</th>
-                      <th style={{ padding: '12px 14px', minWidth: '150px' }}>Vendor / Paid To</th>
-                      <th style={{ padding: '12px 14px', width: '50px', textAlign: 'center' }}>Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {bulkRows.map((row, index) => (
-                      <tr
-                        key={row.id}
-                        style={{
-                          borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
-                          transition: 'background 0.2s'
-                        }}
-                        onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.02)'}
-                        onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                      >
-                        {/* Index */}
-                        <td style={{ padding: '10px 14px', color: 'rgba(255, 255, 255, 0.5)', fontWeight: 600, textAlign: 'center' }}>
-                          {index + 1}
-                        </td>
-
-                        {/* Title */}
-                        <td style={{ padding: '10px 8px' }}>
-                          <input
-                            type="text"
-                            placeholder="e.g. Vegetables, Wifi..."
-                            value={row.title}
-                            onChange={(e) => updateBulkRow(row.id, 'title', e.target.value)}
-                            style={{
-                              width: '100%',
-                              background: '#1a1c24',
-                              border: '1px solid rgba(255, 255, 255, 0.12)',
-                              borderRadius: '10px',
-                              padding: '10px 12px',
-                              color: '#ffffff',
-                              fontSize: '0.88rem',
-                              fontWeight: 500,
-                              outline: 'none',
-                              colorScheme: 'dark',
-                              transition: 'border 0.2s, box-shadow 0.2s'
-                            }}
-                            onFocus={(e) => {
-                              e.target.style.borderColor = '#f97316';
-                              e.target.style.boxShadow = '0 0 0 3px rgba(249, 115, 22, 0.2)';
-                            }}
-                            onBlur={(e) => {
-                              e.target.style.borderColor = 'rgba(255, 255, 255, 0.12)';
-                              e.target.style.boxShadow = 'none';
-                            }}
-                          />
-                        </td>
-
-                        {/* Category */}
-                        <td style={{ padding: '10px 8px' }}>
-                          <select
-                            value={row.category}
-                            onChange={(e) => updateBulkRow(row.id, 'category', e.target.value)}
-                            style={{
-                              width: '100%',
-                              background: '#1a1c24',
-                              border: '1px solid rgba(255, 255, 255, 0.12)',
-                              borderRadius: '10px',
-                              padding: '10px 12px',
-                              color: '#ffffff',
-                              fontSize: '0.88rem',
-                              fontWeight: 500,
-                              outline: 'none',
-                              colorScheme: 'dark',
-                              cursor: 'pointer'
-                            }}
-                          >
-                            {categories.map(c => (
-                              <option key={c.id} value={c.name} style={{ background: '#13141a', color: '#fff' }}>
-                                {c.name}
-                              </option>
-                            ))}
-                          </select>
-                        </td>
-
-                        {/* Amount */}
-                        <td style={{ padding: '10px 8px' }}>
-                          <input
-                            type="number"
-                            placeholder="Amount ₹"
-                            value={row.amount}
-                            onChange={(e) => updateBulkRow(row.id, 'amount', e.target.value)}
-                            style={{
-                              width: '100%',
-                              background: 'rgba(239, 68, 68, 0.08)',
-                              border: '1px solid rgba(239, 68, 68, 0.3)',
-                              borderRadius: '10px',
-                              padding: '10px 12px',
-                              color: '#ef4444',
-                              fontWeight: 700,
-                              fontSize: '0.92rem',
-                              outline: 'none'
-                            }}
-                            onFocus={(e) => {
-                              e.target.style.borderColor = '#ef4444';
-                              e.target.style.boxShadow = '0 0 0 3px rgba(239, 68, 68, 0.2)';
-                            }}
-                            onBlur={(e) => {
-                              e.target.style.borderColor = 'rgba(239, 68, 68, 0.3)';
-                              e.target.style.boxShadow = 'none';
-                            }}
-                          />
-                        </td>
-
-                        {/* Date */}
-                        <td style={{ padding: '10px 8px' }}>
-                          <input
-                            type="date"
-                            value={row.date}
-                            onChange={(e) => updateBulkRow(row.id, 'date', e.target.value)}
-                            style={{
-                              width: '100%',
-                              background: '#1a1c24',
-                              border: '1px solid rgba(255, 255, 255, 0.12)',
-                              borderRadius: '10px',
-                              padding: '9px 10px',
-                              color: '#ffffff',
-                              fontSize: '0.85rem',
-                              fontWeight: 500,
-                              outline: 'none',
-                              colorScheme: 'dark'
-                            }}
-                          />
-                        </td>
-
-                        {/* Payment Method */}
-                        <td style={{ padding: '10px 8px' }}>
-                          <select
-                            value={row.paymentMethod}
-                            onChange={(e) => updateBulkRow(row.id, 'paymentMethod', e.target.value)}
-                            style={{
-                              width: '100%',
-                              background: '#1a1c24',
-                              border: '1px solid rgba(255, 255, 255, 0.12)',
-                              borderRadius: '10px',
-                              padding: '10px 10px',
-                              color: '#ffffff',
-                              fontSize: '0.85rem',
-                              outline: 'none',
-                              colorScheme: 'dark'
-                            }}
-                          >
-                            <option value="Cash" style={{ background: '#13141a', color: '#fff' }}>Cash</option>
-                            <option value="UPI" style={{ background: '#13141a', color: '#fff' }}>UPI</option>
-                            <option value="Bank Transfer" style={{ background: '#13141a', color: '#fff' }}>Bank</option>
-                            <option value="Card" style={{ background: '#13141a', color: '#fff' }}>Card</option>
-                          </select>
-                        </td>
-
-                        {/* Vendor */}
-                        <td style={{ padding: '10px 8px' }}>
-                          <input
-                            type="text"
-                            placeholder="Vendor/Person"
-                            value={row.vendor}
-                            onChange={(e) => updateBulkRow(row.id, 'vendor', e.target.value)}
-                            style={{
-                              width: '100%',
-                              background: '#1a1c24',
-                              border: '1px solid rgba(255, 255, 255, 0.12)',
-                              borderRadius: '10px',
-                              padding: '10px 12px',
-                              color: '#ffffff',
-                              fontSize: '0.85rem',
-                              outline: 'none'
-                            }}
-                          />
-                        </td>
-
-                        {/* Remove Row */}
-                        <td style={{ padding: '10px 14px', textAlign: 'center' }}>
-                          <button
-                            onClick={() => removeBulkRow(row.id)}
-                            style={{
-                              background: 'rgba(239, 68, 68, 0.12)',
-                              border: '1px solid rgba(239, 68, 68, 0.25)',
-                              color: '#ef4444',
-                              width: '32px',
-                              height: '32px',
-                              borderRadius: '8px',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              cursor: 'pointer',
-                              transition: 'all 0.2s'
-                            }}
-                            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.3)'}
-                            onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.12)'}
-                          >
-                            <Trash2 size={15} />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Add Empty Row Button */}
-              <button
-                onClick={addEmptyBulkRow}
-                style={{
-                  marginTop: '16px',
-                  background: 'rgba(249, 115, 22, 0.05)',
-                  border: '1.5px dashed rgba(249, 115, 22, 0.4)',
-                  borderRadius: '14px',
-                  width: '100%',
-                  padding: '12px',
-                  color: 'var(--primary)',
+                  background: 'rgba(249, 115, 22, 0.08)',
+                  border: '1px solid rgba(249, 115, 22, 0.25)',
+                  borderRadius: '16px',
+                  padding: '5px 12px',
+                  color: 'var(--text-main)',
+                  fontSize: '0.78rem',
                   fontWeight: 600,
-                  fontSize: '0.88rem',
                   cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  transition: 'all 0.15s ease',
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                  transition: 'all 0.2s'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = 'rgba(249, 115, 22, 0.12)';
-                  e.currentTarget.style.borderColor = 'rgba(249, 115, 22, 0.7)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'rgba(249, 115, 22, 0.05)';
-                  e.currentTarget.style.borderColor = 'rgba(249, 115, 22, 0.4)';
+                  gap: '4px'
                 }}
               >
-                <Plus size={18} /> Add Another Empty Expense Row
+                <Plus size={12} color="var(--primary)" />
+                <span>{preset.title}</span>
               </button>
-            </div>
-
-            {/* Modal Footer */}
-            <div style={{
-              padding: '18px 28px',
-              borderTop: '1px solid rgba(255, 255, 255, 0.08)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              background: 'rgba(0, 0, 0, 0.4)'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: '0.85rem', color: 'rgba(255, 255, 255, 0.6)' }}>Total Expense Amount:</span>
-                <span style={{
-                  fontSize: '1.25rem',
-                  fontWeight: 700,
-                  color: '#ef4444',
-                  background: 'rgba(239, 68, 68, 0.1)',
-                  padding: '4px 12px',
-                  borderRadius: '10px',
-                  border: '1px solid rgba(239, 68, 68, 0.3)'
-                }}>
-                  ₹{bulkRows.reduce((acc, r) => acc + (Number(r.amount) || 0), 0).toLocaleString('en-IN')}
-                </span>
-              </div>
-
-              <div style={{ display: 'flex', gap: '12px' }}>
-                <button
-                  onClick={() => setIsBulkModalOpen(false)}
-                  style={{
-                    background: 'rgba(255, 255, 255, 0.06)',
-                    border: '1px solid rgba(255, 255, 255, 0.12)',
-                    color: 'rgba(255, 255, 255, 0.8)',
-                    padding: '10px 20px',
-                    borderRadius: '10px',
-                    cursor: 'pointer',
-                    fontWeight: 600,
-                    fontSize: '0.88rem'
-                  }}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleBulkSubmit}
-                  style={{
-                    background: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)',
-                    border: 'none',
-                    color: '#fff',
-                    padding: '10px 24px',
-                    borderRadius: '10px',
-                    cursor: 'pointer',
-                    fontWeight: 700,
-                    fontSize: '0.9rem',
-                    boxShadow: '0 4px 16px rgba(249, 115, 22, 0.4)',
-                    transition: 'all 0.2s'
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-1px)'}
-                  onMouseLeave={(e) => e.currentTarget.style.transform = 'none'}
-                >
-                  Save All Expenses
-                </button>
-              </div>
-            </div>
+            ))}
           </div>
-        </div>
-      )}
 
-      {/* ─── MODAL 2: SINGLE EXPENSE CREATE / EDIT ─────────────────────────────────── */}
-      {isSingleModalOpen && (
-        <div style={{
-          position: 'fixed',
-          top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(0, 0, 0, 0.82)',
-          backdropFilter: 'blur(12px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000,
-          padding: '20px',
-          animation: 'modalBackdropIn 0.25s ease'
-        }}>
-          <div style={{
-            width: '100%',
-            maxWidth: '540px',
-            borderRadius: '24px',
-            background: 'linear-gradient(145deg, #13141a 0%, #0d0e12 100%)',
-            border: '1px solid rgba(255, 255, 255, 0.15)',
-            overflow: 'hidden',
-            boxShadow: '0 30px 80px rgba(0,0,0,0.8), 0 0 50px rgba(249, 115, 22, 0.15)'
-          }}>
-            <div style={{
-              padding: '20px 24px',
-              borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              background: 'linear-gradient(90deg, rgba(249, 115, 22, 0.08) 0%, rgba(0, 0, 0, 0) 100%)'
-            }}>
-              <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, color: '#fff' }}>
-                {editingExpense ? 'Edit Expense Record' : 'Add Single Expense'}
-              </h3>
-              <button
-                onClick={() => setIsSingleModalOpen(false)}
-                style={{
-                  background: 'rgba(255, 255, 255, 0.06)',
-                  border: '1px solid rgba(255, 255, 255, 0.1)',
-                  color: 'rgba(255, 255, 255, 0.7)',
-                  borderRadius: '50%',
-                  width: '34px',
-                  height: '34px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: 'pointer'
-                }}
-              >
-                <XCircle size={20} />
-              </button>
-            </div>
-
-            <form onSubmit={handleSingleSubmit} style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              {/* Title */}
-              <div>
-                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'rgba(255, 255, 255, 0.7)', marginBottom: '6px' }}>
-                  Expense Item Title *
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. Vegetables, Wifi Repair, Building Rent"
-                  value={formData.title}
-                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  required
+          {/* Body: Responsive Table (Desktop) vs Responsive Cards (Mobile) */}
+          {isMobile ? (
+            /* Mobile Card List for Bulk Rows */
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {bulkRows.map((row, index) => (
+                <div
+                  key={row.id}
                   style={{
-                    width: '100%',
-                    background: '#1a1c24',
-                    border: '1px solid rgba(255, 255, 255, 0.14)',
-                    borderRadius: '10px',
-                    padding: '11px 14px',
-                    color: '#ffffff',
-                    fontSize: '0.92rem',
-                    fontWeight: 500,
-                    outline: 'none',
-                    colorScheme: 'dark'
-                  }}
-                />
-              </div>
-
-              {/* Building Workspace Selector */}
-              <div>
-                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'rgba(249, 115, 22, 0.9)', marginBottom: '6px' }}>
-                  Building Workspace Scope *
-                </label>
-                <select
-                  value={formData.buildingId}
-                  onChange={(e) => setFormData({ ...formData, buildingId: e.target.value })}
-                  style={{
-                    width: '100%',
-                    background: 'rgba(249, 115, 22, 0.08)',
-                    border: '1px solid rgba(249, 115, 22, 0.3)',
-                    borderRadius: '10px',
-                    padding: '11px 12px',
-                    color: '#ffffff',
-                    fontSize: '0.88rem',
-                    fontWeight: 600,
-                    outline: 'none',
-                    colorScheme: 'dark'
+                    background: 'var(--border-dim)',
+                    border: '1px solid var(--border-light)',
+                    borderRadius: '16px',
+                    padding: '12px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '10px'
                   }}
                 >
-                  <option value="all" style={{ background: '#13141a', color: '#fff' }}>All Buildings (General Shared Expense)</option>
-                  {availableBuildings.map(b => (
-                    <option key={b.id} value={b.id} style={{ background: '#13141a', color: '#fff' }}>{b.name}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Category & Amount Row */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'rgba(255, 255, 255, 0.7)', marginBottom: '6px' }}>
-                    Category *
-                  </label>
-                  <select
-                    value={formData.category}
-                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                    style={{
-                      width: '100%',
-                      background: '#1a1c24',
-                      border: '1px solid rgba(255, 255, 255, 0.14)',
-                      borderRadius: '10px',
-                      padding: '11px 12px',
-                      color: '#ffffff',
-                      fontSize: '0.88rem',
-                      outline: 'none',
-                      colorScheme: 'dark'
-                    }}
-                  >
-                    {categories.map(c => (
-                      <option key={c.id} value={c.name} style={{ background: '#13141a', color: '#fff' }}>{c.name}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'rgba(255, 255, 255, 0.7)', marginBottom: '6px' }}>
-                    Amount (₹) *
-                  </label>
-                  <input
-                    type="number"
-                    placeholder="e.g. 2500"
-                    value={formData.amount}
-                    onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                    required
-                    style={{
-                      width: '100%',
-                      background: 'rgba(239, 68, 68, 0.08)',
-                      border: '1px solid rgba(239, 68, 68, 0.3)',
-                      borderRadius: '10px',
-                      padding: '11px 14px',
-                      color: '#ef4444',
-                      fontWeight: 700,
-                      fontSize: '0.98rem',
-                      outline: 'none'
-                    }}
-                  />
-                </div>
-              </div>
-
-              {/* Date & Payment Mode */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'rgba(255, 255, 255, 0.7)', marginBottom: '6px' }}>
-                    Date
-                  </label>
-                  <input
-                    type="date"
-                    value={formData.date}
-                    onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                    style={{
-                      width: '100%',
-                      background: '#1a1c24',
-                      border: '1px solid rgba(255, 255, 255, 0.14)',
-                      borderRadius: '10px',
-                      padding: '10px 12px',
-                      color: '#ffffff',
-                      fontSize: '0.88rem',
-                      outline: 'none',
-                      colorScheme: 'dark'
-                    }}
-                  />
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'rgba(255, 255, 255, 0.7)', marginBottom: '6px' }}>
-                    Payment Method
-                  </label>
-                  <select
-                    value={formData.paymentMethod}
-                    onChange={(e) => setFormData({ ...formData, paymentMethod: e.target.value })}
-                    style={{
-                      width: '100%',
-                      background: '#1a1c24',
-                      border: '1px solid rgba(255, 255, 255, 0.14)',
-                      borderRadius: '10px',
-                      padding: '10px 12px',
-                      color: '#ffffff',
-                      fontSize: '0.88rem',
-                      outline: 'none',
-                      colorScheme: 'dark'
-                    }}
-                  >
-                    <option value="Cash" style={{ background: '#13141a', color: '#fff' }}>Cash</option>
-                    <option value="UPI" style={{ background: '#13141a', color: '#fff' }}>UPI</option>
-                    <option value="Bank Transfer" style={{ background: '#13141a', color: '#fff' }}>Bank Transfer</option>
-                    <option value="Card" style={{ background: '#13141a', color: '#fff' }}>Card</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Vendor & Notes */}
-              <div>
-                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'rgba(255, 255, 255, 0.7)', marginBottom: '6px' }}>
-                  Vendor / Paid To (Optional)
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. Local Supermarket, Electrician Name"
-                  value={formData.vendor}
-                  onChange={(e) => setFormData({ ...formData, vendor: e.target.value })}
-                  style={{
-                    width: '100%',
-                    background: '#1a1c24',
-                    border: '1px solid rgba(255, 255, 255, 0.14)',
-                    borderRadius: '10px',
-                    padding: '10px 14px',
-                    color: '#ffffff',
-                    fontSize: '0.88rem',
-                    outline: 'none'
-                  }}
-                />
-              </div>
-
-              <div>
-                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'rgba(255, 255, 255, 0.7)', marginBottom: '6px' }}>
-                  Notes / Invoice Ref (Optional)
-                </label>
-                <textarea
-                  rows={2}
-                  placeholder="Add additional details or bill receipt notes..."
-                  value={formData.notes}
-                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  style={{
-                    width: '100%',
-                    background: '#1a1c24',
-                    border: '1px solid rgba(255, 255, 255, 0.14)',
-                    borderRadius: '10px',
-                    padding: '10px 14px',
-                    color: '#ffffff',
-                    fontSize: '0.88rem',
-                    outline: 'none',
-                    resize: 'none'
-                  }}
-                />
-              </div>
-
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '10px' }}>
-                <button
-                  type="button"
-                  onClick={() => setIsSingleModalOpen(false)}
-                  style={{
-                    background: 'rgba(255, 255, 255, 0.06)',
-                    border: '1px solid rgba(255, 255, 255, 0.12)',
-                    color: 'rgba(255, 255, 255, 0.8)',
-                    padding: '10px 20px',
-                    borderRadius: '10px',
-                    cursor: 'pointer',
-                    fontWeight: 600,
-                    fontSize: '0.88rem'
-                  }}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  style={{
-                    background: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)',
-                    border: 'none',
-                    color: '#fff',
-                    padding: '10px 24px',
-                    borderRadius: '10px',
-                    cursor: 'pointer',
-                    fontWeight: 700,
-                    fontSize: '0.9rem',
-                    boxShadow: '0 4px 16px rgba(249, 115, 22, 0.4)'
-                  }}
-                >
-                  {editingExpense ? 'Save Changes' : 'Record Expense'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* ─── CUSTOMIZABLE REPORT SELECTION MODAL ────────────────────────────────────── */}
-      {isReportModalOpen && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0, 0, 0, 0.75)',
-          backdropFilter: 'blur(10px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1100,
-          padding: '20px'
-        }}>
-          <div style={{
-            background: 'linear-gradient(145deg, #181b24 0%, #111319 100%)',
-            border: '1px solid rgba(255, 255, 255, 0.14)',
-            borderRadius: '20px',
-            width: '100%',
-            maxWidth: '540px',
-            boxShadow: '0 25px 60px rgba(0, 0, 0, 0.6)',
-            overflow: 'hidden'
-          }}>
-            {/* Modal Header */}
-            <div style={{
-              padding: '20px 24px',
-              borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              background: 'rgba(255, 255, 255, 0.02)'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <div style={{
-                  width: '42px',
-                  height: '42px',
-                  borderRadius: '12px',
-                  background: 'rgba(37, 99, 235, 0.15)',
-                  border: '1px solid rgba(37, 99, 235, 0.3)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#3b82f6'
-                }}>
-                  <Download size={22} />
-                </div>
-                <div>
-                  <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 700, color: '#ffffff' }}>
-                    Download Financial Report
-                  </h3>
-                  <p style={{ margin: '2px 0 0 0', fontSize: '0.8rem', color: 'rgba(255, 255, 255, 0.6)' }}>
-                    Select statement scope, month, and year for tailored PDF export
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => setIsReportModalOpen(false)}
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  color: 'rgba(255, 255, 255, 0.5)',
-                  cursor: 'pointer',
-                  padding: '4px',
-                  borderRadius: '6px'
-                }}
-              >
-                <XCircle size={20} />
-              </button>
-            </div>
-
-            {/* Modal Body */}
-            <div style={{ padding: '24px' }}>
-              
-              {/* 1. Report Scope Switcher */}
-              <div style={{ marginBottom: '20px' }}>
-                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: 'rgba(255, 255, 255, 0.8)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                  1. Select Report Type
-                </label>
-                <div style={{
-                  display: 'grid',
-                  gridTemplateColumns: '1fr 1fr',
-                  gap: '8px',
-                  background: 'rgba(0, 0, 0, 0.3)',
-                  padding: '4px',
-                  borderRadius: '12px',
-                  border: '1px solid rgba(255, 255, 255, 0.08)'
-                }}>
-                  <button
-                    type="button"
-                    onClick={() => setReportScope('monthly')}
-                    style={{
-                      background: reportScope === 'monthly' ? 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)' : 'transparent',
-                      color: reportScope === 'monthly' ? '#ffffff' : 'rgba(255, 255, 255, 0.6)',
-                      border: 'none',
-                      padding: '10px',
-                      borderRadius: '8px',
-                      fontWeight: 700,
-                      fontSize: '0.85rem',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s ease',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '6px'
-                    }}
-                  >
-                    <Calendar size={16} /> Monthly Statement
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setReportScope('yearly')}
-                    style={{
-                      background: reportScope === 'yearly' ? 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)' : 'transparent',
-                      color: reportScope === 'yearly' ? '#ffffff' : 'rgba(255, 255, 255, 0.6)',
-                      border: 'none',
-                      padding: '10px',
-                      borderRadius: '8px',
-                      fontWeight: 700,
-                      fontSize: '0.85rem',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s ease',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '6px'
-                    }}
-                  >
-                    <BarChart3 size={16} /> Yearly Audit Report
-                  </button>
-                </div>
-              </div>
-
-              {/* 2. Period Selection */}
-              <div style={{ marginBottom: '20px' }}>
-                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: 'rgba(255, 255, 255, 0.8)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                  2. Select Time Period
-                </label>
-                
-                {reportScope === 'monthly' ? (
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                    {/* Month Picker */}
-                    <div>
-                      <label style={{ display: 'block', fontSize: '0.75rem', color: 'rgba(255, 255, 255, 0.6)', marginBottom: '4px' }}>
-                        Select Month
-                      </label>
-                      <select
-                        value={reportSelectedMonth}
-                        onChange={(e) => setReportSelectedMonth(e.target.value)}
-                        style={{
-                          width: '100%',
-                          background: '#1a1c24',
-                          border: '1px solid rgba(255, 255, 255, 0.16)',
-                          borderRadius: '10px',
-                          padding: '10px 12px',
-                          color: '#ffffff',
-                          fontSize: '0.9rem',
-                          fontWeight: 600,
-                          outline: 'none',
-                          colorScheme: 'dark',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        {MONTH_LIST.map((m) => (
-                          <option key={m.value} value={m.value} style={{ background: '#1a1c24', color: '#fff' }}>
-                            {m.label}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    {/* Year Picker */}
-                    <div>
-                      <label style={{ display: 'block', fontSize: '0.75rem', color: 'rgba(255, 255, 255, 0.6)', marginBottom: '4px' }}>
-                        Select Year
-                      </label>
-                      <select
-                        value={reportSelectedYear}
-                        onChange={(e) => setReportSelectedYear(e.target.value)}
-                        style={{
-                          width: '100%',
-                          background: '#1a1c24',
-                          border: '1px solid rgba(255, 255, 255, 0.16)',
-                          borderRadius: '10px',
-                          padding: '10px 12px',
-                          color: '#ffffff',
-                          fontSize: '0.9rem',
-                          fontWeight: 600,
-                          outline: 'none',
-                          colorScheme: 'dark',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        {YEAR_LIST.map((y) => (
-                          <option key={y} value={y} style={{ background: '#1a1c24', color: '#fff' }}>
-                            {y}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-                ) : (
-                  <div>
-                    <label style={{ display: 'block', fontSize: '0.75rem', color: 'rgba(255, 255, 255, 0.6)', marginBottom: '4px' }}>
-                      Select Audit Year
-                    </label>
-                    <select
-                      value={reportSelectedYear}
-                      onChange={(e) => setReportSelectedYear(e.target.value)}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-muted)' }}>
+                      Expense Row #{index + 1}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => removeBulkRow(row.id)}
                       style={{
-                        width: '100%',
-                        background: '#1a1c24',
-                        border: '1px solid rgba(255, 255, 255, 0.16)',
-                        borderRadius: '10px',
-                        padding: '10px 12px',
-                        color: '#ffffff',
-                        fontSize: '0.9rem',
-                        fontWeight: 600,
-                        outline: 'none',
-                        colorScheme: 'dark',
+                        background: 'rgba(239, 68, 68, 0.12)',
+                        border: '1px solid rgba(239, 68, 68, 0.25)',
+                        color: '#ef4444',
+                        width: '28px',
+                        height: '28px',
+                        borderRadius: '8px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
                         cursor: 'pointer'
                       }}
                     >
-                      {YEAR_LIST.map((y) => (
-                        <option key={y} value={y} style={{ background: '#1a1c24', color: '#fff' }}>
-                          Year {y}
-                        </option>
-                      ))}
-                    </select>
+                      <Trash2 size={13} />
+                    </button>
                   </div>
-                )}
-              </div>
 
-              {/* 3. Category Filter */}
-              <div style={{ marginBottom: '24px' }}>
-                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: 'rgba(255, 255, 255, 0.8)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                  3. Category Filter
-                </label>
-                <select
-                  value={reportCategoryFilter}
-                  onChange={(e) => setReportCategoryFilter(e.target.value)}
-                  style={{
-                    width: '100%',
-                    background: '#1a1c24',
-                    border: '1px solid rgba(255, 255, 255, 0.16)',
-                    borderRadius: '10px',
-                    padding: '10px 12px',
-                    color: '#ffffff',
-                    fontSize: '0.9rem',
-                    fontWeight: 600,
-                    outline: 'none',
-                    colorScheme: 'dark',
-                    cursor: 'pointer'
-                  }}
-                >
-                  <option value="All" style={{ background: '#1a1c24' }}>All Categories</option>
-                  <option value="Kitchen & Groceries" style={{ background: '#1a1c24' }}>Kitchen & Groceries</option>
-                  <option value="Utilities & Bills" style={{ background: '#1a1c24' }}>Utilities & Bills</option>
-                  <option value="Staff & Wages" style={{ background: '#1a1c24' }}>Staff & Wages</option>
-                  <option value="Maintenance & Repairs" style={{ background: '#1a1c24' }}>Maintenance & Repairs</option>
-                  <option value="Rent & Infra" style={{ background: '#1a1c24' }}>Rent & Infra</option>
-                  <option value="Miscellaneous" style={{ background: '#1a1c24' }}>Miscellaneous</option>
-                </select>
-              </div>
+                  <div>
+                    <input
+                      type="text"
+                      placeholder="Expense Item Title (e.g. Vegetables, Repair) *"
+                      value={row.title}
+                      onChange={(e) => updateBulkRow(row.id, 'title', e.target.value)}
+                      className="custom-input"
+                    />
+                  </div>
 
-              {/* Modal Actions */}
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
-                <button
-                  type="button"
-                  onClick={() => setIsReportModalOpen(false)}
-                  style={{
-                    background: 'rgba(255, 255, 255, 0.06)',
-                    border: '1px solid rgba(255, 255, 255, 0.12)',
-                    color: 'rgba(255, 255, 255, 0.8)',
-                    padding: '10px 18px',
-                    borderRadius: '10px',
-                    cursor: 'pointer',
-                    fontWeight: 600,
-                    fontSize: '0.88rem'
-                  }}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={handleExecuteGeneratePDF}
-                  disabled={isGeneratingReport}
-                  style={{
-                    background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
-                    border: 'none',
-                    color: '#fff',
-                    padding: '10px 22px',
-                    borderRadius: '10px',
-                    cursor: isGeneratingReport ? 'not-allowed' : 'pointer',
-                    fontWeight: 700,
-                    fontSize: '0.9rem',
-                    boxShadow: '0 4px 16px rgba(37, 99, 235, 0.4)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    opacity: isGeneratingReport ? 0.7 : 1
-                  }}
-                >
-                  {isGeneratingReport ? (
-                    <>
-                      <RefreshCw size={16} className="animate-spin" />
-                      <span>Generating PDF...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Download size={16} />
-                      <span>✨ Generate PDF Statement</span>
-                    </>
-                  )}
-                </button>
-              </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                    <div>
+                      <select
+                        value={row.category}
+                        onChange={(e) => updateBulkRow(row.id, 'category', e.target.value)}
+                        className="custom-input"
+                      >
+                        {categories.map(c => (
+                          <option key={c.id} value={c.name}>{c.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <input
+                        type="number"
+                        placeholder="Amount (₹) *"
+                        value={row.amount}
+                        onChange={(e) => updateBulkRow(row.id, 'amount', e.target.value)}
+                        className="custom-input"
+                        style={{ color: '#ef4444', fontWeight: 700 }}
+                      />
+                    </div>
+                  </div>
 
+                  <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '8px' }}>
+                    <div>
+                      <input
+                        type="date"
+                        value={row.date}
+                        onChange={(e) => updateBulkRow(row.id, 'date', e.target.value)}
+                        className="custom-input"
+                      />
+                    </div>
+                    <div>
+                      <select
+                        value={row.paymentMethod}
+                        onChange={(e) => updateBulkRow(row.id, 'paymentMethod', e.target.value)}
+                        className="custom-input"
+                      >
+                        <option value="Cash">Cash</option>
+                        <option value="UPI">UPI</option>
+                        <option value="Bank Transfer">Bank</option>
+                        <option value="Card">Card</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <input
+                      type="text"
+                      placeholder="Vendor / Paid to (Optional)"
+                      value={row.vendor}
+                      onChange={(e) => updateBulkRow(row.id, 'vendor', e.target.value)}
+                      className="custom-input"
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            /* Desktop Spreadsheet Table */
+            <div style={{
+              borderRadius: '16px',
+              border: '1px solid var(--border-light)',
+              overflow: 'hidden'
+            }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
+                <thead>
+                  <tr style={{
+                    background: 'var(--border-dim)',
+                    color: 'var(--text-muted)',
+                    borderBottom: '1px solid var(--border-light)',
+                    fontSize: '0.76rem',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px'
+                  }}>
+                    <th style={{ padding: '10px 12px', width: '36px', textAlign: 'center' }}>#</th>
+                    <th style={{ padding: '10px 12px', minWidth: '180px' }}>Item Title *</th>
+                    <th style={{ padding: '10px 12px', minWidth: '160px' }}>Category</th>
+                    <th style={{ padding: '10px 12px', width: '130px' }}>Amount (₹) *</th>
+                    <th style={{ padding: '10px 12px', width: '140px' }}>Date</th>
+                    <th style={{ padding: '10px 12px', width: '110px' }}>Mode</th>
+                    <th style={{ padding: '10px 12px', minWidth: '140px' }}>Vendor</th>
+                    <th style={{ padding: '10px 12px', width: '46px', textAlign: 'center' }}>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {bulkRows.map((row, index) => (
+                    <tr
+                      key={row.id}
+                      style={{
+                        borderBottom: '1px solid var(--border-dim)',
+                        transition: 'background 0.2s'
+                      }}
+                    >
+                      <td style={{ padding: '8px 12px', color: 'var(--text-muted)', fontWeight: 600, textAlign: 'center' }}>
+                        {index + 1}
+                      </td>
+                      <td style={{ padding: '6px 8px' }}>
+                        <input
+                          type="text"
+                          placeholder="e.g. Vegetables, Wifi..."
+                          value={row.title}
+                          onChange={(e) => updateBulkRow(row.id, 'title', e.target.value)}
+                          className="custom-input"
+                        />
+                      </td>
+                      <td style={{ padding: '6px 8px' }}>
+                        <select
+                          value={row.category}
+                          onChange={(e) => updateBulkRow(row.id, 'category', e.target.value)}
+                          className="custom-input"
+                        >
+                          {categories.map(c => (
+                            <option key={c.id} value={c.name}>{c.name}</option>
+                          ))}
+                        </select>
+                      </td>
+                      <td style={{ padding: '6px 8px' }}>
+                        <input
+                          type="number"
+                          placeholder="Amount ₹"
+                          value={row.amount}
+                          onChange={(e) => updateBulkRow(row.id, 'amount', e.target.value)}
+                          className="custom-input"
+                          style={{ color: '#ef4444', fontWeight: 700 }}
+                        />
+                      </td>
+                      <td style={{ padding: '6px 8px' }}>
+                        <input
+                          type="date"
+                          value={row.date}
+                          onChange={(e) => updateBulkRow(row.id, 'date', e.target.value)}
+                          className="custom-input"
+                        />
+                      </td>
+                      <td style={{ padding: '6px 8px' }}>
+                        <select
+                          value={row.paymentMethod}
+                          onChange={(e) => updateBulkRow(row.id, 'paymentMethod', e.target.value)}
+                          className="custom-input"
+                        >
+                          <option value="Cash">Cash</option>
+                          <option value="UPI">UPI</option>
+                          <option value="Bank Transfer">Bank</option>
+                          <option value="Card">Card</option>
+                        </select>
+                      </td>
+                      <td style={{ padding: '6px 8px' }}>
+                        <input
+                          type="text"
+                          placeholder="Vendor / Paid To"
+                          value={row.vendor}
+                          onChange={(e) => updateBulkRow(row.id, 'vendor', e.target.value)}
+                          className="custom-input"
+                        />
+                      </td>
+                      <td style={{ padding: '6px 8px', textAlign: 'center' }}>
+                        <button
+                          type="button"
+                          onClick={() => removeBulkRow(row.id)}
+                          style={{
+                            background: 'rgba(239, 68, 68, 0.12)',
+                            border: '1px solid rgba(239, 68, 68, 0.25)',
+                            color: '#ef4444',
+                            width: '30px',
+                            height: '30px',
+                            borderRadius: '8px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* Add Row Button */}
+          <button
+            type="button"
+            onClick={addEmptyBulkRow}
+            style={{
+              background: 'rgba(249, 115, 22, 0.06)',
+              border: '1.5px dashed var(--primary)',
+              borderRadius: '12px',
+              width: '100%',
+              padding: '10px',
+              color: 'var(--primary)',
+              fontWeight: 700,
+              fontSize: '0.86rem',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            <Plus size={16} /> Add Another Empty Expense Row
+          </button>
+
+          {/* Footer */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '12px',
+            flexWrap: 'wrap',
+            paddingTop: '8px',
+            borderTop: '1px solid var(--border-light)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '0.84rem', color: 'var(--text-muted)' }}>Total:</span>
+              <span style={{
+                fontSize: '1.15rem',
+                fontWeight: 800,
+                color: '#ef4444',
+                background: 'rgba(239, 68, 68, 0.1)',
+                padding: '3px 10px',
+                borderRadius: '8px',
+                border: '1px solid rgba(239, 68, 68, 0.25)'
+              }}>
+                ₹{bulkRows.reduce((acc, r) => acc + (Number(r.amount) || 0), 0).toLocaleString('en-IN')}
+              </span>
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button
+                type="button"
+                onClick={() => setIsBulkModalOpen(false)}
+                className="custom-select"
+                style={{ padding: '0 18px', minWidth: 80, textAlign: 'center' }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleBulkSubmit}
+                className="primary-btn"
+                style={{ padding: '9px 20px', fontSize: '0.88rem' }}
+              >
+                Save All Expenses
+              </button>
             </div>
           </div>
         </div>
-      )}
+      </Modal>
+
+      {/* ─── MODAL 2: SINGLE EXPENSE CREATE / EDIT ─────────────────────────────────── */}
+      <Modal
+        isOpen={isSingleModalOpen}
+        onClose={() => setIsSingleModalOpen(false)}
+        title={editingExpense ? 'Edit Expense Record' : 'Add Single Expense'}
+      >
+        <form onSubmit={handleSingleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          {/* Title */}
+          <div>
+            <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px' }}>
+              Expense Item Title *
+            </label>
+            <input
+              type="text"
+              placeholder="e.g. Vegetables, Wifi Repair, Building Rent"
+              value={formData.title}
+              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+              required
+              className="custom-input"
+              autoFocus={!isMobile}
+            />
+          </div>
+
+          {/* Building Workspace Selector */}
+          <div>
+            <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'var(--primary)', marginBottom: '6px' }}>
+              Building Workspace Scope *
+            </label>
+            <select
+              value={formData.buildingId}
+              onChange={(e) => setFormData({ ...formData, buildingId: e.target.value })}
+              className="custom-input"
+            >
+              <option value="all">All Buildings (General Shared Expense)</option>
+              {availableBuildings.map(b => (
+                <option key={b.id} value={b.id}>{b.name}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Category & Amount Row */}
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '12px' }}>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px' }}>
+                Category *
+              </label>
+              <select
+                value={formData.category}
+                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                className="custom-input"
+              >
+                {categories.map(c => (
+                  <option key={c.id} value={c.name}>{c.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px' }}>
+                Amount (₹) *
+              </label>
+              <input
+                type="number"
+                placeholder="e.g. 2500"
+                value={formData.amount}
+                onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                required
+                className="custom-input"
+                style={{ fontWeight: 700, fontSize: '1rem', color: '#ef4444' }}
+              />
+            </div>
+          </div>
+
+          {/* Date & Payment Mode */}
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '12px' }}>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px' }}>
+                Date
+              </label>
+              <input
+                type="date"
+                value={formData.date}
+                onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                className="custom-input"
+              />
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px' }}>
+                Payment Method
+              </label>
+              <select
+                value={formData.paymentMethod}
+                onChange={(e) => setFormData({ ...formData, paymentMethod: e.target.value })}
+                className="custom-input"
+              >
+                <option value="Cash">Cash</option>
+                <option value="UPI">UPI</option>
+                <option value="Bank Transfer">Bank Transfer</option>
+                <option value="Card">Card</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Vendor / Paid To */}
+          <div>
+            <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px' }}>
+              Vendor / Paid To (Optional)
+            </label>
+            <input
+              type="text"
+              placeholder="e.g. Local Supermarket, Electrician Name"
+              value={formData.vendor}
+              onChange={(e) => setFormData({ ...formData, vendor: e.target.value })}
+              className="custom-input"
+            />
+          </div>
+
+          {/* Notes / Invoice Ref */}
+          <div>
+            <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px' }}>
+              Notes / Invoice Ref (Optional)
+            </label>
+            <textarea
+              rows={2}
+              placeholder="Add additional details or bill receipt notes..."
+              value={formData.notes}
+              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+              className="custom-input"
+              style={{ resize: 'none' }}
+            />
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '6px' }}>
+            <button
+              type="button"
+              onClick={() => setIsSingleModalOpen(false)}
+              className="custom-select"
+              style={{ padding: '0 20px', minWidth: 90, textAlign: 'center' }}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="primary-btn"
+              style={{ padding: '10px 22px', fontSize: '0.88rem' }}
+            >
+              {editingExpense ? 'Save Changes' : 'Record Expense'}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* ─── CUSTOMIZABLE REPORT SELECTION MODAL ────────────────────────────────────── */}
+      <Modal
+        isOpen={isReportModalOpen}
+        onClose={() => setIsReportModalOpen(false)}
+        title="Download Financial Report"
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <p style={{ margin: 0, fontSize: '0.84rem', color: 'var(--text-muted)' }}>
+            Select statement scope, month, and year for tailored PDF export.
+          </p>
+
+          {/* 1. Report Scope Switcher */}
+          <div>
+            <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              1. Select Report Type
+            </label>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: '8px',
+              background: 'var(--border-dim)',
+              padding: '4px',
+              borderRadius: '12px',
+              border: '1px solid var(--border-light)'
+            }}>
+              <button
+                type="button"
+                onClick={() => setReportScope('monthly')}
+                style={{
+                  background: reportScope === 'monthly' ? 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)' : 'transparent',
+                  color: reportScope === 'monthly' ? '#ffffff' : 'var(--text-muted)',
+                  border: 'none',
+                  padding: '9px',
+                  borderRadius: '8px',
+                  fontWeight: 700,
+                  fontSize: '0.84rem',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px'
+                }}
+              >
+                <Calendar size={15} /> Monthly Statement
+              </button>
+              <button
+                type="button"
+                onClick={() => setReportScope('yearly')}
+                style={{
+                  background: reportScope === 'yearly' ? 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)' : 'transparent',
+                  color: reportScope === 'yearly' ? '#ffffff' : 'var(--text-muted)',
+                  border: 'none',
+                  padding: '9px',
+                  borderRadius: '8px',
+                  fontWeight: 700,
+                  fontSize: '0.84rem',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px'
+                }}
+              >
+                <BarChart3 size={15} /> Yearly Audit Report
+              </button>
+            </div>
+          </div>
+
+          {/* 2. Period Selection */}
+          <div>
+            <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              2. Select Time Period
+            </label>
+            
+            {reportScope === 'monthly' ? (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.74rem', color: 'var(--text-muted)', marginBottom: '4px' }}>
+                    Month
+                  </label>
+                  <select
+                    value={reportSelectedMonth}
+                    onChange={(e) => setReportSelectedMonth(e.target.value)}
+                    className="custom-input"
+                  >
+                    {MONTH_LIST.map((m) => (
+                      <option key={m.value} value={m.value}>{m.label}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.74rem', color: 'var(--text-muted)', marginBottom: '4px' }}>
+                    Year
+                  </label>
+                  <select
+                    value={reportSelectedYear}
+                    onChange={(e) => setReportSelectedYear(e.target.value)}
+                    className="custom-input"
+                  >
+                    {YEAR_LIST.map((y) => (
+                      <option key={y} value={y}>{y}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            ) : (
+              <div>
+                <label style={{ display: 'block', fontSize: '0.74rem', color: 'var(--text-muted)', marginBottom: '4px' }}>
+                  Audit Year
+                </label>
+                <select
+                  value={reportSelectedYear}
+                  onChange={(e) => setReportSelectedYear(e.target.value)}
+                  className="custom-input"
+                >
+                  {YEAR_LIST.map((y) => (
+                    <option key={y} value={y}>Year {y}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </div>
+
+          {/* 3. Category Filter */}
+          <div>
+            <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              3. Category Filter
+            </label>
+            <select
+              value={reportCategoryFilter}
+              onChange={(e) => setReportCategoryFilter(e.target.value)}
+              className="custom-input"
+            >
+              <option value="All">All Categories (Complete Ledger)</option>
+              <option value="Kitchen & Groceries">Kitchen & Groceries</option>
+              <option value="Utilities & Bills">Utilities & Bills</option>
+              <option value="Staff & Wages">Staff & Wages</option>
+              <option value="Maintenance & Repairs">Maintenance & Repairs</option>
+              <option value="Rent & Infra">Rent & Infra</option>
+              <option value="Miscellaneous">Miscellaneous</option>
+            </select>
+          </div>
+
+          {/* Modal Actions */}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '6px' }}>
+            <button
+              type="button"
+              onClick={() => setIsReportModalOpen(false)}
+              className="custom-select"
+              style={{ padding: '0 20px', minWidth: 90, textAlign: 'center' }}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleExecuteGeneratePDF}
+              disabled={isGeneratingReport}
+              className="primary-btn"
+              style={{ background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)', boxShadow: '0 4px 16px rgba(37, 99, 235, 0.4)' }}
+            >
+              {isGeneratingReport ? (
+                <>
+                  <RefreshCw size={15} className="animate-spin" />
+                  <span>Generating PDF…</span>
+                </>
+              ) : (
+                <>
+                  <Download size={15} />
+                  <span>Download PDF Statement</span>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </Modal>
 
     </div>
   );

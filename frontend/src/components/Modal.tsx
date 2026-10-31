@@ -6,9 +6,10 @@ interface ModalProps {
   onClose: () => void;
   title: string;
   children: React.ReactNode;
+  maxWidth?: string;
 }
 
-export default function Modal({ isOpen, onClose, title, children }: ModalProps) {
+export default function Modal({ isOpen, onClose, title, children, maxWidth }: ModalProps) {
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
   useEffect(() => {
@@ -41,7 +42,7 @@ export default function Modal({ isOpen, onClose, title, children }: ModalProps) 
         inset: 0,
         width: '100vw',
         height: '100dvh',
-        background: 'rgba(0, 0, 0, 0.7)',
+        background: 'rgba(0, 0, 0, 0.65)',
         backdropFilter: 'blur(8px)',
         WebkitBackdropFilter: 'blur(8px)',
         display: 'flex',
@@ -71,12 +72,14 @@ export default function Modal({ isOpen, onClose, title, children }: ModalProps) 
               }
             : {
                 width: '100%',
-                maxWidth: '540px',
+                maxWidth: maxWidth || '540px',
                 maxHeight: 'calc(100dvh - 3rem)',
                 padding: '1.75rem',
                 position: 'relative',
-                boxShadow: '0 24px 64px rgba(0,0,0,0.6)',
-                background: 'rgba(22, 26, 38, 0.94)',
+                borderRadius: '24px',
+                border: '1px solid var(--border-light)',
+                boxShadow: 'var(--modal-shadow, 0 24px 64px rgba(0,0,0,0.6))',
+                background: 'var(--modal-bg, #141721)',
                 backdropFilter: 'blur(20px)',
                 display: 'flex',
                 flexDirection: 'column',
