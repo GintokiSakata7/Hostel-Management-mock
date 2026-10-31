@@ -84,6 +84,7 @@ const SETTINGS_FILE = path.join(__dirname, '../../settings.json');
 const DEFAULT_SETTINGS = {
   hostelName: 'VMR Hostel',
   adminName: 'Admin',
+  adminPassword: 'admin123',
   hostelPhone: '',
   hostelEmail: '',
   hostelAddress: '',
@@ -106,11 +107,53 @@ const writeSettings = (s: any) => {
   _settingsCache = s; // bust cache on write
 };
 
-app.get('/api/settings', (req, res) => res.json(readSettings()));
+app.get('/api/settings', (req, res) => {
+  const settings = readSettings();
+  // Never expose plaintext admin password in generic public settings endpoint
+  const safe = { ...settings };
+  delete safe.adminPassword;
+  res.json({ ...safe, hasAdminPassword: Boolean(settings.adminPassword) });
+});
+
 app.put('/api/settings', (req, res) => {
-  const updated = { ...readSettings(), ...req.body };
+  // If request contains adminPassword, do not overwrite unless via dedicated change-password endpoint
+  const body = { ...req.body };
+  delete body.adminPassword;
+  const updated = { ...readSettings(), ...body };
   writeSettings(updated);
-  res.json(updated);
+  const safe = { ...updated };
+  delete safe.adminPassword;
+  res.json(safe);
+});
+
+// Admin Password Verification
+app.post('/api/admin/verify-password', (req, res) => {
+  const { password } = req.body;
+  const settings = readSettings();
+  const currentPass = settings.adminPassword || 'admin123';
+  if (password === currentPass) {
+    return res.json({ success: true, adminName: settings.adminName || 'Admin' });
+  }
+  return res.status(401).json({ success: false, error: 'Incorrect admin password' });
+});
+
+// Admin Password Change
+app.post('/api/admin/change-password', (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+  const settings = readSettings();
+  const currentPass = settings.adminPassword || 'admin123';
+
+  if (currentPassword !== currentPass) {
+    return res.status(400).json({ success: false, error: 'Current password does not match' });
+  }
+  if (!newPassword || typeof newPassword !== 'string' || newPassword.trim().length < 4) {
+    return res.status(400).json({ success: false, error: 'New password must be at least 4 characters' });
+  }
+
+  const updated = { ...settings, adminPassword: newPassword.trim() };
+  writeSettings(updated);
+  console.log('[Admin Auth]: Admin password was updated successfully.');
+  return res.json({ success: true, message: 'Admin password updated successfully!' });
 });
 
 

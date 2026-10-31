@@ -105,7 +105,7 @@ export default function Dashboard() {
       }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: 4 }}>
-            <span style={{ fontSize: isMobile ? '1.25rem' : '1.55rem', fontWeight: 800, color: '#fff', letterSpacing: -0.3 }}>
+            <span style={{ fontSize: isMobile ? '1.25rem' : '1.55rem', fontWeight: 800, color: 'var(--text-main)', letterSpacing: -0.3 }}>
               {greeting}, Admin
             </span>
             <span style={{
@@ -187,7 +187,7 @@ export default function Dashboard() {
                 <div style={{ width: 32, height: 32, borderRadius: 9, background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', color }}>
                   <Icon size={16} />
                 </div>
-                <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#fff', textAlign: 'center', lineHeight: 1.1 }}>{label}</span>
+                <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-main)', textAlign: 'center', lineHeight: 1.1 }}>{label}</span>
               </button>
             ))}
           </div>
@@ -216,7 +216,7 @@ export default function Dashboard() {
               {stats.activeComplaints > 0 ? <AlertTriangle size={18} color="var(--danger)" /> : <IndianRupee size={18} color="var(--warning)" />}
             </div>
             <div>
-              <div style={{ fontWeight: 700, fontSize: '0.85rem', color: '#fff' }}>
+              <div style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--text-main)' }}>
                 Operational Attention Required
               </div>
               <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)', marginTop: 2 }}>
@@ -378,7 +378,7 @@ export default function Dashboard() {
             </div>
 
             <div style={{ marginTop: '0.4rem' }}>
-              <div style={{ fontWeight: 700, fontSize: isMobile ? '0.78rem' : '0.85rem', color: '#fff' }}>{title}</div>
+              <div style={{ fontWeight: 700, fontSize: isMobile ? '0.78rem' : '0.85rem', color: 'var(--text-main)' }}>{title}</div>
               <div style={{ color: 'var(--text-muted)', fontSize: '0.7rem', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{sub}</div>
             </div>
           </div>

@@ -9,6 +9,8 @@ import { SettingsProvider, useSettings } from './components/SettingsContext';
 import { BuildingProvider } from './components/BuildingContext';
 import WorkspaceSelector from './components/WorkspaceSelector';
 import NotificationBell from './components/NotificationBell';
+import AdminLockScreen from './components/AdminLockScreen';
+import AdminSecurityModal from './components/AdminSecurityModal';
 
 // Code-split pages for fast initial load
 const Dashboard = lazy(() => import('./pages/Dashboard'));
@@ -64,6 +66,10 @@ function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isLightMode, setIsLightMode] = useState(false);
+  const [securityModalOpen, setSecurityModalOpen] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    return sessionStorage.getItem('majin_admin_auth') === 'true';
+  });
 
   useEffect(() => {
     if (isLightMode) {
@@ -84,6 +90,15 @@ function App() {
       document.body.style.overflow = '';
     };
   }, [mobileMenuOpen]);
+
+  // If not authenticated, require Admin Password to enter the portal
+  if (!isAuthenticated) {
+    return (
+      <SettingsProvider>
+        <AdminLockScreen onUnlock={() => setIsAuthenticated(true)} />
+      </SettingsProvider>
+    );
+  }
 
   return (
     <Router>
@@ -128,7 +143,15 @@ function App() {
 
                 {/* Bottom */}
                 <div className="sidebar-bottom">
-                  <button className="nav-item-icon logout-btn" title="Logout" onClick={() => setMobileMenuOpen(false)}>
+                  <button
+                    className="nav-item-icon logout-btn"
+                    title="Lock Portal / Logout"
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      sessionStorage.removeItem('majin_admin_auth');
+                      setIsAuthenticated(false);
+                    }}
+                  >
                     <div className="nav-icon-wrap"><LogOut size={20} /></div>
                     <span className="nav-label">Logout</span>
                   </button>
@@ -159,7 +182,14 @@ function App() {
                       {isLightMode ? <Moon size={18} /> : <Sun size={18} />}
                     </button>
                     <NotificationBell />
-                    <div className="user-profile">
+                    <div
+                      className="user-profile"
+                      onClick={() => setSecurityModalOpen(true)}
+                      title="Admin Profile & Security Settings (Click to Change Password / Settings)"
+                      role="button"
+                      tabIndex={0}
+                      style={{ cursor: 'pointer' }}
+                    >
                       <div className="avatar">A</div>
                       <div className="user-profile-details">
                         <span className="user-name">Admin</span>
@@ -184,6 +214,16 @@ function App() {
                   </Suspense>
                 </main>
               </div>
+
+              {/* Admin Security Modal */}
+              <AdminSecurityModal
+                isOpen={securityModalOpen}
+                onClose={() => setSecurityModalOpen(false)}
+                onLock={() => {
+                  sessionStorage.removeItem('majin_admin_auth');
+                  setIsAuthenticated(false);
+                }}
+              />
             </div>
           </BuildingProvider>
         </SettingsProvider>

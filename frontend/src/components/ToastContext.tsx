@@ -1,11 +1,11 @@
 import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
-import { CheckCircle2, AlertCircle, Info, X } from 'lucide-react';
+import { CheckCircle2, AlertCircle, AlertTriangle, Info, X } from 'lucide-react';
 import ConfirmModal from './ConfirmModal';
 
 interface Toast {
   id: number;
   message: string;
-  type: 'success' | 'error' | 'info';
+  type: 'success' | 'error' | 'info' | 'warning';
 }
 
 interface ConfirmOptions {
@@ -18,7 +18,7 @@ interface ConfirmOptions {
 }
 
 interface ToastContextType {
-  showToast: (message: string, type?: 'success' | 'error' | 'info') => void;
+  showToast: (message: string, type?: 'success' | 'error' | 'info' | 'warning') => void;
   confirmAction: (options: ConfirmOptions) => void;
 }
 
@@ -50,7 +50,7 @@ export const ToastProvider = ({ children }: { children: ReactNode }) => {
     onConfirm: () => {},
   });
 
-  const showToast = useCallback((message: string, type: 'success' | 'error' | 'info' = 'success') => {
+  const showToast = useCallback((message: string, type: 'success' | 'error' | 'info' | 'warning' = 'success') => {
     const id = Date.now();
     setToasts(prev => [...prev, { id, message, type }]);
     setTimeout(() => {
@@ -115,9 +115,10 @@ export const ToastProvider = ({ children }: { children: ReactNode }) => {
         {toasts.map((toast) => {
           const isSuccess = toast.type === 'success';
           const isError = toast.type === 'error';
+          const isWarning = toast.type === 'warning';
 
-          const accentColor = isSuccess ? '#22c55e' : isError ? '#ef4444' : '#3b82f6';
-          const bgGlow = isSuccess ? 'rgba(34, 197, 94, 0.12)' : isError ? 'rgba(239, 68, 68, 0.12)' : 'rgba(59, 130, 246, 0.12)';
+          const accentColor = isSuccess ? '#22c55e' : isError ? '#ef4444' : isWarning ? '#f59e0b' : '#3b82f6';
+          const bgGlow = isSuccess ? 'rgba(34, 197, 94, 0.12)' : isError ? 'rgba(239, 68, 68, 0.12)' : isWarning ? 'rgba(245, 158, 11, 0.12)' : 'rgba(59, 130, 246, 0.12)';
 
           return (
             <div
@@ -152,12 +153,12 @@ export const ToastProvider = ({ children }: { children: ReactNode }) => {
                   color: accentColor,
                 }}
               >
-                {isSuccess ? <CheckCircle2 size={18} /> : isError ? <AlertCircle size={18} /> : <Info size={18} />}
+                {isSuccess ? <CheckCircle2 size={18} /> : isError ? <AlertCircle size={18} /> : isWarning ? <AlertTriangle size={18} /> : <Info size={18} />}
               </div>
 
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.5, color: accentColor }}>
-                  {isSuccess ? 'Success' : isError ? 'Error' : 'Notification'}
+                  {isSuccess ? 'Success' : isError ? 'Error' : isWarning ? 'Warning' : 'Notification'}
                 </div>
                 <div style={{ fontSize: '0.84rem', color: '#fff', fontWeight: 500, marginTop: 2, wordBreak: 'break-word' }}>
                   {toast.message}

@@ -1030,31 +1030,120 @@ select option[value=""],
   border-bottom-color: rgba(0,0,0,0.08);
 }
 .light-theme .sidebar-pill {
-  background: rgba(255,255,255,0.75) !important;
+  background: rgba(255,255,255,0.92) !important;
+  border-color: rgba(0,0,0,0.10) !important;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.08) !important;
 }
 .light-theme .nav-item-icon {
-  color: #4a5568;
+  color: #475569 !important;
 }
 .light-theme .nav-item-icon.active {
-  background: rgba(234,88,12,0.12);
-  color: var(--primary);
+  background: rgba(234,88,12,0.14) !important;
+  color: var(--primary) !important;
+}
+.light-theme .nav-label {
+  color: #0f172a !important;
 }
 .light-theme .search-bar {
-  background: rgba(0,0,0,0.04);
-  border-color: rgba(0,0,0,0.1);
+  background: rgba(255,255,255,0.92) !important;
+  border-color: rgba(0,0,0,0.15) !important;
+}
+.light-theme .search-bar input {
+  color: #0f172a !important;
+}
+.light-theme .search-bar input::placeholder,
+.light-theme .custom-input::placeholder {
+  color: #64748b !important;
 }
 .light-theme .custom-input {
-  background: rgba(255,255,255,0.8);
-  border-color: rgba(0,0,0,0.12);
-  color: #1a202c;
+  background: rgba(255,255,255,0.95) !important;
+  border-color: rgba(0,0,0,0.15) !important;
+  color: #0f172a !important;
 }
 .light-theme .custom-input:focus {
-  border-color: var(--primary);
-  background: #fff;
+  border-color: var(--primary) !important;
+  background: #ffffff !important;
 }
 .light-theme .primary-btn {
   box-shadow: 0 4px 16px rgba(234,88,12,0.25);
+  color: #ffffff !important;
 }
+
+/* Light Theme Typography & Content Contrast */
+.light-theme h1,
+.light-theme h2,
+.light-theme h3,
+.light-theme h4,
+.light-theme h5,
+.light-theme h6,
+.light-theme .page-title,
+.light-theme .header-title,
+.light-theme .user-name {
+  color: #0f172a !important;
+}
+
+.light-theme .user-role {
+  color: #64748b !important;
+}
+
+/* Light Theme Cards & Panels */
+.light-theme .glass-panel {
+  background: rgba(255, 255, 255, 0.82) !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04) !important;
+}
+
+.light-theme .glass-heavy {
+  background: rgba(255, 255, 255, 0.90) !important;
+  border-color: rgba(0, 0, 0, 0.10) !important;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.06) !important;
+}
+
+.light-theme .header-workspace-wrap button {
+  background: rgba(249, 115, 22, 0.12) !important;
+  color: #0f172a !important;
+  border-color: rgba(249, 115, 22, 0.35) !important;
+}
+
+.light-theme .custom-select,
+.light-theme select {
+  background: rgba(255, 255, 255, 0.92) !important;
+  border-color: rgba(0, 0, 0, 0.15) !important;
+  color: #0f172a !important;
+}
+
+.light-theme .custom-table th {
+  background: rgba(0, 0, 0, 0.03) !important;
+  color: #475569 !important;
+  border-bottom-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+.light-theme .custom-table td {
+  border-bottom-color: rgba(0, 0, 0, 0.06) !important;
+  color: #0f172a !important;
+}
+
+.light-theme .custom-table tbody tr:hover {
+  background: rgba(0, 0, 0, 0.02) !important;
+}
+
+/* Comprehensive text contrast safety overrides for light theme */
+.light-theme [style*="color: #fff"]:not(.primary-btn):not(.primary-btn *):not(.avatar):not(.avatar-small):not([style*="background: #ef4444"]):not([style*="background:#ef4444"]):not([style*="background: var(--primary)"]):not([style*="background:var(--primary)"]):not([style*="background: linear-gradient"]):not([style*="background:linear-gradient"]):not([style*="background-color: var(--primary)"]):not([style*="background-color:var(--primary)"]):not([style*="background-color: #ef4444"]):not([style*="background-color:#ef4444"]),
+.light-theme [style*="color: #ffffff"]:not(.primary-btn):not(.primary-btn *):not(.avatar):not(.avatar-small):not([style*="background: #ef4444"]):not([style*="background:#ef4444"]):not([style*="background: var(--primary)"]):not([style*="background:var(--primary)"]):not([style*="background: linear-gradient"]):not([style*="background:linear-gradient"]):not([style*="background-color: var(--primary)"]):not([style*="background-color:var(--primary)"]):not([style*="background-color: #ef4444"]):not([style*="background-color:#ef4444"]) {
+  color: #0f172a !important;
+}
+
+.light-theme [style*="color: rgba(255, 255, 255, 0.3)"],
+.light-theme [style*="color: rgba(255,255,255,0.3)"],
+.light-theme [style*="color: rgba(255, 255, 255, 0.4)"],
+.light-theme [style*="color: rgba(255,255,255,0.4)"],
+.light-theme [style*="color: rgba(255, 255, 255, 0.5)"],
+.light-theme [style*="color: rgba(255,255,255,0.5)"],
+.light-theme [style*="color: rgba(255, 255, 255, 0.55)"],
+.light-theme [style*="color: rgba(255,255,255,0.55)"] {
+  color: #64748b !important;
+}
+
 
 /* ===================== PRINT RECEIPT STYLES ===================== */
 @media print {

@@ -1241,7 +1241,7 @@ export default function Students() {
                 <Icon size={13} color={color} />
               </div>
               <div style={{ fontSize: '1.35rem', fontWeight: 800, color, lineHeight: 1.1 }}>{value}</div>
-              <div style={{ fontSize: '0.66rem', color: 'rgba(255,255,255,0.3)', marginTop: 3 }}>{sub}</div>
+              <div style={{ fontSize: '0.66rem', color: 'var(--text-muted)', marginTop: 3 }}>{sub}</div>
             </div>
           ))}
         </div>
@@ -1601,7 +1601,7 @@ export default function Students() {
 
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '6px' }}>
-                      <div style={{ fontWeight: 800, fontSize: '0.98rem', color: '#fff', letterSpacing: -0.2 }}>
+                      <div style={{ fontWeight: 800, fontSize: '0.98rem', color: 'var(--text-main)', letterSpacing: -0.2 }}>
                         {student.name}
                       </div>
                       {residentTab === 'active' ? (

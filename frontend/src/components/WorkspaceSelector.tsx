@@ -166,7 +166,7 @@ export default function WorkspaceSelector() {
             background: 'rgba(249,115,22,0.12)',
             border: '1px solid rgba(249,115,22,0.3)',
             borderRadius: '10px',
-            color: '#fff',
+            color: 'var(--text-main)',
             fontWeight: 700,
             fontSize: isMobile ? '0.75rem' : '0.82rem',
             cursor: 'pointer',
