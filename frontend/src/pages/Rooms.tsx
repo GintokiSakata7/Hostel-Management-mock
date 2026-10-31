@@ -1142,8 +1142,8 @@ function EditBuildingModal({
                     style={{ padding: '10px 14px', fontSize: '0.85rem', width: '100%', background: 'rgba(0,0,0,0.35)' }}
                   />
                 </div>
-                <div style={{ display: 'flex', gap: '4px' }}>
-                  {[2, 3, 4, 6, 8].map(c => (
+                <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                  {[1, 2, 3, 4, 5, 6, 8].map(c => (
                     <button
                       key={c}
                       type="button"
