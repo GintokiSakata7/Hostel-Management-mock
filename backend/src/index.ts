@@ -1002,24 +1002,50 @@ app.post('/api/fees/pay', async (req, res) => {
         });
         console.log(`[PostgreSQL Bucket]: PDF Receipt ${receiptNo} stored in database for Fee ${fee.id}`);
 
-        // 3. Dispatch PDF Receipt via Email
+        // 3. Dispatch Detailed Invoice & PDF Receipt via Email
         if (student.name) {
-          const emailTo = 'rishivardhan165@gmail.com'; // Testing mode
-          const emailRes = await sendPaymentReceiptEmail(emailTo, student.name, `Receipt_${receiptNo}.pdf`, pdfBuffer);
-          
-          if (emailRes.success) {
-            await prisma.fee.update({
-              where: { id: fee.id },
-              data: {
-                whatsappStatus: 'SENT_EMAIL'
-              }
+          const targetEmails = new Set<string>();
+          // Testing / Admin recipient verified for notifications
+          targetEmails.add('rishivardhan165@gmail.com');
+          if (student.email && student.email.trim().includes('@')) {
+            targetEmails.add(student.email.trim());
+          }
+
+          for (const emailTo of targetEmails) {
+            const emailRes = await sendPaymentReceiptEmail({
+              to: emailTo,
+              studentName: student.name,
+              studentPhone: student.phone,
+              rollNumber: student.rollNumber,
+              roomName: bed ? bed.room.roomNumber : 'Unallocated',
+              bedNumber: bed ? bed.bedNumber : null,
+              receiptNo,
+              amount: Number(amount),
+              monthLabel: label,
+              paymentDate: formattedDate,
+              method,
+              upiProvider: upiProvider || null,
+              transactionRef: transactionRef || null,
+              hostelName: settings.hostelName,
+              hostelPhone: settings.hostelPhone,
+              hostelEmail: settings.hostelEmail,
+              hostelAddress: settings.hostelAddress,
+              fileName: `Receipt_${receiptNo}.pdf`,
+              pdfBuffer
             });
-            console.log(`[Email Dispatch]: Fee ${fee.id} receipt sent successfully to ${emailTo}`);
-          } else {
-            await prisma.fee.update({
-              where: { id: fee.id },
-              data: { whatsappStatus: 'FAILED_EMAIL' }
-            });
+
+            if (emailRes.success) {
+              await prisma.fee.update({
+                where: { id: fee.id },
+                data: { whatsappStatus: 'SENT_EMAIL' }
+              });
+              console.log(`[Email Dispatch]: Fee ${fee.id} detailed receipt & invoice sent successfully to ${emailTo}`);
+            } else {
+              await prisma.fee.update({
+                where: { id: fee.id },
+                data: { whatsappStatus: 'FAILED_EMAIL' }
+              });
+            }
           }
         }
 
@@ -1047,6 +1073,225 @@ app.post('/api/fees/unpay', async (req, res) => {
     return res.status(404).json({ error: 'Fee record not found' });
   } catch (err: any) {
     res.status(500).json({ error: 'Failed to unpay fee: ' + err.message });
+  }
+});
+
+// Send or resend an official fee receipt email on demand
+app.post('/api/fees/:feeId/email-receipt', async (req, res) => {
+  try {
+    const { feeId } = req.params;
+    const { to } = req.body;
+
+    const fee = await prisma.fee.findUnique({
+      where: { id: feeId },
+      include: {
+        student: {
+          include: {
+            beds: { include: { room: true } }
+          }
+        },
+        receipt: true
+      }
+    });
+
+    if (!fee) {
+      return res.status(404).json({ error: 'Fee record not found' });
+    }
+
+    const settings = readSettings();
+    const bed = fee.student.beds[0] || null;
+    const receiptNo = fee.receiptNo || 'REC-' + fee.id.substring(0, 8);
+    const label = monthLabel(fee.month);
+    const formattedDate = fee.date ? fee.date.toLocaleDateString('en-IN') : new Date().toLocaleDateString('en-IN');
+
+    // Get or generate PDF Buffer
+    let pdfBuffer: Buffer;
+    if (fee.receipt && fee.receipt.pdfData) {
+      pdfBuffer = Buffer.from(fee.receipt.pdfData);
+    } else {
+      pdfBuffer = await generateFeeReceiptPDFBuffer({
+        receiptNo,
+        paymentDate: formattedDate,
+        monthLabel: label,
+        amount: Number(fee.amount),
+        method: fee.method,
+        upiProvider: fee.upiProvider || null,
+        transactionRef: fee.transactionRef || null,
+        studentName: fee.student.name,
+        studentPhone: fee.student.phone,
+        rollNumber: fee.student.rollNumber,
+        course: fee.student.course,
+        roomName: bed ? bed.room.roomNumber : 'Unallocated',
+        bedNumber: bed ? bed.bedNumber : null,
+        hostelName: settings.hostelName,
+        hostelPhone: settings.hostelPhone,
+        hostelEmail: settings.hostelEmail,
+        hostelAddress: settings.hostelAddress
+      });
+
+      await prisma.receipt.upsert({
+        where: { feeId: fee.id },
+        update: { pdfData: pdfBuffer },
+        create: {
+          feeId: fee.id,
+          receiptNo,
+          fileName: `Receipt_${receiptNo}.pdf`,
+          mimeType: 'application/pdf',
+          pdfData: pdfBuffer
+        }
+      });
+    }
+
+    const emailTo = to || fee.student.email || 'rishivardhan165@gmail.com';
+    const emailRes = await sendPaymentReceiptEmail({
+      to: emailTo,
+      studentName: fee.student.name,
+      studentPhone: fee.student.phone,
+      rollNumber: fee.student.rollNumber,
+      roomName: bed ? bed.room.roomNumber : 'Unallocated',
+      bedNumber: bed ? bed.bedNumber : null,
+      receiptNo,
+      amount: Number(fee.amount),
+      monthLabel: label,
+      paymentDate: formattedDate,
+      method: fee.method,
+      upiProvider: fee.upiProvider || null,
+      transactionRef: fee.transactionRef || null,
+      hostelName: settings.hostelName,
+      hostelPhone: settings.hostelPhone,
+      hostelEmail: settings.hostelEmail,
+      hostelAddress: settings.hostelAddress,
+      fileName: `Receipt_${receiptNo}.pdf`,
+      pdfBuffer
+    });
+
+    if (!emailRes.success) {
+      return res.status(500).json({ error: 'Failed to send email: ' + emailRes.error });
+    }
+
+    await prisma.fee.update({
+      where: { id: fee.id },
+      data: { whatsappStatus: 'SENT_EMAIL' }
+    });
+
+    res.json({
+      success: true,
+      message: `Receipt sent successfully to ${emailTo}`,
+      receiptNo,
+      studentName: fee.student.name,
+      to: emailTo
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: 'Failed to dispatch receipt: ' + err.message });
+  }
+});
+
+// Trigger a test email receipt to the user's email address
+app.post('/api/fees/test-email-receipt', async (req, res) => {
+  try {
+    const to = req.body.to || 'rishivardhan165@gmail.com';
+    // Find any completed fee or latest student
+    const sampleFee = await prisma.fee.findFirst({
+      where: { status: 'Completed' },
+      include: {
+        student: {
+          include: {
+            beds: { include: { room: true } }
+          }
+        },
+        receipt: true
+      },
+      orderBy: { date: 'desc' }
+    });
+
+    const settings = readSettings();
+
+    let studentName = 'Rahul Sharma';
+    let roomName = '101';
+    let bedNumber = 1;
+    let amount = 6500;
+    let method = 'UPI';
+    let upiProvider = 'Google Pay';
+    let transactionRef = 'UPI-' + Math.floor(10000000 + Math.random() * 90000000);
+    let receiptNo = 'REC-' + new Date().getFullYear() + '10-099';
+    let label = 'October 2026';
+    let formattedDate = new Date().toLocaleDateString('en-IN');
+    let studentPhone = '+91 98765 43210';
+    let rollNumber = 'MH-2026-042';
+
+    if (sampleFee && sampleFee.student) {
+      studentName = sampleFee.student.name;
+      const bed = sampleFee.student.beds[0] || null;
+      roomName = bed ? bed.room.roomNumber : '101';
+      bedNumber = bed ? bed.bedNumber : 1;
+      amount = sampleFee.amount;
+      method = sampleFee.method;
+      upiProvider = sampleFee.upiProvider || 'Google Pay';
+      transactionRef = sampleFee.transactionRef || 'UPI-' + Math.floor(10000000 + Math.random() * 90000000);
+      receiptNo = sampleFee.receiptNo || receiptNo;
+      label = monthLabel(sampleFee.month);
+      formattedDate = sampleFee.date ? sampleFee.date.toLocaleDateString('en-IN') : formattedDate;
+      studentPhone = sampleFee.student.phone || studentPhone;
+      rollNumber = sampleFee.student.rollNumber || rollNumber;
+    }
+
+    const pdfBuffer = await generateFeeReceiptPDFBuffer({
+      receiptNo,
+      paymentDate: formattedDate,
+      monthLabel: label,
+      amount,
+      method,
+      upiProvider,
+      transactionRef,
+      studentName,
+      studentPhone,
+      rollNumber,
+      course: 'B.Tech',
+      roomName,
+      bedNumber,
+      hostelName: settings.hostelName,
+      hostelPhone: settings.hostelPhone,
+      hostelEmail: settings.hostelEmail,
+      hostelAddress: settings.hostelAddress
+    });
+
+    const emailRes = await sendPaymentReceiptEmail({
+      to,
+      studentName,
+      studentPhone,
+      rollNumber,
+      roomName,
+      bedNumber,
+      receiptNo,
+      amount,
+      monthLabel: label,
+      paymentDate: formattedDate,
+      method,
+      upiProvider,
+      transactionRef,
+      hostelName: settings.hostelName,
+      hostelPhone: settings.hostelPhone,
+      hostelEmail: settings.hostelEmail,
+      hostelAddress: settings.hostelAddress,
+      fileName: `Receipt_${receiptNo}.pdf`,
+      pdfBuffer
+    });
+
+    if (!emailRes.success) {
+      return res.status(500).json({ error: 'Failed to send test email: ' + emailRes.error });
+    }
+
+    res.json({
+      success: true,
+      message: `Test payment invoice & PDF receipt sent successfully to ${to}`,
+      receiptNo,
+      studentName,
+      amount,
+      month: label,
+      to
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: 'Test email failed: ' + err.message });
   }
 });
 

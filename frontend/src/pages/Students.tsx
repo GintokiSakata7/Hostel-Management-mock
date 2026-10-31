@@ -63,7 +63,7 @@ function PaymentModal({ student, selectedMonth, onClose, onSuccess }: { student:
         body: JSON.stringify({ studentId: student.dbId, month: selectedMonth, amount: form.amount, method: form.method, upiProvider: form.method === 'UPI' ? form.upiProvider : null, transactionRef: form.method === 'UPI' ? form.transactionRef : null, date: form.date })
       });
       if (res.status === 409) { const e = await res.json(); showToast(e.error, 'error'); }
-      else if (res.ok) { showToast(`Payment recorded for ${monthLabel}!`, 'success'); onSuccess(); onClose(); }
+      else if (res.ok) { showToast(`Payment recorded for ${monthLabel}! Invoice & receipt emailed.`, 'success'); onSuccess(); onClose(); }
       else { showToast('Payment failed', 'error'); }
     } finally { setSaving(false); }
   };
@@ -97,6 +97,12 @@ function PaymentModal({ student, selectedMonth, onClose, onSuccess }: { student:
         </>)}
         <div className="form-group"><label>Payment Date</label>
           <input type="date" required className="custom-input" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} /></div>
+
+        <div style={{ background: 'rgba(56,189,248,0.08)', border: '1px solid rgba(56,189,248,0.25)', borderRadius: 10, padding: '10px 14px', fontSize: '0.8rem', color: '#38bdf8', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Mail size={16} style={{ flexShrink: 0 }} />
+          <span>A detailed tax invoice breakdown & PDF receipt will be automatically sent to the email address on file.</span>
+        </div>
+
         <div style={{ display: 'flex', gap: '1rem' }}>
           <button type="button" className="custom-select" style={{ flex: 1 }} onClick={onClose}>Cancel</button>
           <button type="submit" className="primary-btn" style={{ flex: 1, justifyContent: 'center' }} disabled={saving}>{saving ? 'Saving…' : '✓ Confirm'}</button>

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
-  TrendingUp, TrendingDown, Clock, CheckCircle2, XCircle, IndianRupee, Calendar, Search, Printer, Banknote, Smartphone, Send, MessageSquare, PhoneCall, FileText
+  TrendingUp, TrendingDown, Clock, CheckCircle2, XCircle, IndianRupee, Calendar, Search, Printer, Banknote, Smartphone, Send, MessageSquare, PhoneCall, FileText, Mail
 } from 'lucide-react';
 import Modal from '../components/Modal';
 import { useToast } from '../components/ToastContext';
@@ -53,7 +53,7 @@ function PaymentModal({ student, selectedMonth, onClose, onSuccess }: {
         const err = await res.json();
         showToast(err.error, 'error');
       } else if (res.ok) {
-        showToast(`Payment recorded for ${monthLabel}!`, 'success');
+        showToast(`Payment recorded for ${monthLabel}! Invoice & receipt emailed.`, 'success');
         onSuccess();
         onClose();
       } else {
@@ -126,6 +126,11 @@ function PaymentModal({ student, selectedMonth, onClose, onSuccess }: {
           <label>Payment Date</label>
           <input type="date" required className="custom-input" value={form.date}
             onChange={e => setForm({ ...form, date: e.target.value })} />
+        </div>
+
+        <div style={{ background: 'rgba(56,189,248,0.08)', border: '1px solid rgba(56,189,248,0.25)', borderRadius: 10, padding: '10px 14px', fontSize: '0.8rem', color: '#38bdf8', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Mail size={16} style={{ flexShrink: 0 }} />
+          <span>A detailed tax invoice breakdown & PDF receipt will be automatically sent to the email address on file.</span>
         </div>
 
         <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
@@ -436,6 +441,29 @@ export default function Fees() {
     }
   };
 
+  const [emailingFeeId, setEmailingFeeId] = useState<string | null>(null);
+
+  const handleEmailReceipt = async (feeId: string, studentName: string) => {
+    setEmailingFeeId(feeId);
+    try {
+      const res = await fetch(`/api/fees/${feeId}/email-receipt`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({})
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        showToast(`Invoice & receipt sent to ${data.to}!`, 'success');
+      } else {
+        showToast(data.error || 'Failed to email receipt', 'error');
+      }
+    } catch (err: any) {
+      showToast('Error emailing receipt: ' + err.message, 'error');
+    } finally {
+      setEmailingFeeId(null);
+    }
+  };
+
   const { selectedBuildingId } = useBuilding();
 
   const fetchData = useCallback(async () => {
@@ -712,6 +740,15 @@ export default function Fees() {
                         >
                           <FileText size={14} />
                         </a>
+                        <button
+                          className="icon-btn-small"
+                          title={`Email Detailed Invoice & PDF Receipt to ${s.name}`}
+                          disabled={emailingFeeId === s.feeRecordId}
+                          onClick={() => handleEmailReceipt(s.feeRecordId, s.name)}
+                          style={{ color: '#38bdf8', border: '1px solid rgba(56,189,248,0.3)', background: 'rgba(56,189,248,0.1)' }}
+                        >
+                          {emailingFeeId === s.feeRecordId ? <Clock size={14} className="animate-spin" /> : <Mail size={14} />}
+                        </button>
                         <button className="icon-btn-small" title="Print Receipt Template"
                           onClick={() => setViewingReceipt(s)}>
                           <Printer size={14} />
@@ -827,6 +864,15 @@ export default function Fees() {
                     >
                       <FileText size={14} />
                     </a>
+                    <button
+                      className="icon-btn-small"
+                      title={`Email Detailed Invoice & PDF Receipt to ${tx.student}`}
+                      disabled={emailingFeeId === tx.id}
+                      onClick={() => handleEmailReceipt(tx.id, tx.student)}
+                      style={{ color: '#38bdf8', border: '1px solid rgba(56,189,248,0.3)', background: 'rgba(56,189,248,0.1)' }}
+                    >
+                      {emailingFeeId === tx.id ? <Clock size={14} className="animate-spin" /> : <Mail size={14} />}
+                    </button>
                     <button className="icon-btn-small" title="Print Receipt Template" onClick={() => setViewingReceipt({ ...tx, name: tx.student, room: tx.room, paymentDate: tx.date })}>
                       <Printer size={14} />
                     </button>
