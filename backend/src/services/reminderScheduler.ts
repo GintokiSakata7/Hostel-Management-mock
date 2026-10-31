@@ -8,7 +8,7 @@ import { sendFeeReminderEmail, sendEmail } from './emailService';
 const prisma = new PrismaClient();
 const settingsPath = path.join(__dirname, '../../settings.json');
 
-let activeCronTask: cron.ScheduledTask | null = null;
+let activeCronTask: any = null;
 let currentScheduledTime = '19:00'; // Default 7 PM IST
 
 // Helper: read settings file

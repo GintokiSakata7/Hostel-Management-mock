@@ -1489,6 +1489,198 @@ app.post('/api/reminders/settings', (req, res) => {
   }
 });
 
+// ─── NOTIFICATIONS ENDPOINT ──────────────────────────────────────────────────
+app.get('/api/notifications', async (req, res) => {
+  const { buildingId } = req.query as { buildingId?: string };
+  const filterByBuilding = buildingId && buildingId !== 'all';
+  const studentWhere: any = filterByBuilding
+    ? { beds: { some: { room: { buildingId } } } }
+    : {};
+  const roomWhere: any = filterByBuilding ? { buildingId } : {};
+
+  try {
+    const settings = readSettings();
+    const monthlyFee = settings.monthlyFee || 5500;
+    const cm = currentMonth();
+    const today = new Date();
+    const todayDay = today.getDate();
+
+    const [students, rooms, complaints, recentPayments] = await Promise.all([
+      prisma.student.findMany({
+        where: studentWhere,
+        include: {
+          beds: { include: { room: { include: { building: true } } } },
+          fees: { where: { status: 'Completed' } }
+        }
+      }),
+      prisma.room.findMany({
+        where: roomWhere,
+        include: { beds: true }
+      }),
+      prisma.complaint.findMany({
+        where: {
+          status: { in: ['pending', 'in-progress'] },
+          ...(filterByBuilding ? { student: studentWhere } : {})
+        },
+        take: 5,
+        orderBy: { date: 'desc' },
+        include: { student: { include: { beds: { include: { room: true } } } } }
+      }),
+      prisma.fee.findMany({
+        where: {
+          status: 'Completed',
+          ...(filterByBuilding ? { student: studentWhere } : {})
+        },
+        take: 3,
+        orderBy: { date: 'desc' },
+        include: { student: { include: { beds: { include: { room: true } } } } }
+      })
+    ]);
+
+    const notifications: any[] = [];
+
+    // 1. Fee Dues Today & Overdue
+    const dueTodayStudents: any[] = [];
+    const overdueStudents: any[] = [];
+    let totalDueTodayAmount = 0;
+    let totalOverdueAmount = 0;
+
+    students.forEach(s => {
+      const dueStatus = calculateStudentDueStatus(s, monthlyFee, today);
+      const isUnpaidCurrentMonth = !s.fees.some(f => f.month === cm && f.status === 'Completed');
+
+      if (dueStatus.isDueToday || (isUnpaidCurrentMonth && dueStatus.dueDayOfMonth === todayDay)) {
+        dueTodayStudents.push({ ...s, dueStatus });
+        totalDueTodayAmount += dueStatus.totalPendingAmount || monthlyFee;
+      } else if (dueStatus.pendingMonthsCount > 0) {
+        overdueStudents.push({ ...s, dueStatus });
+        totalOverdueAmount += dueStatus.totalPendingAmount;
+      }
+    });
+
+    // Main Fee Due Today / Urgent Collection Alert
+    if (dueTodayStudents.length > 0) {
+      notifications.push({
+        id: `notif-due-today-${cm}`,
+        type: 'fee_due_today',
+        category: 'dues',
+        priority: 'urgent',
+        title: `${dueTodayStudents.length} ${dueTodayStudents.length === 1 ? 'Member' : 'Members'} Due Today`,
+        message: `${dueTodayStudents.length} residents have their fee payment due today (₹${totalDueTodayAmount.toLocaleString('en-IN')} total).`,
+        link: '/fees',
+        count: dueTodayStudents.length,
+        timestamp: new Date().toISOString(),
+        actionText: 'Collect Fees'
+      });
+    } else if (overdueStudents.length > 0) {
+      const activeCount = overdueStudents.length;
+      notifications.push({
+        id: `notif-due-cycle-${cm}`,
+        type: 'fee_due_today',
+        category: 'dues',
+        priority: 'urgent',
+        title: `${activeCount} ${activeCount === 1 ? 'Member' : 'Members'} Due Today / Pending`,
+        message: `${activeCount} residents have pending fee payments for ${monthLabel(cm)} (₹${totalOverdueAmount.toLocaleString('en-IN')} pending).`,
+        link: '/fees',
+        count: activeCount,
+        timestamp: new Date().toISOString(),
+        actionText: 'Collect Dues'
+      });
+    }
+
+    // Individual Member Notices
+    const highlightStudents = dueTodayStudents.length > 0 ? dueTodayStudents : overdueStudents;
+    highlightStudents.slice(0, 4).forEach((s, idx) => {
+      const roomNum = s.beds?.[0]?.room?.roomNumber || 'Unallocated';
+      const amount = s.dueStatus?.totalPendingAmount || monthlyFee;
+      notifications.push({
+        id: `notif-student-due-${s.id}-${cm}`,
+        type: 'student_due',
+        category: 'dues',
+        priority: 'high',
+        title: `Fee Due: ${s.name}`,
+        message: `Room ${roomNum} · ₹${amount.toLocaleString('en-IN')} pending (${s.dueStatus?.dueDayLabel || 'Due now'}).`,
+        link: '/fees',
+        timestamp: new Date(Date.now() - (idx + 1) * 20 * 60 * 1000).toISOString(),
+        actionText: 'Record Payment'
+      });
+    });
+
+    // 2. Active Complaints
+    complaints.forEach((c, idx) => {
+      const roomNum = c.student?.beds?.[0]?.room?.roomNumber || 'N/A';
+      notifications.push({
+        id: `notif-complaint-${c.id}`,
+        type: 'complaint',
+        category: 'complaints',
+        priority: c.status === 'pending' ? 'high' : 'medium',
+        title: `Complaint: ${c.title}`,
+        message: `${c.student?.name || 'Resident'} (Room ${roomNum}): ${c.description?.slice(0, 75) || 'Pending review'}`,
+        link: '/complaints',
+        timestamp: c.date ? c.date.toISOString() : new Date(Date.now() - (idx + 2) * 3600000).toISOString(),
+        actionText: 'Open Ticket'
+      });
+    });
+
+    // 3. Room Occupancy
+    const totalBeds = rooms.reduce((acc, r) => acc + r.beds.length, 0);
+    const occupiedBeds = rooms.reduce((acc, r) => acc + r.beds.filter(b => b.status === 'occupied').length, 0);
+    const availableBeds = totalBeds - occupiedBeds;
+    const occupancyPct = totalBeds > 0 ? Math.round((occupiedBeds / totalBeds) * 100) : 0;
+
+    if (totalBeds > 0 && availableBeds <= 5) {
+      notifications.push({
+        id: `notif-high-occ-${cm}`,
+        type: 'occupancy',
+        category: 'rooms',
+        priority: 'medium',
+        title: `High Occupancy Alert (${occupancyPct}%)`,
+        message: `Only ${availableBeds} beds remaining out of ${totalBeds} total beds across ${rooms.length} rooms.`,
+        link: '/rooms',
+        timestamp: new Date(Date.now() - 7200000).toISOString(),
+        actionText: 'View Rooms'
+      });
+    } else if (availableBeds > 0) {
+      notifications.push({
+        id: `notif-avail-beds-${cm}`,
+        type: 'occupancy',
+        category: 'rooms',
+        priority: 'info',
+        title: `${availableBeds} Vacant Beds Available`,
+        message: `Ready for allocations across ${rooms.length} rooms (${occupancyPct}% occupied).`,
+        link: '/rooms',
+        timestamp: new Date(Date.now() - 14400000).toISOString(),
+        actionText: 'Manage Beds'
+      });
+    }
+
+    // 4. Recent Payment Confirmations
+    recentPayments.forEach((p, idx) => {
+      const roomNum = p.student?.beds?.[0]?.room?.roomNumber || 'N/A';
+      notifications.push({
+        id: `notif-pay-${p.id}`,
+        type: 'payment_received',
+        category: 'activity',
+        priority: 'info',
+        title: `Payment Received: ₹${p.amount.toLocaleString('en-IN')}`,
+        message: `${p.student.name} (Room ${roomNum}) paid for ${monthLabel(p.month)} via ${p.method}.`,
+        link: '/fees',
+        timestamp: p.date ? p.date.toISOString() : new Date(Date.now() - (idx + 3) * 7200000).toISOString(),
+        actionText: 'View Receipt'
+      });
+    });
+
+    res.json({
+      success: true,
+      count: notifications.length,
+      notifications
+    });
+  } catch (err: any) {
+    console.error('Error fetching notifications:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`API Server running on port ${PORT}`);

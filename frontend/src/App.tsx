@@ -8,6 +8,7 @@ import { ToastProvider } from './components/ToastContext';
 import { SettingsProvider, useSettings } from './components/SettingsContext';
 import { BuildingProvider } from './components/BuildingContext';
 import WorkspaceSelector from './components/WorkspaceSelector';
+import NotificationBell from './components/NotificationBell';
 
 // Code-split pages for fast initial load
 const Dashboard = lazy(() => import('./pages/Dashboard'));
@@ -157,7 +158,7 @@ function App() {
                     <button className="icon-btn" aria-label="Toggle theme" onClick={() => setIsLightMode(!isLightMode)}>
                       {isLightMode ? <Moon size={18} /> : <Sun size={18} />}
                     </button>
-                    <button className="icon-btn" aria-label="Notifications"><Bell size={18} /></button>
+                    <NotificationBell />
                     <div className="user-profile">
                       <div className="avatar">A</div>
                       <div className="user-profile-details">
