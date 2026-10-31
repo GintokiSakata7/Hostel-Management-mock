@@ -4,7 +4,7 @@ import {
   Save, Plus, Trash2, RefreshCw, Download,
   Layers3, FileText,
   User, MapPin, Calendar,
-  ChevronDown, ChevronRight, Home, Clock
+  ChevronDown, ChevronRight, Home, Clock, Check
 } from 'lucide-react';
 import { useToast } from '../components/ToastContext';
 import { useSettings } from '../components/SettingsContext';
@@ -293,17 +293,35 @@ function FloorPlanTab() {
   const [loading, setLoading] = useState(false);
 
   const fetchBuildings = useCallback(async () => {
-    const res = await fetch(`${API}/api/buildings`);
-    setBuildings(await res.json());
+    try {
+      const res = await fetch(`${API}/api/buildings`);
+      const data = await res.json();
+      setBuildings(data);
+      setSelectedBuilding((prev: any) => {
+        if (!data || data.length === 0) return null;
+        if (prev) {
+          const match = data.find((b: any) => b.id === prev.id);
+          return match || data[0];
+        }
+        return data[0];
+      });
+    } catch (e) {
+      console.error(e);
+    }
   }, []);
 
   const fetchFloorPlan = useCallback(async (buildingId: string) => {
     setLoadingFloor(true);
-    const res = await fetch(`${API}/api/floor-plan/${buildingId}`);
-    const data = await res.json();
-    setFloorData(data);
-    setExpandedFloors(new Set(Object.keys(data.floors || {}).map(Number)));
-    setLoadingFloor(false);
+    try {
+      const res = await fetch(`${API}/api/floor-plan/${buildingId}`);
+      const data = await res.json();
+      setFloorData(data);
+      setExpandedFloors(new Set(Object.keys(data.floors || {}).map(Number)));
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingFloor(false);
+    }
   }, []);
 
   useEffect(() => { fetchBuildings(); }, [fetchBuildings]);
@@ -312,33 +330,68 @@ function FloorPlanTab() {
   const addBuilding = async () => {
     if (!newBuildingName.trim()) return;
     setLoading(true);
-    const res = await fetch(`${API}/api/buildings`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: newBuildingName }) });
-    if (res.ok) { showToast('Building added!', 'success'); setNewBuildingName(''); setShowAddBuilding(false); fetchBuildings(); }
-    else { const e = await res.json(); showToast(e.error, 'error'); }
+    const res = await fetch(`${API}/api/buildings`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: newBuildingName.trim() }) });
+    if (res.ok) {
+      showToast('Building added!', 'success');
+      setNewBuildingName('');
+      setShowAddBuilding(false);
+      fetchBuildings();
+    } else {
+      const e = await res.json();
+      showToast(e.error, 'error');
+    }
     setLoading(false);
   };
 
   const deleteBuilding = async (id: string, name: string) => {
     if (!confirm(`Delete building "${name}" and ALL its rooms? This cannot be undone.`)) return;
     const res = await fetch(`${API}/api/buildings/${id}`, { method: 'DELETE' });
-    if (res.ok) { showToast('Building deleted', 'success'); setSelectedBuilding(null); setFloorData(null); fetchBuildings(); }
-    else { const e = await res.json(); showToast(e.error, 'error'); }
+    if (res.ok) {
+      showToast('Building deleted', 'success');
+      setSelectedBuilding(null);
+      setFloorData(null);
+      fetchBuildings();
+    } else {
+      const e = await res.json();
+      showToast(e.error, 'error');
+    }
   };
 
   const addRoom = async () => {
-    if (!newRoom.roomNumber || !selectedBuilding) return;
+    if (!newRoom.roomNumber.trim() || !selectedBuilding) {
+      showToast('Please specify a room number', 'warning');
+      return;
+    }
     setLoading(true);
-    const res = await fetch(`${API}/api/rooms`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ buildingId: selectedBuilding.id, ...newRoom }) });
-    if (res.ok) { showToast('Room added!', 'success'); setNewRoom({ roomNumber: '', floor: '1', capacity: '2' }); setShowAddRoom(false); fetchFloorPlan(selectedBuilding.id); fetchBuildings(); }
-    else { const e = await res.json(); showToast(e.error, 'error'); }
+    const res = await fetch(`${API}/api/rooms`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ buildingId: selectedBuilding.id, ...newRoom })
+    });
+    if (res.ok) {
+      showToast('Room added successfully!', 'success');
+      setNewRoom({ roomNumber: '', floor: newRoom.floor, capacity: '2' });
+      setShowAddRoom(false);
+      fetchFloorPlan(selectedBuilding.id);
+      fetchBuildings();
+    } else {
+      const e = await res.json();
+      showToast(e.error || 'Failed to add room', 'error');
+    }
     setLoading(false);
   };
 
   const deleteRoom = async (roomId: string) => {
     if (!confirm('Delete this room and all its beds?')) return;
     const res = await fetch(`${API}/api/rooms/${roomId}`, { method: 'DELETE' });
-    if (res.ok) { showToast('Room deleted', 'success'); fetchFloorPlan(selectedBuilding.id); fetchBuildings(); }
-    else { const e = await res.json(); showToast(e.error, 'error'); }
+    if (res.ok) {
+      showToast('Room deleted', 'success');
+      fetchFloorPlan(selectedBuilding.id);
+      fetchBuildings();
+    } else {
+      const e = await res.json();
+      showToast(e.error, 'error');
+    }
   };
 
   const toggleFloor = (floor: number) => {
@@ -351,61 +404,156 @@ function FloorPlanTab() {
 
   return (
     <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '1.25rem', height: '100%', minHeight: isMobile ? 'auto' : 500 }}>
-      {/* Building sidebar */}
+      {/* Building sidebar / mobile ribbon */}
       <div style={{
-        width: isMobile ? '100%' : 220,
+        width: isMobile ? '100%' : 240,
         flexShrink: 0,
         display: 'flex',
         flexDirection: isMobile ? 'row' : 'column',
-        gap: '0.6rem',
+        gap: '0.65rem',
         overflowX: isMobile ? 'auto' : 'visible',
         paddingBottom: isMobile ? '6px' : 0,
-        WebkitOverflowScrolling: 'touch'
+        WebkitOverflowScrolling: 'touch',
+        scrollbarWidth: 'none'
       }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: isMobile ? 0 : '0.25rem', flexShrink: 0 }}>
-          <span style={{ fontWeight: 700, fontSize: '0.78rem', color: 'var(--text-muted)', letterSpacing: 1 }}>BUILDINGS</span>
-          <button className="icon-btn-small" title="Add Building" onClick={() => setShowAddBuilding(v => !v)}><Plus size={14} /></button>
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: isMobile ? 0 : '0.25rem',
+          flexShrink: 0,
+          minWidth: isMobile ? 120 : 'auto',
+          padding: isMobile ? '4px 0' : 0
+        }}>
+          <span style={{ fontWeight: 800, fontSize: '0.76rem', color: 'var(--text-muted)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+            BUILDINGS ({buildings.length})
+          </span>
+          <button
+            className="icon-btn-small"
+            style={{ background: 'rgba(249,115,22,0.15)', color: 'var(--primary)', border: '1px solid rgba(249,115,22,0.3)' }}
+            title="Add Building"
+            onClick={() => setShowAddBuilding(v => !v)}
+          >
+            <Plus size={14} />
+          </button>
         </div>
 
         {showAddBuilding && (
-          <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border-dim)', borderRadius: 10, padding: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', minWidth: isMobile ? 200 : 'auto', flexShrink: 0 }}>
-            <input className="custom-input" style={{ fontSize: '0.8rem' }} value={newBuildingName} onChange={e => setNewBuildingName(e.target.value)} placeholder="Building name…" onKeyDown={e => e.key === 'Enter' && addBuilding()} autoFocus />
+          <div style={{
+            background: 'rgba(255,255,255,0.04)',
+            border: '1px solid var(--border-dim)',
+            borderRadius: 12,
+            padding: '0.75rem',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '0.5rem',
+            minWidth: isMobile ? 220 : 'auto',
+            flexShrink: 0
+          }}>
+            <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#fff' }}>Add New Building</div>
+            <input
+              className="custom-input"
+              style={{ fontSize: '0.82rem', padding: '6px 10px' }}
+              value={newBuildingName}
+              onChange={e => setNewBuildingName(e.target.value)}
+              placeholder="Building name (e.g. Block C)…"
+              onKeyDown={e => e.key === 'Enter' && addBuilding()}
+              autoFocus
+            />
             <div style={{ display: 'flex', gap: '6px' }}>
-              <button className="primary-btn" style={{ flex: 1, justifyContent: 'center', fontSize: '0.75rem', padding: '4px 8px', minHeight: 28 }} onClick={addBuilding} disabled={loading}><Plus size={12} /> Add</button>
-              <button onClick={() => setShowAddBuilding(false)} style={{ flex: 1, background: 'rgba(255,255,255,0.06)', border: '1px solid var(--border-dim)', borderRadius: 8, color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.75rem' }}>Cancel</button>
+              <button
+                className="primary-btn"
+                style={{ flex: 1, justifyContent: 'center', fontSize: '0.75rem', padding: '5px 8px', minHeight: 30 }}
+                onClick={addBuilding}
+                disabled={loading}
+              >
+                <Plus size={12} /> Add
+              </button>
+              <button
+                onClick={() => setShowAddBuilding(false)}
+                style={{
+                  flex: 1,
+                  background: 'rgba(255,255,255,0.06)',
+                  border: '1px solid var(--border-dim)',
+                  borderRadius: 8,
+                  color: 'var(--text-muted)',
+                  cursor: 'pointer',
+                  fontSize: '0.75rem',
+                  padding: '5px 8px'
+                }}
+              >
+                Cancel
+              </button>
             </div>
           </div>
         )}
 
-        {buildings.map(b => (
-          <div key={b.id} onClick={() => setSelectedBuilding(b)} style={{
-            padding: '0.875rem 1rem', borderRadius: 12, cursor: 'pointer',
-            border: `1px solid ${selectedBuilding?.id === b.id ? 'var(--primary)' : 'var(--border-dim)'}`,
-            background: selectedBuilding?.id === b.id ? 'rgba(249,115,22,0.1)' : 'rgba(255,255,255,0.02)',
-            transition: 'all 0.2s',
-            minWidth: isMobile ? 180 : 'auto',
-            flexShrink: 0
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                <Building2 size={16} color={selectedBuilding?.id === b.id ? 'var(--primary)' : 'var(--text-muted)'} />
-                <div>
-                  <div style={{ fontWeight: 700, fontSize: '0.85rem' }}>{b.name}</div>
-                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: 2 }}>{b.totalRooms} rooms · {b.totalBeds} beds</div>
+        {buildings.map(b => {
+          const isSelected = selectedBuilding?.id === b.id;
+          return (
+            <div
+              key={b.id}
+              onClick={() => setSelectedBuilding(b)}
+              style={{
+                padding: '0.75rem 0.875rem',
+                borderRadius: 14,
+                cursor: 'pointer',
+                border: isSelected ? '1px solid var(--primary)' : '1px solid rgba(255,255,255,0.08)',
+                background: isSelected
+                  ? 'linear-gradient(135deg, rgba(249,115,22,0.18), rgba(249,115,22,0.06))'
+                  : 'rgba(255,255,255,0.03)',
+                boxShadow: isSelected ? '0 4px 14px rgba(249,115,22,0.2)' : 'none',
+                transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                minWidth: isMobile ? 180 : 'auto',
+                flexShrink: 0
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '6px' }}>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <div style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: 8,
+                    background: isSelected ? 'rgba(249,115,22,0.25)' : 'rgba(255,255,255,0.06)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    border: `1px solid ${isSelected ? 'rgba(249,115,22,0.4)' : 'rgba(255,255,255,0.08)'}`
+                  }}>
+                    <Building2 size={16} color={isSelected ? 'var(--primary)' : 'var(--text-muted)'} />
+                  </div>
+                  <div>
+                    <div style={{ fontWeight: 800, fontSize: '0.88rem', color: isSelected ? '#fff' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      {b.name}
+                      {isSelected && <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--primary)' }} />}
+                    </div>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: 2 }}>
+                      {b.totalRooms || 0} rooms · {b.totalBeds || 0} beds
+                    </div>
+                  </div>
                 </div>
+                <button
+                  className="icon-btn-small"
+                  style={{ opacity: 0.6, color: 'var(--danger)', padding: 4 }}
+                  onClick={e => { e.stopPropagation(); deleteBuilding(b.id, b.name); }}
+                  title="Delete building"
+                >
+                  <Trash2 size={13} />
+                </button>
               </div>
-              <button className="icon-btn-small" style={{ opacity: 0.5, color: 'var(--danger)' }} onClick={e => { e.stopPropagation(); deleteBuilding(b.id, b.name); }}><Trash2 size={13} /></button>
             </div>
-          </div>
-        ))}
+          );
+        })}
 
         {buildings.length === 0 && (
-          <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.78rem', padding: '1.5rem 0', lineHeight: 1.8 }}>No buildings yet.<br />Click + to add one.</div>
+          <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.78rem', padding: '1.5rem 0', lineHeight: 1.8 }}>
+            No buildings yet.<br />Click + to add one.
+          </div>
         )}
       </div>
 
-      {/* Floor plan content */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.75rem', overflow: 'auto' }}>
+      {/* Floor plan main workspace */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1rem', overflow: 'auto' }}>
         {!selectedBuilding ? (
           <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', flexDirection: 'column', gap: '1rem', padding: '3rem' }}>
             <Layers3 size={48} style={{ opacity: 0.2 }} />
@@ -413,119 +561,347 @@ function FloorPlanTab() {
           </div>
         ) : (
           <>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            {/* Building Header Card */}
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: '0.75rem',
+              background: 'rgba(255,255,255,0.02)',
+              border: '1px solid rgba(255,255,255,0.06)',
+              borderRadius: 14,
+              padding: '0.875rem 1.1rem'
+            }}>
               <div>
-                <div style={{ fontWeight: 800, fontSize: '1.1rem' }}>{selectedBuilding.name}</div>
-                <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: 2 }}>
-                  {floorData ? `${Object.keys(floorData.floors || {}).length} floors · ${selectedBuilding.totalRooms} rooms · ${selectedBuilding.totalBeds} beds` : ''}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Building2 size={18} color="var(--primary)" />
+                  <span style={{ fontWeight: 800, fontSize: '1.15rem', color: '#fff' }}>{selectedBuilding.name} Floor Plan</span>
+                </div>
+                <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: 3 }}>
+                  {floorData ? `${Object.keys(floorData.floors || {}).length} Floors · ${selectedBuilding.totalRooms || 0} Rooms · ${selectedBuilding.totalBeds || 0} Total Beds` : 'Loading...'}
                 </div>
               </div>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <button className="primary-btn" style={{ justifyContent: 'center', fontSize: '0.8rem', padding: '6px 14px', minHeight: 34 }} onClick={() => setShowAddRoom(v => !v)}>
+
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <button
+                  className="primary-btn"
+                  style={{
+                    justifyContent: 'center',
+                    fontSize: '0.8rem',
+                    padding: '7px 14px',
+                    minHeight: 34,
+                    boxShadow: '0 2px 10px rgba(249,115,22,0.25)'
+                  }}
+                  onClick={() => setShowAddRoom(v => !v)}
+                >
                   <Plus size={14} /> Add Room
                 </button>
-                <button className="icon-btn" title="Refresh" onClick={() => fetchFloorPlan(selectedBuilding.id)}><RefreshCw size={16} /></button>
+                <button className="icon-btn" title="Refresh" onClick={() => fetchFloorPlan(selectedBuilding.id)}>
+                  <RefreshCw size={15} />
+                </button>
               </div>
             </div>
 
+            {/* Mobile / Responsive Add Room Drawer */}
             {showAddRoom && (
-              <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-dim)', borderRadius: 12, padding: '1rem', display: 'flex', gap: '1rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
-                <div className="form-group" style={{ margin: 0, flex: '1 1 120px' }}>
-                  <label style={{ fontSize: '0.72rem' }}>Room Number</label>
-                  <input className="custom-input" value={newRoom.roomNumber} onChange={e => setNewRoom(p => ({ ...p, roomNumber: e.target.value }))} placeholder="e.g. 101" />
+              <div style={{
+                background: 'linear-gradient(135deg, rgba(249,115,22,0.08), rgba(255,255,255,0.03))',
+                border: '1px solid rgba(249,115,22,0.3)',
+                borderRadius: 14,
+                padding: '1.1rem',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.875rem',
+                boxShadow: '0 8px 24px rgba(0,0,0,0.3)'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontWeight: 800, fontSize: '0.9rem', color: '#fff' }}>
+                    Add Room to {selectedBuilding.name}
+                  </span>
+                  <button
+                    onClick={() => setShowAddRoom(false)}
+                    style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.8rem' }}
+                  >
+                    ✕
+                  </button>
                 </div>
-                <div className="form-group" style={{ margin: 0, flex: '0 0 90px' }}>
-                  <label style={{ fontSize: '0.72rem' }}>Floor</label>
-                  <input className="custom-input" type="number" value={newRoom.floor} onChange={e => setNewRoom(p => ({ ...p, floor: e.target.value }))} />
+
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 1fr', gap: '0.75rem' }}>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)' }}>Room Number</label>
+                    <input
+                      className="custom-input"
+                      value={newRoom.roomNumber}
+                      onChange={e => setNewRoom(p => ({ ...p, roomNumber: e.target.value }))}
+                      placeholder="e.g. 101, 204B"
+                      autoFocus
+                    />
+                  </div>
+
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)' }}>Floor Number</label>
+                    <div style={{ display: 'flex', gap: '4px' }}>
+                      <input
+                        className="custom-input"
+                        type="number"
+                        min={0}
+                        max={20}
+                        style={{ flex: 1 }}
+                        value={newRoom.floor}
+                        onChange={e => setNewRoom(p => ({ ...p, floor: e.target.value }))}
+                      />
+                      {['1', '2', '3'].map(fl => (
+                        <button
+                          key={fl}
+                          type="button"
+                          onClick={() => setNewRoom(p => ({ ...p, floor: fl }))}
+                          style={{
+                            padding: '0 8px',
+                            borderRadius: 8,
+                            border: newRoom.floor === fl ? '1px solid var(--primary)' : '1px solid rgba(255,255,255,0.08)',
+                            background: newRoom.floor === fl ? 'rgba(249,115,22,0.2)' : 'rgba(255,255,255,0.04)',
+                            color: newRoom.floor === fl ? 'var(--primary)' : 'var(--text-muted)',
+                            fontSize: '0.72rem',
+                            fontWeight: 700,
+                            cursor: 'pointer'
+                          }}
+                        >
+                          F{fl}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)' }}>Bed Capacity</label>
+                    <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                      {['1', '2', '3', '4', '6'].map(cap => (
+                        <button
+                          key={cap}
+                          type="button"
+                          onClick={() => setNewRoom(p => ({ ...p, capacity: cap }))}
+                          style={{
+                            flex: 1,
+                            padding: '6px 4px',
+                            borderRadius: 8,
+                            border: newRoom.capacity === cap ? '1px solid var(--primary)' : '1px solid rgba(255,255,255,0.08)',
+                            background: newRoom.capacity === cap ? 'rgba(249,115,22,0.25)' : 'rgba(255,255,255,0.04)',
+                            color: newRoom.capacity === cap ? 'var(--primary)' : 'var(--text-muted)',
+                            fontSize: '0.72rem',
+                            fontWeight: 700,
+                            cursor: 'pointer'
+                          }}
+                        >
+                          {cap} {cap === '1' ? 'Bed' : 'Beds'}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
-                <div className="form-group" style={{ margin: 0, flex: '0 0 110px' }}>
-                  <label style={{ fontSize: '0.72rem' }}>Beds (Capacity)</label>
-                  <input className="custom-input" type="number" min={1} max={10} value={newRoom.capacity} onChange={e => setNewRoom(p => ({ ...p, capacity: e.target.value }))} />
-                </div>
-                <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
-                  <button className="primary-btn" style={{ justifyContent: 'center', minHeight: 38 }} onClick={addRoom} disabled={loading}><Plus size={14} /> Add</button>
-                  <button onClick={() => setShowAddRoom(false)} style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid var(--border-dim)', borderRadius: 8, color: 'var(--text-muted)', cursor: 'pointer', padding: '0 14px', minHeight: 38 }}>Cancel</button>
+
+                <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: 4 }}>
+                  <button
+                    onClick={() => setShowAddRoom(false)}
+                    style={{
+                      background: 'rgba(255,255,255,0.06)',
+                      border: '1px solid var(--border-dim)',
+                      borderRadius: 8,
+                      color: 'var(--text-muted)',
+                      cursor: 'pointer',
+                      padding: '0 16px',
+                      minHeight: 36,
+                      fontSize: '0.8rem'
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    className="primary-btn"
+                    style={{ justifyContent: 'center', minHeight: 36, padding: '0 20px', fontSize: '0.82rem' }}
+                    onClick={addRoom}
+                    disabled={loading}
+                  >
+                    <Plus size={14} /> Add Room
+                  </button>
                 </div>
               </div>
             )}
 
-            <div style={{ display: 'flex', gap: '1rem', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-              {[{ color: 'var(--success)', label: 'Available' }, { color: 'var(--warning)', label: 'Partial' }, { color: 'var(--danger)', label: 'Full' }].map(l => (
-                <div key={l.label} style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                  <div style={{ width: 9, height: 9, borderRadius: '50%', background: l.color }} />
+            {/* Occupancy Legends */}
+            <div style={{ display: 'flex', gap: '0.75rem', fontSize: '0.72rem', color: 'var(--text-muted)', flexWrap: 'wrap' }}>
+              {[
+                { color: 'var(--success)', label: 'Available (Vacant Beds)' },
+                { color: 'var(--warning)', label: 'Partial Occupancy' },
+                { color: 'var(--danger)', label: 'Full (100% Occupied)' }
+              ].map(l => (
+                <div key={l.label} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(255,255,255,0.03)', padding: '4px 10px', borderRadius: 20, border: '1px solid rgba(255,255,255,0.06)' }}>
+                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: l.color, boxShadow: `0 0 6px ${l.color}` }} />
                   {l.label}
                 </div>
               ))}
             </div>
 
             {loadingFloor ? (
-              <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>Loading floor plan…</div>
+              <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
+                <RefreshCw size={24} className="spin" style={{ opacity: 0.5, marginBottom: '0.5rem' }} />
+                <div>Loading floor plan…</div>
+              </div>
             ) : floorData && Object.keys(floorData.floors || {}).length > 0 ? (
-              Object.entries(floorData.floors as Record<string, any[]>).sort((a, b) => Number(a[0]) - Number(b[0])).map(([floor, rooms]) => (
-                <div key={floor} style={{ border: '1px solid var(--border-dim)', borderRadius: 14, overflow: 'hidden' }}>
-                  <div style={{ padding: '0.875rem 1.25rem', background: 'rgba(255,255,255,0.03)', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: 700 }}
-                    onClick={() => toggleFloor(Number(floor))}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <Layers3 size={15} color="var(--primary)" />
-                      Floor {floor}
-                      <span style={{ fontWeight: 400, fontSize: '0.72rem', color: 'var(--text-muted)' }}>{(rooms as any[]).length} rooms</span>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                        {(rooms as any[]).reduce((s, r) => s + r.occupied, 0)}/{(rooms as any[]).reduce((s, r) => s + r.capacity, 0)} occupied
-                      </span>
-                      {expandedFloors.has(Number(floor)) ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
-                    </div>
-                  </div>
+              Object.entries(floorData.floors as Record<string, any[]>).sort((a, b) => Number(a[0]) - Number(b[0])).map(([floor, rooms]) => {
+                const totalCap = (rooms as any[]).reduce((s, r) => s + r.capacity, 0);
+                const totalOcc = (rooms as any[]).reduce((s, r) => s + r.occupied, 0);
+                const occPct = totalCap > 0 ? Math.round((totalOcc / totalCap) * 100) : 0;
+                const isExpanded = expandedFloors.has(Number(floor));
 
-                  {expandedFloors.has(Number(floor)) && (
-                    <div className="room-grid" style={{ padding: '1rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(175px, 1fr))', gap: '0.75rem' }}>
-                      {(rooms as any[]).map((room: any) => {
-                        const statusColor = room.status === 'available' ? 'var(--success)' : room.status === 'full' ? 'var(--danger)' : 'var(--warning)';
-                        return (
-                          <div key={room.id} style={{ border: '1px solid rgba(255,255,255,0.07)', borderRadius: 12, padding: '0.875rem', background: 'rgba(255,255,255,0.02)', transition: 'all 0.2s' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                              <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                                <Home size={13} color="var(--primary)" />
-                                <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>{room.roomNumber}</span>
-                              </div>
-                              <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-                                <div style={{ width: 8, height: 8, borderRadius: '50%', background: statusColor }} />
-                                <button style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--danger)', opacity: 0.6, padding: 2 }} onClick={() => deleteRoom(room.id)} title="Delete room">
-                                  <Trash2 size={13} />
-                                </button>
-                              </div>
-                            </div>
-                            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.625rem' }}>{room.capacity} beds · {room.occupied} occupied</div>
-                            <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
-                              {room.beds.map((bed: any) => (
-                                <div key={bed.id} title={bed.studentName || 'Empty'} style={{
-                                  width: 30, height: 30, borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                  background: bed.status === 'occupied' ? 'rgba(249,115,22,0.18)' : 'rgba(34,197,94,0.1)',
-                                  border: `1px solid ${bed.status === 'occupied' ? 'rgba(249,115,22,0.35)' : 'rgba(34,197,94,0.2)'}`,
-                                  fontSize: '0.65rem', fontWeight: 700, color: bed.status === 'occupied' ? 'var(--primary)' : 'var(--success)',
-                                  cursor: 'default'
-                                }}>
-                                  {bed.bedNumber}
-                                </div>
-                              ))}
-                            </div>
-                            {room.beds.some((b: any) => b.studentName) && (
-                              <div style={{ marginTop: '0.5rem', fontSize: '0.63rem', color: 'var(--text-muted)', lineHeight: 1.7 }}>
-                                {room.beds.filter((b: any) => b.studentName).map((b: any) => (
-                                  <div key={b.id}><span style={{ color: 'var(--primary)', fontWeight: 600 }}>B{b.bedNumber}:</span> {b.studentName}</div>
-                                ))}
-                              </div>
-                            )}
+                return (
+                  <div key={floor} style={{ border: '1px solid rgba(255,255,255,0.08)', borderRadius: 16, overflow: 'hidden', background: 'rgba(255,255,255,0.02)' }}>
+                    {/* Floor Header Bar */}
+                    <div
+                      style={{
+                        padding: '0.875rem 1.15rem',
+                        background: isExpanded ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.02)',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        fontWeight: 700,
+                        borderBottom: isExpanded ? '1px solid rgba(255,255,255,0.06)' : 'none',
+                        transition: 'background 0.2s ease'
+                      }}
+                      onClick={() => toggleFloor(Number(floor))}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <div style={{
+                          width: 28, height: 28, borderRadius: 8,
+                          background: 'rgba(249,115,22,0.18)',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          border: '1px solid rgba(249,115,22,0.3)'
+                        }}>
+                          <Layers3 size={15} color="var(--primary)" />
+                        </div>
+                        <div>
+                          <span style={{ fontSize: '0.92rem', fontWeight: 800, color: '#fff' }}>Floor {floor}</span>
+                          <span style={{ fontWeight: 500, fontSize: '0.72rem', color: 'var(--text-muted)', marginLeft: 8 }}>
+                            {(rooms as any[]).length} rooms
+                          </span>
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
+                          <span style={{ fontSize: '0.72rem', color: totalOcc === totalCap ? 'var(--danger)' : 'var(--text-muted)', fontWeight: 600 }}>
+                            {totalOcc}/{totalCap} beds ({occPct}%)
+                          </span>
+                          <div style={{ width: 60, height: 4, background: 'rgba(255,255,255,0.08)', borderRadius: 3, overflow: 'hidden' }}>
+                            <div style={{
+                              height: '100%',
+                              width: `${occPct}%`,
+                              background: occPct === 100 ? 'var(--danger)' : occPct > 50 ? 'var(--primary)' : 'var(--success)',
+                              borderRadius: 3
+                            }} />
                           </div>
-                        );
-                      })}
+                        </div>
+                        {isExpanded ? <ChevronDown size={17} color="var(--primary)" /> : <ChevronRight size={17} color="var(--text-muted)" />}
+                      </div>
                     </div>
-                  )}
-                </div>
-              ))
+
+                    {/* Rooms in Floor */}
+                    {isExpanded && (
+                      <div
+                        className="room-grid"
+                        style={{
+                          padding: isMobile ? '0.75rem' : '1rem',
+                          display: 'grid',
+                          gridTemplateColumns: isMobile ? 'repeat(auto-fill, minmax(140px, 1fr))' : 'repeat(auto-fill, minmax(175px, 1fr))',
+                          gap: '0.65rem'
+                        }}
+                      >
+                        {(rooms as any[]).map((room: any) => {
+                          const statusColor = room.status === 'available' ? 'var(--success)' : room.status === 'full' ? 'var(--danger)' : 'var(--warning)';
+                          return (
+                            <div
+                              key={room.id}
+                              style={{
+                                border: '1px solid rgba(255,255,255,0.07)',
+                                borderRadius: 12,
+                                padding: '0.75rem',
+                                background: 'rgba(255,255,255,0.02)',
+                                transition: 'all 0.2s',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                justifyContent: 'space-between'
+                              }}
+                            >
+                              <div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+                                  <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                                    <Home size={13} color="var(--primary)" />
+                                    <span style={{ fontWeight: 800, fontSize: '0.88rem', color: '#fff' }}>{room.roomNumber}</span>
+                                  </div>
+                                  <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: statusColor, boxShadow: `0 0 5px ${statusColor}` }} />
+                                    <button
+                                      style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--danger)', opacity: 0.6, padding: 2 }}
+                                      onClick={() => deleteRoom(room.id)}
+                                      title="Delete room"
+                                    >
+                                      <Trash2 size={12} />
+                                    </button>
+                                  </div>
+                                </div>
+
+                                <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
+                                  {room.capacity} beds · {room.occupied} occupied
+                                </div>
+
+                                <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                                  {room.beds.map((bed: any) => (
+                                    <div
+                                      key={bed.id}
+                                      title={bed.studentName || 'Empty'}
+                                      style={{
+                                        width: 28,
+                                        height: 28,
+                                        borderRadius: 7,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        background: bed.status === 'occupied' ? 'rgba(249,115,22,0.18)' : 'rgba(34,197,94,0.1)',
+                                        border: `1px solid ${bed.status === 'occupied' ? 'rgba(249,115,22,0.35)' : 'rgba(34,197,94,0.2)'}`,
+                                        fontSize: '0.65rem',
+                                        fontWeight: 800,
+                                        color: bed.status === 'occupied' ? 'var(--primary)' : 'var(--success)',
+                                        cursor: 'default'
+                                      }}
+                                    >
+                                      B{bed.bedNumber}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+
+                              {room.beds.some((b: any) => b.studentName) && (
+                                <div style={{ marginTop: '0.5rem', paddingTop: '0.4rem', borderTop: '1px solid rgba(255,255,255,0.05)', fontSize: '0.63rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+                                  {room.beds.filter((b: any) => b.studentName).map((b: any) => (
+                                    <div key={b.id} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                      <span style={{ color: 'var(--primary)', fontWeight: 700 }}>B{b.bedNumber}:</span> {b.studentName}
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })
             ) : (
-              <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>No rooms yet. Click "Add Room" to get started.</div>
+              <div style={{ textAlign: 'center', padding: '2.5rem', color: 'var(--text-muted)', background: 'rgba(255,255,255,0.02)', borderRadius: 14 }}>
+                No rooms added yet. Click "+ Add Room" to configure your floor plan.
+              </div>
             )}
           </>
         )}

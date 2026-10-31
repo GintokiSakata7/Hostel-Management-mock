@@ -2765,3 +2765,23 @@ select option[value=""],
   }
 }
 
+/* ===== Building & Floor Mobile Optimizations ===== */
+@media (max-width: 768px) {
+  .room-card-v2 {
+    background: rgba(24, 27, 36, 0.75);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.28);
+  }
+
+  .velozty-canvas-container {
+    background: rgba(15, 18, 25, 0.5) !important;
+    border-radius: 16px !important;
+    border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  }
+
+  .room-grid {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)) !important;
+    gap: 8px !important;
+  }
+}

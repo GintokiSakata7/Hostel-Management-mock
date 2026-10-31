@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { Calendar, IndianRupee, BedDouble, Layers3, Search, Plus, Printer, Banknote, Smartphone, CheckCircle2, Phone, GraduationCap, User, XCircle, Home, Trash2, GripVertical, UserX, ArrowRightLeft } from 'lucide-react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { Calendar, IndianRupee, BedDouble, Layers3, Search, Plus, Printer, Banknote, Smartphone, CheckCircle2, Phone, GraduationCap, User, XCircle, Home, Trash2, GripVertical, UserX, ArrowRightLeft, ChevronDown, ChevronRight, Check, ArrowRight } from 'lucide-react';
 import Modal from '../components/Modal';
 import { useToast } from '../components/ToastContext';
 import { PrintReceiptModal } from './Fees';
@@ -183,6 +183,7 @@ function BedRow({
 function PremiumRoomCard({ room, onAllocate, onPay, onPrint, onStudentClick, onUnpay, onDeallocate, onTransfer, onOpenTransferModal, isMobile, onOpenMobileBeds }: {
   room: any; onRoomClick?: () => void; onAllocate: (bed: any) => void; onPay: (bed: any) => void; onPrint: (bed: any) => void; onStudentClick: (bed: any) => void; onUnpay: (bed: any) => void; onDeallocate: (bed: any) => void; onTransfer: (sourceBedId: string, targetBedId: string) => void; onOpenTransferModal?: (bed: any) => void; isMobile?: boolean; onOpenMobileBeds?: () => void;
 }) {
+  const [expandedMobile, setExpandedMobile] = useState(false);
   const sortedBeds = [...(room.beds || [])].sort((a: any, b: any) => (a.bedIndex || a.bedNumber || 0) - (b.bedIndex || b.bedNumber || 0));
   const paidCount = sortedBeds.filter((b: any) => b.status === 'occupied' && (b.feeStatus === 'Paid' || b.feeStatus === 'Completed')).length;
   const pendingCount = sortedBeds.filter((b: any) => b.status === 'occupied' && b.feeStatus === 'Pending').length;
@@ -193,51 +194,243 @@ function PremiumRoomCard({ room, onAllocate, onPay, onPrint, onStudentClick, onU
 
   return (
     <div className="room-card-v2">
-      {/* Room header — compact */}
-      <div style={{
-        padding: '14px 16px 12px',
-        borderBottom: '1px solid rgba(255,255,255,0.05)',
-        cursor: isMobile ? 'pointer' : 'default'
-      }}
+      {/* Room header */}
+      <div
+        style={{
+          padding: '13px 15px 11px',
+          borderBottom: '1px solid rgba(255,255,255,0.06)',
+          cursor: isMobile ? 'pointer' : 'default',
+          background: isMobile ? 'rgba(255,255,255,0.015)' : 'transparent'
+        }}
         onClick={() => { if (isMobile && onOpenMobileBeds) onOpenMobileBeds(); }}
       >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 9 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <div style={{
               width: 34, height: 34, borderRadius: 10,
-              background: `rgba(${room.status === 'available' ? '34,197,94' : room.status === 'full' ? '239,68,68' : '249,115,22'},0.08)`,
+              background: `rgba(${room.status === 'available' ? '34,197,94' : room.status === 'full' ? '239,68,68' : '249,115,22'},0.1)`,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              border: `1px solid ${statusColor}25`
+              border: `1px solid ${statusColor}35`,
+              boxShadow: `0 0 10px ${statusColor}18`
             }}>
               <Home size={16} color={statusColor} />
             </div>
             <div>
-              <div style={{ fontWeight: 800, fontSize: '1.05rem', color: '#fff', letterSpacing: -0.3, lineHeight: 1 }}>{room.id}</div>
-              <div style={{ color: 'rgba(255,255,255,0.35)', fontSize: '0.68rem', marginTop: 3 }}>
+              <div style={{ fontWeight: 800, fontSize: '1.05rem', color: '#fff', letterSpacing: -0.3, lineHeight: 1 }}>
+                Room {room.id}
+              </div>
+              <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.68rem', marginTop: 3 }}>
                 Floor {room.floor} · {room.capacity}-bed
               </div>
             </div>
           </div>
           
-          {/* Clear, labeled status pills */}
+          {/* Labeled status pills */}
           <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-            {paidCount > 0 && <span style={{ fontSize: '0.62rem', fontWeight: 700, padding: '2px 8px', borderRadius: 10, background: 'rgba(34,197,94,0.14)', color: '#22c55e', border: '1px solid rgba(34,197,94,0.3)' }}>{paidCount} Paid</span>}
-            {pendingCount > 0 && <span style={{ fontSize: '0.62rem', fontWeight: 700, padding: '2px 8px', borderRadius: 10, background: 'rgba(234,179,8,0.14)', color: '#eab308', border: '1px solid rgba(234,179,8,0.3)' }}>{pendingCount} Due</span>}
-            {emptyCount > 0 && <span style={{ fontSize: '0.62rem', fontWeight: 600, padding: '2px 8px', borderRadius: 10, background: 'rgba(255,255,255,0.06)', color: 'var(--text-muted)', border: '1px solid rgba(255,255,255,0.08)' }}>{emptyCount} Vacant</span>}
+            {paidCount > 0 && (
+              <span style={{ fontSize: '0.62rem', fontWeight: 700, padding: '2px 7px', borderRadius: 10, background: 'rgba(34,197,94,0.14)', color: '#22c55e', border: '1px solid rgba(34,197,94,0.3)' }}>
+                {paidCount} Paid
+              </span>
+            )}
+            {pendingCount > 0 && (
+              <span style={{ fontSize: '0.62rem', fontWeight: 700, padding: '2px 7px', borderRadius: 10, background: 'rgba(234,179,8,0.14)', color: '#eab308', border: '1px solid rgba(234,179,8,0.3)' }}>
+                {pendingCount} Due
+              </span>
+            )}
+            {emptyCount > 0 && (
+              <span style={{ fontSize: '0.62rem', fontWeight: 600, padding: '2px 7px', borderRadius: 10, background: 'rgba(255,255,255,0.06)', color: 'var(--text-muted)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                {emptyCount} Vacant
+              </span>
+            )}
           </div>
         </div>
 
-        {/* Thin occupancy bar */}
+        {/* Occupancy bar */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <div style={{ flex: 1, height: 4, background: 'rgba(255,255,255,0.06)', borderRadius: 4, overflow: 'hidden' }}>
-            <div style={{ height: '100%', width: `${occupancyPct}%`, background: `linear-gradient(90deg, ${statusColor}, ${statusColor}99)`, borderRadius: 4, transition: 'width 0.5s ease' }} />
+          <div style={{ flex: 1, height: 4, background: 'rgba(255,255,255,0.08)', borderRadius: 4, overflow: 'hidden' }}>
+            <div style={{
+              height: '100%',
+              width: `${occupancyPct}%`,
+              background: `linear-gradient(90deg, ${statusColor}, ${statusColor}cc)`,
+              borderRadius: 4,
+              transition: 'width 0.5s cubic-bezier(0.16, 1, 0.3, 1)'
+            }} />
           </div>
-          <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 700, minWidth: 28, textAlign: 'right' }}>{room.occupied}/{room.capacity}</span>
+          <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 700, minWidth: 28, textAlign: 'right' }}>
+            {room.occupied}/{room.capacity}
+          </span>
         </div>
       </div>
 
-      {/* Bed rows — compact list sorted strictly 1..N */}
-      {!isMobile && (
+      {/* Mobile Inline Bed Rows */}
+      {isMobile ? (
+        <div style={{ padding: '8px 10px 10px', display: 'flex', flexDirection: 'column', gap: '5px' }}>
+          {(expandedMobile ? sortedBeds : sortedBeds.slice(0, 3)).map((bed: any, idx: number) => {
+            const isOccupied = bed.status === 'occupied';
+            const isPaid = bed.feeStatus === 'Paid' || bed.feeStatus === 'Completed';
+            const studentName = bed.student || bed.studentName;
+            return (
+              <div
+                key={bed.id || idx}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '7px 9px',
+                  borderRadius: 10,
+                  background: isOccupied ? 'rgba(255,255,255,0.025)' : 'rgba(34,197,94,0.035)',
+                  border: isOccupied 
+                    ? (isPaid ? '1px solid rgba(255,255,255,0.06)' : '1px solid rgba(234,179,8,0.25)')
+                    : '1px dashed rgba(34,197,94,0.25)',
+                  gap: '8px'
+                }}
+              >
+                {/* Left: Bed Index + Resident name */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flex: 1 }}>
+                  <span style={{
+                    fontSize: '0.66rem',
+                    fontWeight: 800,
+                    padding: '2px 6px',
+                    borderRadius: 6,
+                    background: isOccupied ? 'rgba(249,115,22,0.16)' : 'rgba(34,197,94,0.14)',
+                    color: isOccupied ? 'var(--primary)' : 'var(--success)',
+                    border: `1px solid ${isOccupied ? 'rgba(249,115,22,0.3)' : 'rgba(34,197,94,0.25)'}`,
+                    flexShrink: 0
+                  }}>
+                    B{bed.bedIndex || bed.bedNumber || idx + 1}
+                  </span>
+                  
+                  {isOccupied ? (
+                    <div 
+                      onClick={(e) => { e.stopPropagation(); onStudentClick(bed); }}
+                      style={{ 
+                        fontWeight: 700, 
+                        fontSize: '0.82rem', 
+                        color: '#fff', 
+                        overflow: 'hidden', 
+                        textOverflow: 'ellipsis', 
+                        whiteSpace: 'nowrap',
+                        cursor: 'pointer'
+                      }}
+                      title="View Student profile"
+                    >
+                      {studentName}
+                    </div>
+                  ) : (
+                    <span style={{ fontSize: '0.74rem', color: 'rgba(255,255,255,0.35)', fontStyle: 'italic' }}>
+                      Vacant Bed
+                    </span>
+                  )}
+                </div>
+
+                {/* Right: Status Pill & 1-tap Actions */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexShrink: 0 }}>
+                  {isOccupied ? (
+                    <>
+                      {isPaid ? (
+                        <span style={{
+                          fontSize: '0.64rem',
+                          fontWeight: 700,
+                          padding: '2px 6px',
+                          borderRadius: 6,
+                          background: 'rgba(34,197,94,0.12)',
+                          color: '#22c55e',
+                          border: '1px solid rgba(34,197,94,0.25)'
+                        }}>
+                          Paid
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); onPay(bed); }}
+                          style={{
+                            fontSize: '0.68rem',
+                            fontWeight: 700,
+                            padding: '3px 8px',
+                            borderRadius: 6,
+                            background: 'linear-gradient(135deg, #eab308, #ca8a04)',
+                            color: '#000',
+                            border: 'none',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '3px',
+                            boxShadow: '0 2px 6px rgba(234,179,8,0.3)'
+                          }}
+                        >
+                          <IndianRupee size={10} strokeWidth={3} /> Pay
+                        </button>
+                      )}
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); onAllocate(bed); }}
+                      style={{
+                        fontSize: '0.68rem',
+                        fontWeight: 700,
+                        padding: '3px 8px',
+                        borderRadius: 6,
+                        background: 'rgba(34,197,94,0.15)',
+                        color: '#22c55e',
+                        border: '1px solid rgba(34,197,94,0.3)',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '3px'
+                      }}
+                    >
+                      <Plus size={11} strokeWidth={2.5} /> Assign
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+
+          {/* Show more toggle or full room details bottom button */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4, paddingTop: 4, borderTop: '1px solid rgba(255,255,255,0.04)' }}>
+            {sortedBeds.length > 3 ? (
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); setExpandedMobile(v => !v); }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--primary)',
+                  fontSize: '0.72rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  padding: '2px 4px'
+                }}
+              >
+                {expandedMobile ? 'Show less' : `+${sortedBeds.length - 3} more beds`}
+              </button>
+            ) : <div />}
+
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); if (onOpenMobileBeds) onOpenMobileBeds(); }}
+              style={{
+                background: 'rgba(255,255,255,0.05)',
+                border: '1px solid rgba(255,255,255,0.08)',
+                color: 'var(--text-muted)',
+                fontSize: '0.68rem',
+                fontWeight: 600,
+                borderRadius: 6,
+                cursor: 'pointer',
+                padding: '3px 8px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '3px'
+              }}
+            >
+              Full Details <ChevronRight size={11} />
+            </button>
+          </div>
+        </div>
+      ) : (
+        /* Desktop Bed Rows */
         <div style={{ padding: '6px 8px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
           {sortedBeds.map((bed: any, idx: number) => (
             <BedRow
@@ -1281,58 +1474,132 @@ export default function Rooms() {
 
   const activeFloorRooms = selectedFloor ? filteredRooms.filter(r => r.floor === selectedFloor) : filteredRooms;
 
+  // Rich floor statistics for mobile navigation chips & HUD banner
+  const floorStats = useMemo(() => {
+    const stats: Record<string, { rooms: number; capacity: number; occupied: number; pendingFees: number; paidFees: number }> = {};
+    let totalRooms = 0, totalCapacity = 0, totalOccupied = 0, totalPending = 0, totalPaid = 0;
+
+    filteredRooms.forEach(room => {
+      const fKey = String(room.floor);
+      if (!stats[fKey]) {
+        stats[fKey] = { rooms: 0, capacity: 0, occupied: 0, pendingFees: 0, paidFees: 0 };
+      }
+      stats[fKey].rooms += 1;
+      stats[fKey].capacity += (room.capacity || 0);
+      stats[fKey].occupied += (room.occupied || 0);
+
+      (room.beds || []).forEach((b: any) => {
+        if (b.status === 'occupied') {
+          if (b.feeStatus === 'Pending') {
+            stats[fKey].pendingFees += 1;
+            totalPending += 1;
+          } else if (b.feeStatus === 'Paid' || b.feeStatus === 'Completed') {
+            stats[fKey].paidFees += 1;
+            totalPaid += 1;
+          }
+        }
+      });
+
+      totalRooms += 1;
+      totalCapacity += (room.capacity || 0);
+      totalOccupied += (room.occupied || 0);
+    });
+
+    stats['all'] = {
+      rooms: totalRooms,
+      capacity: totalCapacity,
+      occupied: totalOccupied,
+      pendingFees: totalPending,
+      paidFees: totalPaid
+    };
+
+    return stats;
+  }, [filteredRooms]);
+
+  const currentStats = selectedFloor ? (floorStats[selectedFloor] || { rooms: 0, capacity: 0, occupied: 0, pendingFees: 0, paidFees: 0 }) : (floorStats['all'] || { rooms: 0, capacity: 0, occupied: 0, pendingFees: 0, paidFees: 0 });
+  const currentOccPct = currentStats.capacity > 0 ? Math.round((currentStats.occupied / currentStats.capacity) * 100) : 0;
+
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
       {/* Top Header & Tab Navigation */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: isMobile ? 'wrap' : 'nowrap', width: isMobile ? '100%' : 'auto' }}>
-          <h1 className="page-title" style={{ margin: 0, fontSize: isMobile ? '1.25rem' : '1.4rem' }}>Hostel Virtual Workspace</h1>
+          <h1 className="page-title" style={{ margin: 0, fontSize: isMobile ? '1.2rem' : '1.4rem' }}>Hostel Virtual Workspace</h1>
+          
+          {/* Segmented Floor Tabs */}
           <div style={{
             display: 'flex',
-            background: 'rgba(255,255,255,0.06)',
-            borderRadius: 12,
-            padding: 3,
-            border: '1px solid rgba(255,255,255,0.1)',
+            background: 'rgba(255,255,255,0.05)',
+            borderRadius: 14,
+            padding: 4,
+            border: '1px solid rgba(255,255,255,0.08)',
             overflowX: 'auto',
             maxWidth: isMobile ? '100%' : 'none',
             WebkitOverflowScrolling: 'touch',
-            scrollbarWidth: 'none'
+            scrollbarWidth: 'none',
+            gap: 4
           }}>
             <button
               onClick={() => setSelectedFloor(null)}
               style={{
-                padding: '5px 14px', borderRadius: 9, border: 'none',
+                padding: '5px 12px', borderRadius: 10, border: 'none',
                 background: selectedFloor === null ? 'var(--primary)' : 'transparent',
                 color: selectedFloor === null ? '#fff' : 'var(--text-muted)',
                 fontWeight: 700, fontSize: '0.78rem', cursor: 'pointer', transition: 'all 0.2s',
-                whiteSpace: 'nowrap', flexShrink: 0
+                whiteSpace: 'nowrap', flexShrink: 0,
+                boxShadow: selectedFloor === null ? '0 2px 8px rgba(249,115,22,0.35)' : 'none',
+                display: 'flex', alignItems: 'center', gap: '6px'
               }}
             >
-              All Floors
+              <span>All Floors</span>
+              <span style={{
+                fontSize: '0.66rem',
+                padding: '1px 5px',
+                borderRadius: 6,
+                background: selectedFloor === null ? 'rgba(0,0,0,0.25)' : 'rgba(255,255,255,0.08)',
+                color: selectedFloor === null ? '#fff' : 'var(--text-muted)'
+              }}>
+                {floorStats['all']?.rooms || 0}
+              </span>
             </button>
-            {floors.map(f => (
-              <button
-                key={f}
-                onClick={() => setSelectedFloor(f)}
-                style={{
-                  padding: '5px 14px', borderRadius: 9, border: 'none',
-                  background: selectedFloor === f ? 'var(--primary)' : 'transparent',
-                  color: selectedFloor === f ? '#fff' : 'var(--text-muted)',
-                  fontWeight: 700, fontSize: '0.78rem', cursor: 'pointer', transition: 'all 0.2s',
-                  whiteSpace: 'nowrap', flexShrink: 0
-                }}
-              >
-                {formatFloorName(f)}
-              </button>
-            ))}
+            {floors.map(f => {
+              const fStat = floorStats[String(f)];
+              const isSelected = selectedFloor === f;
+              return (
+                <button
+                  key={f}
+                  onClick={() => setSelectedFloor(f)}
+                  style={{
+                    padding: '5px 12px', borderRadius: 10, border: 'none',
+                    background: isSelected ? 'var(--primary)' : 'transparent',
+                    color: isSelected ? '#fff' : 'var(--text-muted)',
+                    fontWeight: 700, fontSize: '0.78rem', cursor: 'pointer', transition: 'all 0.2s',
+                    whiteSpace: 'nowrap', flexShrink: 0,
+                    boxShadow: isSelected ? '0 2px 8px rgba(249,115,22,0.35)' : 'none',
+                    display: 'flex', alignItems: 'center', gap: '6px'
+                  }}
+                >
+                  <span>{formatFloorName(f)}</span>
+                  <span style={{
+                    fontSize: '0.66rem',
+                    padding: '1px 5px',
+                    borderRadius: 6,
+                    background: isSelected ? 'rgba(0,0,0,0.25)' : 'rgba(255,255,255,0.08)',
+                    color: isSelected ? '#fff' : 'var(--text-muted)'
+                  }}>
+                    {fStat?.rooms || 0}
+                  </span>
+                </button>
+              );
+            })}
           </div>
         </div>
 
         <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap', width: isMobile ? '100%' : 'auto', justifyContent: isMobile ? 'space-between' : 'flex-end' }}>
           {/* Status Legends */}
-          {[{ color: 'var(--success)', label: 'Paid' }, { color: 'var(--warning)', label: 'Pending' }, { color: 'rgba(255,255,255,0.3)', label: 'Empty' }].map(({ color, label }) => (
-            <div key={label} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.76rem', color: 'var(--text-muted)', background: 'rgba(0,0,0,0.3)', padding: '4px 10px', borderRadius: 20, border: '1px solid rgba(255,255,255,0.08)' }}>
-              <span style={{ width: 8, height: 8, borderRadius: '50%', background: color, boxShadow: `0 0 8px ${color}`, display: 'inline-block' }} />{label}
+          {[{ color: 'var(--success)', label: 'Paid' }, { color: 'var(--warning)', label: 'Due' }, { color: 'rgba(255,255,255,0.3)', label: 'Empty' }].map(({ color, label }) => (
+            <div key={label} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.74rem', color: 'var(--text-muted)', background: 'rgba(0,0,0,0.3)', padding: '4px 10px', borderRadius: 20, border: '1px solid rgba(255,255,255,0.08)' }}>
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: color, boxShadow: `0 0 6px ${color}`, display: 'inline-block' }} />{label}
             </div>
           ))}
 
@@ -1347,8 +1614,61 @@ export default function Rooms() {
         </div>
       </div>
 
+      {/* Mobile Floor & Workspace Summary HUD */}
+      {isMobile && (
+        <div style={{
+          background: 'linear-gradient(135deg, rgba(249,115,22,0.1), rgba(255,255,255,0.02))',
+          border: '1px solid rgba(249,115,22,0.25)',
+          borderRadius: 14,
+          padding: '12px 14px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '8px',
+          boxShadow: '0 4px 16px rgba(0,0,0,0.2)'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{
+                width: 28, height: 28, borderRadius: 8,
+                background: 'rgba(249,115,22,0.2)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: 'var(--primary)', fontWeight: 800, fontSize: '0.8rem'
+              }}>
+                {selectedFloor ? `F${selectedFloor}` : 'ALL'}
+              </div>
+              <div>
+                <div style={{ fontWeight: 800, fontSize: '0.9rem', color: '#fff' }}>
+                  {selectedFloor ? formatFloorName(selectedFloor) : 'All Floors'} Summary
+                </div>
+                <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
+                  {currentStats.rooms} Rooms · {currentStats.occupied}/{currentStats.capacity} Beds ({currentOccPct}%)
+                </div>
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: '4px' }}>
+              {currentStats.pendingFees > 0 && (
+                <span style={{ fontSize: '0.65rem', fontWeight: 700, padding: '2px 8px', borderRadius: 8, background: 'rgba(234,179,8,0.15)', color: '#eab308', border: '1px solid rgba(234,179,8,0.3)' }}>
+                  {currentStats.pendingFees} Fees Due
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Thin smooth progress bar */}
+          <div style={{ height: 5, background: 'rgba(255,255,255,0.08)', borderRadius: 3, overflow: 'hidden' }}>
+            <div style={{
+              height: '100%',
+              width: `${currentOccPct}%`,
+              background: currentOccPct === 100 ? 'var(--danger)' : 'linear-gradient(90deg, var(--primary), #fb923c)',
+              borderRadius: 3,
+              transition: 'width 0.5s ease'
+            }} />
+          </div>
+        </div>
+      )}
+
       {/* Main Full-Width Virtual Workspace Canvas */}
-      <div className="velozty-canvas-container" style={{ padding: isMobile ? '1rem 0.75rem' : '1.5rem', width: '100%' }}>
+      <div className="velozty-canvas-container" style={{ padding: isMobile ? '0.875rem 0.65rem' : '1.5rem', width: '100%' }}>
         {/* Workspace Search & Title */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem', gap: '1rem', flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
@@ -1388,21 +1708,70 @@ export default function Rooms() {
         {loading ? (
           <div style={{ textAlign: 'center', padding: '5rem', color: 'var(--text-muted)' }}>Loading virtual workspace...</div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
             {(selectedFloor ? [selectedFloor] : floors).map(floor => {
               const floorRooms = activeFloorRooms.filter(r => r.floor === floor);
               if (floorRooms.length === 0) return null;
+              const fStat = floorStats[String(floor)] || { rooms: 0, capacity: 0, occupied: 0, pendingFees: 0, paidFees: 0 };
+              const floorPct = fStat.capacity > 0 ? Math.round((fStat.occupied / fStat.capacity) * 100) : 0;
+
               return (
                 <div key={floor} id={`floor-section-${floor}`}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '1rem' }}>
-                    <div style={{ fontSize: '0.72rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: 2, color: 'var(--primary)', padding: '4px 14px', background: 'rgba(249,115,22,0.12)', border: '1px solid rgba(249,115,22,0.3)', borderRadius: 20 }}>
-                      {formatFloorName(floor)} Workspace
+                  {/* Modern Floor Section Header Card */}
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: '0.875rem',
+                    padding: '8px 12px',
+                    background: 'rgba(255,255,255,0.02)',
+                    border: '1px solid rgba(255,255,255,0.07)',
+                    borderRadius: 12
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <div style={{
+                        width: 24, height: 24, borderRadius: 6,
+                        background: 'rgba(249,115,22,0.18)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        color: 'var(--primary)', fontWeight: 800, fontSize: '0.72rem',
+                        border: '1px solid rgba(249,115,22,0.3)'
+                      }}>
+                        F{floor}
+                      </div>
+                      <div>
+                        <span style={{ fontWeight: 800, fontSize: '0.88rem', color: '#fff' }}>
+                          {formatFloorName(floor)}
+                        </span>
+                        <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginLeft: 8 }}>
+                          {floorRooms.length} rooms · {fStat.occupied}/{fStat.capacity} beds ({floorPct}%)
+                        </span>
+                      </div>
                     </div>
-                    <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.08)' }} />
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{floorRooms.length} rooms</span>
+
+                    {!selectedFloor && (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedFloor(floor)}
+                        style={{
+                          background: 'rgba(255,255,255,0.05)',
+                          border: '1px solid rgba(255,255,255,0.1)',
+                          color: 'var(--primary)',
+                          fontSize: '0.68rem',
+                          fontWeight: 700,
+                          padding: '3px 8px',
+                          borderRadius: 6,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '3px'
+                        }}
+                      >
+                        Focus <ArrowRight size={10} />
+                      </button>
+                    )}
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.25rem' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}>
                     {floorRooms.map((room, i) => (
                       <div key={room.id} className="velozty-room-box" style={{ animationDelay: `${i * 0.04}s`, animation: 'slideInUp 0.3s ease-out both' }}>
                         <PremiumRoomCard
