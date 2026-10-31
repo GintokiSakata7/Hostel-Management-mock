@@ -235,15 +235,39 @@ app.get('/api/stats', async (req, res) => {
   const cm = currentMonth();
 
   const isBuildingFiltered = buildingId && buildingId !== 'all';
-  const studentWhere: any = isBuildingFiltered ? { beds: { some: { room: { buildingId } } } } : {};
+  const studentWhere: any = isBuildingFiltered
+    ? {
+        OR: [
+          { beds: { some: { room: { buildingId } } } },
+          { beds: { none: {} } }
+        ]
+      }
+    : {};
   const roomWhere: any = isBuildingFiltered ? { buildingId } : {};
   const bedWhere: any = isBuildingFiltered ? { room: { buildingId } } : {};
   const occupiedBedWhere: any = isBuildingFiltered ? { status: 'occupied', room: { buildingId } } : { status: 'occupied' };
   const complaintWhere: any = isBuildingFiltered
-    ? { status: { in: ['pending', 'in-progress'] }, student: { beds: { some: { room: { buildingId } } } } }
+    ? {
+        status: { in: ['pending', 'in-progress'] },
+        student: {
+          OR: [
+            { beds: { some: { room: { buildingId } } } },
+            { beds: { none: {} } }
+          ]
+        }
+      }
     : { status: { in: ['pending', 'in-progress'] } };
   const feeWhere: any = isBuildingFiltered
-    ? { month: cm, status: 'Completed', student: { beds: { some: { room: { buildingId } } } } }
+    ? {
+        month: cm,
+        status: 'Completed',
+        student: {
+          OR: [
+            { beds: { some: { room: { buildingId } } } },
+            { beds: { none: {} } }
+          ]
+        }
+      }
     : { month: cm, status: 'Completed' };
 
   const [
@@ -279,7 +303,14 @@ app.get('/api/activities', async (req, res) => {
   const { buildingId } = req.query as { buildingId?: string };
   const filterByBuilding = buildingId && buildingId !== 'all';
   const studentWhere: any = filterByBuilding
-    ? { student: { beds: { some: { room: { buildingId } } } } }
+    ? {
+        student: {
+          OR: [
+            { beds: { some: { room: { buildingId } } } },
+            { beds: { none: {} } }
+          ]
+        }
+      }
     : {};
 
   try {
@@ -339,7 +370,12 @@ app.get('/api/students', async (req, res) => {
   const monthlyFee = settings.monthlyFee || 5500;
 
   const studentWhere: any = (buildingId && buildingId !== 'all')
-    ? { beds: { some: { room: { buildingId } } } }
+    ? {
+        OR: [
+          { beds: { some: { room: { buildingId } } } },
+          { beds: { none: {} } }
+        ]
+      }
     : {};
 
   const students = await prisma.student.findMany({
@@ -1346,7 +1382,12 @@ app.get('/api/fees/transactions', async (req, res) => {
   // Default to current month unless 'all=true' is explicitly passed
   const where: any = all === 'true' ? {} : { month: month || currentMonth() };
   if (buildingId && buildingId !== 'all') {
-    where.student = { beds: { some: { room: { buildingId } } } };
+    where.student = {
+      OR: [
+        { beds: { some: { room: { buildingId } } } },
+        { beds: { none: {} } }
+      ]
+    };
   }
 
   const txs = await prisma.fee.findMany({
@@ -1401,7 +1442,12 @@ app.get('/api/fees/monthly-status', async (req, res) => {
   const monthlyFee = settings.monthlyFee || 5500;
 
   const studentWhere: any = (buildingId && buildingId !== 'all')
-    ? { beds: { some: { room: { buildingId } } } }
+    ? {
+        OR: [
+          { beds: { some: { room: { buildingId } } } },
+          { beds: { none: {} } }
+        ]
+      }
     : {};
 
   const students = await prisma.student.findMany({
@@ -1520,7 +1566,12 @@ app.get('/api/reports/rooms', async (req, res) => {
 app.get('/api/reports/students', async (req, res) => {
   const { buildingId } = req.query as { buildingId?: string };
   const studentWhere: any = (buildingId && buildingId !== 'all')
-    ? { beds: { some: { room: { buildingId } } } }
+    ? {
+        OR: [
+          { beds: { some: { room: { buildingId } } } },
+          { beds: { none: {} } }
+        ]
+      }
     : {};
   const students = await prisma.student.findMany({
     where: studentWhere,
@@ -1784,7 +1835,12 @@ app.get('/api/notifications', async (req, res) => {
   const { buildingId } = req.query as { buildingId?: string };
   const filterByBuilding = buildingId && buildingId !== 'all';
   const studentWhere: any = filterByBuilding
-    ? { beds: { some: { room: { buildingId } } } }
+    ? {
+        OR: [
+          { beds: { some: { room: { buildingId } } } },
+          { beds: { none: {} } }
+        ]
+      }
     : {};
   const roomWhere: any = filterByBuilding ? { buildingId } : {};
 

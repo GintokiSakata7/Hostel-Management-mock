@@ -65,7 +65,7 @@ export default function WorkspaceSelector() {
           borderRadius: '12px',
           cursor: 'pointer',
           background: selectedBuildingId === 'all' ? 'rgba(249,115,22,0.18)' : 'rgba(255,255,255,0.03)',
-          color: selectedBuildingId === 'all' ? 'var(--primary)' : '#fff',
+          color: selectedBuildingId === 'all' ? 'var(--primary)' : 'var(--text-main)',
           fontSize: '0.88rem',
           fontWeight: selectedBuildingId === 'all' ? 700 : 500,
           marginBottom: '8px',
@@ -80,7 +80,7 @@ export default function WorkspaceSelector() {
         {selectedBuildingId === 'all' && <Check size={18} />}
       </div>
 
-      <div style={{ height: '1px', background: 'rgba(255,255,255,0.08)', margin: '8px 0' }} />
+      <div style={{ height: '1px', background: 'var(--border-dim)', margin: '8px 0' }} />
 
       {/* Individual Buildings */}
       <div style={{ maxHeight: isMobile ? '300px' : '220px', overflowY: 'auto' }}>
@@ -101,7 +101,7 @@ export default function WorkspaceSelector() {
                 borderRadius: '12px',
                 cursor: 'pointer',
                 background: isSelected ? 'rgba(249,115,22,0.18)' : 'rgba(255,255,255,0.02)',
-                color: isSelected ? 'var(--primary)' : '#fff',
+                color: isSelected ? 'var(--primary)' : 'var(--text-main)',
                 fontSize: '0.88rem',
                 fontWeight: isSelected ? 700 : 500,
                 marginBottom: '6px',

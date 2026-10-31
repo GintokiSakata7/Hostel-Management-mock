@@ -1422,9 +1422,26 @@ export default function Students() {
                     <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>{student.branch || '—'} · {student.year} Year</div>
                   </td>
                   <td data-label="Room / Status">
-                    <div style={{ fontWeight: 500 }}>{student.room}</div>
+                    {student.room !== 'Unallocated' ? (
+                      <div style={{ fontWeight: 500 }}>{student.room}</div>
+                    ) : (
+                      <span style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        padding: '2px 8px',
+                        borderRadius: '6px',
+                        background: 'rgba(239, 68, 68, 0.12)',
+                        border: '1px solid rgba(239, 68, 68, 0.3)',
+                        color: '#ef4444',
+                        fontSize: '0.74rem',
+                        fontWeight: 700
+                      }}>
+                        Unallocated
+                      </span>
+                    )}
                     {student.status === 'Vacated' && (
-                      <span style={{ fontSize: '0.7rem', color: '#ef4444', fontWeight: 600 }}>Vacated / Left</span>
+                      <span style={{ fontSize: '0.7rem', color: '#ef4444', fontWeight: 600, display: 'block', marginTop: '2px' }}>Vacated / Left</span>
                     )}
                   </td>
                   <td data-label="Fee Status">
