@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { Calendar, IndianRupee, BedDouble, Layers3, Search, Plus, Printer, Banknote, Smartphone, CheckCircle2, Phone, GraduationCap, User, XCircle, Home, Trash2, GripVertical, UserX, ArrowRightLeft, ChevronDown, ChevronRight, Check, ArrowRight, X } from 'lucide-react';
+import { Calendar, IndianRupee, BedDouble, Layers3, Search, Plus, Printer, Banknote, Smartphone, CheckCircle2, Phone, GraduationCap, User, XCircle, Home, Trash2, GripVertical, UserX, ArrowRightLeft, ChevronDown, ChevronRight, Check, ArrowRight, X, Clock } from 'lucide-react';
 import Modal from '../components/Modal';
 import { useToast } from '../components/ToastContext';
 import { PrintReceiptModal } from './Fees';
@@ -42,14 +42,29 @@ function BedRow({
 
   const isOccupied = bed.status === 'occupied';
   const isPaid = bed.feeStatus === 'Paid' || bed.feeStatus === 'Completed';
+  const isUpcoming = bed.feeStatus === 'Upcoming';
+  const isNotEnrolled = bed.feeStatus === 'Not Enrolled';
 
-  const dotColor = !isOccupied ? 'rgba(255,255,255,0.2)' : isPaid ? '#22c55e' : '#eab308';
+  const dotColor = !isOccupied
+    ? 'rgba(255,255,255,0.2)'
+    : isPaid
+    ? '#22c55e'
+    : isUpcoming
+    ? '#38bdf8'
+    : isNotEnrolled
+    ? 'rgba(255,255,255,0.25)'
+    : '#eab308';
+
   const rowBg = isDragOver
     ? 'rgba(249,115,22,0.22)'
     : !isOccupied
     ? 'transparent'
     : isPaid
     ? 'rgba(34,197,94,0.04)'
+    : isUpcoming
+    ? 'rgba(56,189,248,0.04)'
+    : isNotEnrolled
+    ? 'transparent'
     : 'rgba(234,179,8,0.04)';
 
   return (
@@ -138,12 +153,7 @@ function BedRow({
       <div style={{ flexShrink: 0, display: 'flex', gap: '3px', alignItems: 'center' }} onClick={e => e.stopPropagation()}>
         {isOccupied ? (
           <>
-            {!isPaid ? (
-              <button className="primary-btn" onClick={onPay}
-                style={{ padding: '3px 8px', fontSize: '0.65rem', borderRadius: 6, minHeight: 0, gap: '3px', boxShadow: '0 1px 6px rgba(249,115,22,0.3)' }}>
-                <IndianRupee size={10} /> Pay
-              </button>
-            ) : (
+            {isPaid ? (
               <>
                 <button onClick={onPrint}
                   style={{ padding: '3px 7px', fontSize: '0.62rem', borderRadius: 5, background: 'rgba(255,255,255,0.05)', color: 'var(--text-muted)', border: '1px solid rgba(255,255,255,0.08)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '3px', transition: 'all 0.15s' }}
@@ -155,6 +165,22 @@ function BedRow({
                   <XCircle size={10} />
                 </button>
               </>
+            ) : isNotEnrolled ? (
+              <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)', padding: '2px 6px', background: 'rgba(255,255,255,0.04)', borderRadius: 4, whiteSpace: 'nowrap' }}>
+                Joined later
+              </span>
+            ) : isUpcoming ? (
+              <button className="primary-btn" onClick={onPay}
+                title={bed.cycleLabel ? `Cycle: ${bed.cycleLabel}` : undefined}
+                style={{ padding: '3px 8px', fontSize: '0.65rem', borderRadius: 6, minHeight: 0, gap: '3px', background: 'rgba(56,189,248,0.15)', color: '#38bdf8', border: '1px solid rgba(56,189,248,0.3)', boxShadow: 'none' }}>
+                <Clock size={10} /> {bed.dueDayLabel ? `Due ${bed.dueDayLabel}` : 'Pay'}
+              </button>
+            ) : (
+              <button className="primary-btn" onClick={onPay}
+                title={bed.cycleLabel ? `Cycle: ${bed.cycleLabel}` : undefined}
+                style={{ padding: '3px 8px', fontSize: '0.65rem', borderRadius: 6, minHeight: 0, gap: '3px', boxShadow: '0 1px 6px rgba(249,115,22,0.3)' }}>
+                <IndianRupee size={10} /> Pay
+              </button>
             )}
 
             {onOpenTransferModal && (
@@ -187,6 +213,7 @@ function PremiumRoomCard({ room, onAllocate, onPay, onPrint, onStudentClick, onU
   const sortedBeds = [...(room.beds || [])].sort((a: any, b: any) => (a.bedIndex || a.bedNumber || 0) - (b.bedIndex || b.bedNumber || 0));
   const paidCount = sortedBeds.filter((b: any) => b.status === 'occupied' && (b.feeStatus === 'Paid' || b.feeStatus === 'Completed')).length;
   const pendingCount = sortedBeds.filter((b: any) => b.status === 'occupied' && b.feeStatus === 'Pending').length;
+  const upcomingCount = sortedBeds.filter((b: any) => b.status === 'occupied' && b.feeStatus === 'Upcoming').length;
   const emptyCount = room.capacity - room.occupied;
   const occupancyPct = room.capacity > 0 ? Math.round((room.occupied / room.capacity) * 100) : 0;
 
@@ -235,6 +262,11 @@ function PremiumRoomCard({ room, onAllocate, onPay, onPrint, onStudentClick, onU
             {pendingCount > 0 && (
               <span style={{ fontSize: '0.62rem', fontWeight: 700, padding: '2px 7px', borderRadius: 10, background: 'rgba(234,179,8,0.14)', color: '#eab308', border: '1px solid rgba(234,179,8,0.3)' }}>
                 {pendingCount} Due
+              </span>
+            )}
+            {upcomingCount > 0 && (
+              <span style={{ fontSize: '0.62rem', fontWeight: 700, padding: '2px 7px', borderRadius: 10, background: 'rgba(56,189,248,0.14)', color: '#38bdf8', border: '1px solid rgba(56,189,248,0.3)' }}>
+                {upcomingCount} Upcoming
               </span>
             )}
             {emptyCount > 0 && (
@@ -456,9 +488,29 @@ function QuickPayModal({ bed, selectedMonth, onClose, onSuccess }: { bed: any; s
   const { showToast } = useToast();
   const { settings } = useSettings();
   const monthlyFee = settings?.monthlyFee || 5500;
+
+  // Build pending months list: existing arrears first (FIFO), then selected month
+  const pendingMonths: { value: string; label: string; cycleLabel?: string }[] = [];
+  const rawPending = bed.pendingMonths || bed.studentObj?.pendingMonths;
+  if (rawPending && rawPending.length > 0) {
+    rawPending.forEach((p: any) => {
+      if (!pendingMonths.some(m => m.value === p.month)) {
+        pendingMonths.push({ value: p.month, label: p.monthLabel || p.month, cycleLabel: p.cycleLabel });
+      }
+    });
+  }
+  if (!pendingMonths.some(m => m.value === selectedMonth)) {
+    const ml = MONTHS.find(m => m.value === selectedMonth)?.label || selectedMonth;
+    pendingMonths.push({ value: selectedMonth, label: ml, cycleLabel: bed.cycleLabel });
+  }
+
+  const defaultMonth = pendingMonths[0]?.value || selectedMonth;
+  const [payMonth, setPayMonth] = useState(defaultMonth);
+  const selectedEntry = pendingMonths.find(m => m.value === payMonth) || pendingMonths[0];
+  const monthLabel = selectedEntry?.label || payMonth;
+
   const [form, setForm] = useState({ amount: monthlyFee, method: 'Cash', upiProvider: 'PhonePe', transactionRef: '', date: new Date().toISOString().split('T')[0] });
   const [saving, setSaving] = useState(false);
-  const monthLabel = MONTHS.find(m => m.value === selectedMonth)?.label || selectedMonth;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault(); setSaving(true);
@@ -467,9 +519,9 @@ function QuickPayModal({ bed, selectedMonth, onClose, onSuccess }: { bed: any; s
       if (!studentId) { showToast('Student not found', 'error'); return; }
       const res = await fetch('/api/fees/pay', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ studentId, month: selectedMonth, amount: form.amount, method: form.method, upiProvider: form.method === 'UPI' ? form.upiProvider : null, transactionRef: form.method === 'UPI' ? form.transactionRef : null, date: form.date })
+        body: JSON.stringify({ studentId, month: payMonth, amount: form.amount, method: form.method, upiProvider: form.method === 'UPI' ? form.upiProvider : null, transactionRef: form.method === 'UPI' ? form.transactionRef : null, date: form.date })
       });
-      if (res.status === 409) { const e = await res.json(); showToast(e.error, 'error'); }
+      if (res.status === 409) { const err = await res.json(); showToast(err.error, 'error'); }
       else if (res.ok) {
         const data = await res.json().catch(() => ({}));
         if (data.emailStatus === 'FAILED') {
@@ -489,8 +541,26 @@ function QuickPayModal({ bed, selectedMonth, onClose, onSuccess }: { bed: any; s
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
         <div style={{ background: 'rgba(249,115,22,0.08)', border: '1px solid rgba(249,115,22,0.2)', borderRadius: 10, padding: '10px 14px' }}>
           <div style={{ fontWeight: 700 }}>{bed.student}</div>
-          <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Bed {bed.bedIndex} · Month: <strong style={{ color: 'var(--primary)' }}>{monthLabel}</strong></div>
+          <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Bed {bed.bedIndex} · Room {bed.room || ''}</div>
         </div>
+
+        {/* FIFO Cycle selector */}
+        <div className="form-group">
+          <label>Billing Cycle to Settle</label>
+          {pendingMonths.length > 1 && (
+            <div style={{ background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 8, padding: '7px 10px', fontSize: '0.76rem', color: '#f87171', marginBottom: 6 }}>
+              ⚠️ Resident has {pendingMonths.length} cycle(s) pending. Oldest is auto-selected.
+            </div>
+          )}
+          <select className="custom-input" value={payMonth} onChange={e => setPayMonth(e.target.value)}>
+            {pendingMonths.map((m, i) => (
+              <option key={m.value} value={m.value}>
+                {i === 0 && pendingMonths.length > 1 ? '⚡ ' : ''}{m.label}{m.cycleLabel ? ` (${m.cycleLabel})` : ''}
+              </option>
+            ))}
+          </select>
+        </div>
+
         <div className="form-group"><label>Amount (₹)</label>
           <input type="number" required className="custom-input" value={form.amount} onChange={e => setForm({ ...form, amount: Number(e.target.value) })} /></div>
         <div className="form-group"><label>Payment Method</label>

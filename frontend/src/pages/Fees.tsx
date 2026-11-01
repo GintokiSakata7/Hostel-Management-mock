@@ -21,6 +21,30 @@ function PaymentModal({ student, selectedMonth, onClose, onSuccess }: {
   const { showToast } = useToast();
   const { settings } = useSettings();
   const monthlyFee = settings?.monthlyFee || 5500;
+
+  // Build pending months list: existing arrears first (FIFO), then selected month
+  const pendingMonths: { value: string; label: string; cycleLabel?: string }[] = [];
+
+  // Add oldest arrears first (if student has them)
+  if (student.pendingMonths && student.pendingMonths.length > 0) {
+    student.pendingMonths.forEach((p: any) => {
+      if (!pendingMonths.some(m => m.value === p.month)) {
+        pendingMonths.push({ value: p.month, label: p.monthLabel || p.month, cycleLabel: p.cycleLabel });
+      }
+    });
+  }
+  // Also add selectedMonth if not already in list
+  if (!pendingMonths.some(m => m.value === selectedMonth)) {
+    const ml = MONTHS.find(m => m.value === selectedMonth)?.label || selectedMonth;
+    pendingMonths.push({ value: selectedMonth, label: ml });
+  }
+
+  // Default to oldest unpaid cycle (FIFO)
+  const defaultMonth = pendingMonths[0]?.value || selectedMonth;
+  const [payMonth, setPayMonth] = useState(defaultMonth);
+  const selectedEntry = pendingMonths.find(m => m.value === payMonth) || pendingMonths[0];
+  const monthLabel = selectedEntry?.label || payMonth;
+
   const [form, setForm] = useState({
     amount: monthlyFee,
     method: 'Cash',
@@ -30,18 +54,17 @@ function PaymentModal({ student, selectedMonth, onClose, onSuccess }: {
   });
   const [saving, setSaving] = useState(false);
 
-  const monthLabel = MONTHS.find(m => m.value === selectedMonth)?.label || selectedMonth;
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
     try {
+      const studentId = student.studentId || student.dbId || student.id;
       const res = await fetch('/api/fees/pay', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          studentId: student.studentId || student.dbId,
-          month: selectedMonth,
+          studentId,
+          month: payMonth,
           amount: form.amount,
           method: form.method,
           upiProvider: form.method === 'UPI' ? form.upiProvider : null,
@@ -77,7 +100,23 @@ function PaymentModal({ student, selectedMonth, onClose, onSuccess }: {
         <div style={{ background: 'rgba(249,115,22,0.08)', border: '1px solid rgba(249,115,22,0.2)', borderRadius: 12, padding: '12px 16px' }}>
           <div style={{ fontWeight: 700, fontSize: '1rem' }}>{student.name}</div>
           <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{student.course}{student.branch ? ` · ${student.branch}` : ''} · {student.room}</div>
-          <div style={{ color: 'var(--primary)', fontSize: '0.8rem', marginTop: 4, display: 'flex', alignItems: 'center', gap: '6px' }}><Calendar size={13} /> Month: <strong>{monthLabel}</strong></div>
+        </div>
+
+        {/* FIFO Cycle selector — shows arrears first */}
+        <div className="form-group">
+          <label>Billing Cycle to Settle</label>
+          {pendingMonths.length > 1 && (
+            <div style={{ background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 8, padding: '7px 10px', fontSize: '0.76rem', color: '#f87171', marginBottom: 6 }}>
+              ⚠️ Resident has {pendingMonths.length} cycle(s) pending. Oldest is auto-selected.
+            </div>
+          )}
+          <select className="custom-input" value={payMonth} onChange={e => setPayMonth(e.target.value)}>
+            {pendingMonths.map((m, i) => (
+              <option key={m.value} value={m.value}>
+                {i === 0 && pendingMonths.length > 1 ? '⚡ ' : ''}{m.label}{m.cycleLabel ? ` (${m.cycleLabel})` : ''}
+              </option>
+            ))}
+          </select>
         </div>
 
         <div className="form-group">
@@ -410,7 +449,7 @@ export default function Fees() {
       const res = await fetch(`/api/reminders/student/${studentId}`, { method: 'POST' });
       const data = await res.json();
       if (res.ok && data.success) {
-        showToast(`🎙️ Voice & Text reminder sent to ${student.name}!`, 'success');
+        showToast(`✉️ Fee reminder invoice emailed to ${student.name}!`, 'success');
         setReminderModalData({
           monthLabel: MONTHS.find(m => m.value === selectedMonth)?.label || selectedMonth,
           totalPendingCount: 1,
@@ -585,13 +624,7 @@ export default function Fees() {
 
                   <div style={{ display: 'flex', gap: '12px', marginTop: 8, fontSize: '0.75rem', paddingTop: 6, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
                     <span style={{ color: '#38bdf8', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                      <Send size={12} /> Telegram: {r.telegramStatus}
-                    </span>
-                    <span style={{ color: '#fbbf24', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                      <PhoneCall size={12} /> Voice Note: {r.telegramVoiceStatus}
-                    </span>
-                    <span style={{ color: '#4ade80', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                      <MessageSquare size={12} /> WhatsApp: {r.whatsappStatus}
+                      <Mail size={12} /> Fee Invoice Emailed: <strong style={{ color: r.emailStatus === 'FAILED' ? '#ef4444' : '#4ade80' }}>{r.emailStatus || 'SENT'}</strong>
                     </span>
                   </div>
                 </div>

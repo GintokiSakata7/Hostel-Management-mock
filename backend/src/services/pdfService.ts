@@ -4,6 +4,7 @@ export interface FeeReceiptData {
   receiptNo: string;
   paymentDate: string;
   monthLabel: string;
+  cycleLabel?: string;
   amount: number;
   method: string;
   upiProvider?: string | null;
@@ -74,7 +75,7 @@ export function generateFeeReceiptPDFBuffer(data: FeeReceiptData): Promise<Buffe
         .stroke();
 
       // Receipt Metadata Box
-      doc.rect(40, 165, 515, 45).fillAndStroke(lightBg, borderColor);
+      doc.rect(40, 165, 515, 48).fillAndStroke(lightBg, borderColor);
 
       doc
         .fillColor(darkText)
@@ -88,6 +89,7 @@ export function generateFeeReceiptPDFBuffer(data: FeeReceiptData): Promise<Buffe
         .font('Helvetica')
         .text(data.paymentDate, 425, 175);
 
+      const cycleDisplay = data.cycleLabel ? `${data.monthLabel} (${data.cycleLabel})` : data.monthLabel;
       doc
         .font('Helvetica-Bold')
         .text('STATUS:', 55, 193)
@@ -95,9 +97,9 @@ export function generateFeeReceiptPDFBuffer(data: FeeReceiptData): Promise<Buffe
         .text('PAID (COMPLETED)', 135, 193)
         .fillColor(darkText)
         .font('Helvetica-Bold')
-        .text('MONTH:', 380, 193)
+        .text('CYCLE:', 290, 193)
         .font('Helvetica')
-        .text(data.monthLabel, 435, 193);
+        .text(cycleDisplay, 345, 193, { width: 200 });
 
       // Student Info Section
       doc
@@ -153,7 +155,7 @@ export function generateFeeReceiptPDFBuffer(data: FeeReceiptData): Promise<Buffe
         .fillColor(darkText)
         .font('Helvetica')
         .text('Hostel Accommodation & Maintenance Fee', 55, 378)
-        .text(data.monthLabel, 280, 378)
+        .text(cycleDisplay, 275, 378, { width: 160 })
         .font('Helvetica-Bold')
         .text(`₹${data.amount.toLocaleString('en-IN')}`, 440, 378, { align: 'right', width: 100 });
 

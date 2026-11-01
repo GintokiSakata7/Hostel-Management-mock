@@ -172,7 +172,7 @@ export async function executeFeeReminderDispatch(): Promise<{
     totalPendingCount: pendingStatuses.length,
     totalPendingAmount: totalArrears,
     results,
-    summaryMessage: `Dispatched text & voice reminders to ${pendingStatuses.length} student(s) with total outstanding dues of ₹${totalArrears.toLocaleString('en-IN')}.`
+    summaryMessage: `Dispatched fee reminder invoices via email to ${pendingStatuses.length} student(s) with total outstanding dues of ₹${totalArrears.toLocaleString('en-IN')}.`
   };
 }
 

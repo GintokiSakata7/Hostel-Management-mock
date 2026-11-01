@@ -23,6 +23,19 @@ export interface StudentDueStatus {
   latestPaidMonth: string | null;
 }
 
+export interface MonthFeeStatus {
+  status: 'Paid' | 'Pending' | 'Upcoming' | 'Not Enrolled';
+  cycleDueDay: number;
+  cycleStart: Date;
+  cycleEnd: Date;
+  cycleLabel: string;      // e.g. "10 Oct 2026 – 09 Nov 2026"
+  amountDue: number;
+  hasAccumulatedArrears: boolean;
+  pendingMonthsCount: number;
+  totalArrearsAmount: number;
+  oldestUnpaidMonth: string | null;  // YYYY-MM of oldest cycle needing payment
+}
+
 // Ordinal helper: 1 -> 1st, 2 -> 2nd, 3 -> 3rd, 15 -> 15th
 export function getOrdinal(n: number): string {
   const s = ['th', 'st', 'nd', 'rd'];
@@ -46,6 +59,11 @@ export function toMonthString(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 }
 
+// Format a date to "DD MMM YYYY"
+export function formatShortDate(d: Date): string {
+  return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
 /**
  * Clamps day of month to maximum valid days in given year/month.
  * e.g., Jan 31 -> Feb 28 (or 29)
@@ -54,6 +72,218 @@ export function clampDate(year: number, monthZeroIndexed: number, targetDay: num
   const daysInMonth = new Date(year, monthZeroIndexed + 1, 0).getDate();
   const clampedDay = Math.min(targetDay, daysInMonth);
   return new Date(year, monthZeroIndexed, clampedDay);
+}
+
+/**
+ * Returns the canonical billing cycle for a student for a given YYYY-MM month string.
+ * Cycle runs from joinDay of monthStr to (joinDay - 1) of the next month.
+ * e.g. joinDay=10, monthStr="2026-10" -> cycleStart=Oct 10, cycleEnd=Nov 9
+ */
+export function getCycleForMonth(joinDay: number, monthStr: string): { cycleStart: Date; cycleEnd: Date; cycleDueDate: Date; cycleLabel: string } {
+  const [y, m] = monthStr.split('-').map(Number);
+  const monthZeroIdx = m - 1;
+
+  const cycleDueDate = clampDate(y, monthZeroIdx, joinDay);
+
+  // Cycle starts on cycleDueDate and ends the day before the same day next month
+  const nextMonthZeroIdx = (monthZeroIdx + 1) % 12;
+  const nextY = monthZeroIdx === 11 ? y + 1 : y;
+  const cycleEndDay = clampDate(nextY, nextMonthZeroIdx, joinDay);
+  // End is one day before the next cycle's start
+  const cycleEnd = new Date(cycleEndDay.getTime() - 24 * 60 * 60 * 1000);
+
+  const cycleLabel = `${formatShortDate(cycleDueDate)} – ${formatShortDate(cycleEnd)}`;
+  return { cycleStart: cycleDueDate, cycleEnd, cycleDueDate, cycleLabel };
+}
+
+/**
+ * UNIVERSAL SINGLE SOURCE OF TRUTH for fee status of one student for one month.
+ *
+ * This function is the canonical implementation used by ALL backend endpoints:
+ * /api/stats, /api/rooms/:buildingId, /api/reports/fees, /api/fees/monthly-status,
+ * /api/students, /api/notifications
+ *
+ * Status rules:
+ * - 'Not Enrolled': The queried month is prior to the student's admission month.
+ * - 'Paid': A completed payment record exists for this month.
+ * - 'Upcoming': No payment record AND the cycle due date has NOT yet arrived (future or today < cycleDueDay in current month).
+ * - 'Pending': No payment record AND cycle due date has passed (overdue).
+ */
+export function getStudentMonthFeeStatus(
+  student: StudentWithFeesAndBeds,
+  monthStr: string,  // "2026-10"
+  referenceDate: Date = new Date(),
+  standardMonthlyFee: number = 5500
+): MonthFeeStatus {
+  const joinDate = student.dateOfJoining ? new Date(student.dateOfJoining) : new Date();
+  const joinDay = joinDate.getDate() || 1;
+  const joinYear = joinDate.getFullYear();
+  const joinMonth0 = joinDate.getMonth(); // 0-indexed
+
+  const [qYear, qMonth1] = monthStr.split('-').map(Number);
+  const qMonth0 = qMonth1 - 1; // 0-indexed
+
+  const refYear = referenceDate.getFullYear();
+  const refMonth0 = referenceDate.getMonth();
+  const refDay = referenceDate.getDate();
+
+  const { cycleStart, cycleEnd, cycleDueDate, cycleLabel } = getCycleForMonth(joinDay, monthStr);
+
+  // --- Status: Not Enrolled ---
+  // The queried month is BEFORE the student's join month
+  const isBeforeJoining =
+    qYear < joinYear ||
+    (qYear === joinYear && qMonth0 < joinMonth0);
+
+  if (isBeforeJoining) {
+    return {
+      status: 'Not Enrolled',
+      cycleDueDay: joinDay,
+      cycleStart,
+      cycleEnd,
+      cycleLabel,
+      amountDue: 0,
+      hasAccumulatedArrears: false,
+      pendingMonthsCount: 0,
+      totalArrearsAmount: 0,
+      oldestUnpaidMonth: null
+    };
+  }
+
+  // --- Status: Paid ---
+  const fees = student.fees || [];
+  const feeRecord = fees.find(f => f.month === monthStr && f.status === 'Completed');
+  if (feeRecord) {
+    // Even if paid for this month, compute arrears from other months
+    const arrears = _computeArrears(student, standardMonthlyFee, referenceDate, monthStr);
+    return {
+      status: 'Paid',
+      cycleDueDay: joinDay,
+      cycleStart,
+      cycleEnd,
+      cycleLabel,
+      amountDue: 0,
+      hasAccumulatedArrears: arrears.pendingMonthsCount > 0,
+      pendingMonthsCount: arrears.pendingMonthsCount,
+      totalArrearsAmount: arrears.totalArrearsAmount,
+      oldestUnpaidMonth: arrears.oldestUnpaidMonth
+    };
+  }
+
+  // Normalize reference date to start of day for comparison
+  const refDateStart = new Date(refYear, refMonth0, refDay);
+  const cycleDueDateStart = new Date(cycleDueDate.getFullYear(), cycleDueDate.getMonth(), cycleDueDate.getDate());
+
+  // --- Status: Upcoming ---
+  // Cycle's due date hasn't arrived yet
+  const isFutureMonth = qYear > refYear || (qYear === refYear && qMonth0 > refMonth0);
+  const isCurrentMonth = qYear === refYear && qMonth0 === refMonth0;
+  const cycleDueDateNotYetReached = cycleDueDateStart > refDateStart;
+
+  if (isFutureMonth || (isCurrentMonth && cycleDueDateNotYetReached)) {
+    // Check if there are arrears from prior months even though THIS month is upcoming
+    const arrears = _computeArrears(student, standardMonthlyFee, referenceDate, null);
+    const feeRec = fees.find(f => f.month === monthStr);
+    const amountDue = feeRec?.amount || standardMonthlyFee;
+    return {
+      status: 'Upcoming',
+      cycleDueDay: joinDay,
+      cycleStart,
+      cycleEnd,
+      cycleLabel,
+      amountDue,
+      hasAccumulatedArrears: arrears.pendingMonthsCount > 0,
+      pendingMonthsCount: arrears.pendingMonthsCount,
+      totalArrearsAmount: arrears.totalArrearsAmount,
+      oldestUnpaidMonth: arrears.oldestUnpaidMonth
+    };
+  }
+
+  // --- Status: Pending ---
+  const feeRec = fees.find(f => f.month === monthStr);
+  const amountDue = feeRec?.amount || standardMonthlyFee;
+  const arrears = _computeArrears(student, standardMonthlyFee, referenceDate, null);
+  return {
+    status: 'Pending',
+    cycleDueDay: joinDay,
+    cycleStart,
+    cycleEnd,
+    cycleLabel,
+    amountDue,
+    hasAccumulatedArrears: arrears.pendingMonthsCount > 0,
+    pendingMonthsCount: arrears.pendingMonthsCount,
+    totalArrearsAmount: arrears.totalArrearsAmount,
+    oldestUnpaidMonth: arrears.oldestUnpaidMonth
+  };
+}
+
+/**
+ * Internal helper: compute all unpaid/overdue months across the student's history up to referenceDate.
+ * Optionally excludes a specific month from the count (e.g., to avoid double-counting the viewed month).
+ */
+function _computeArrears(
+  student: StudentWithFeesAndBeds,
+  standardMonthlyFee: number,
+  referenceDate: Date,
+  excludeMonth: string | null
+): { pendingMonthsCount: number; totalArrearsAmount: number; oldestUnpaidMonth: string | null } {
+  const joinDate = student.dateOfJoining ? new Date(student.dateOfJoining) : new Date();
+  const joinDay = joinDate.getDate() || 1;
+  const joinYear = joinDate.getFullYear();
+  const joinMonth0 = joinDate.getMonth();
+
+  const refYear = referenceDate.getFullYear();
+  const refMonth0 = referenceDate.getMonth();
+  const refDay = referenceDate.getDate();
+  const refDateStart = new Date(refYear, refMonth0, refDay);
+  const joinDateStart = new Date(joinYear, joinMonth0, joinDay);
+
+  const fees = student.fees || [];
+  const completedFeeMonths = new Set(
+    fees.filter(f => f.status === 'Completed').map(f => f.month)
+  );
+
+  const pendingMonths: string[] = [];
+
+  if (refDateStart >= joinDateStart) {
+    let currY = joinYear;
+    let currM = joinMonth0;
+
+    // Safety: don't scan more than 12 months of backlog
+    const earliestAllowed = new Date(refYear, refMonth0 - 11, 1);
+    if (new Date(currY, currM, 1) < earliestAllowed) {
+      currY = earliestAllowed.getFullYear();
+      currM = earliestAllowed.getMonth();
+    }
+
+    while (currY < refYear || (currY === refYear && currM <= refMonth0)) {
+      const cycleDueDate = clampDate(currY, currM, joinDay);
+      const mStr = `${currY}-${String(currM + 1).padStart(2, '0')}`;
+
+      // Only count this month if its due date has arrived and it's not paid
+      if (
+        cycleDueDate <= refDateStart &&
+        !completedFeeMonths.has(mStr) &&
+        mStr !== excludeMonth
+      ) {
+        pendingMonths.push(mStr);
+      }
+
+      currM++;
+      if (currM > 11) { currM = 0; currY++; }
+    }
+  }
+
+  const totalArrearsAmount = pendingMonths.reduce((sum, mStr) => {
+    const feeRec = fees.find(f => f.month === mStr);
+    return sum + (feeRec?.amount || standardMonthlyFee);
+  }, 0);
+
+  return {
+    pendingMonthsCount: pendingMonths.length,
+    totalArrearsAmount,
+    oldestUnpaidMonth: pendingMonths.length > 0 ? pendingMonths[0] : null
+  };
 }
 
 /**

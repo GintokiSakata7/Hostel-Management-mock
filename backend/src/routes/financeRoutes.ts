@@ -9,6 +9,9 @@ export function createFinanceRouter(prisma: PrismaClient) {
   const CACHE_TTL_MS = 30000; // 30 seconds
   const invalidateCache = () => summaryCache.clear();
 
+  // Export the invalidateCache so /api/fees/pay and /api/fees/unpay in index.ts can bust it
+  (router as any).invalidateCache = invalidateCache;
+
   // Helper: get current month string YYYY-MM
   const currentMonth = () => {
     const d = new Date();
@@ -324,7 +327,13 @@ export function createFinanceRouter(prisma: PrismaClient) {
       // Revenue: Total completed fees for the month / period
       const feeWhere: any = { status: 'Completed' };
       if (buildingId && buildingId !== 'all') {
-        feeWhere.student = { beds: { some: { room: { buildingId } } } };
+        // Include fees from students in this building AND unallocated students
+        feeWhere.student = {
+          OR: [
+            { beds: { some: { room: { buildingId } } } },
+            { beds: { none: {} } }
+          ]
+        };
       }
       if (queryYear && !month) {
         feeWhere.month = { startsWith: `${queryYear}-` };
@@ -342,7 +351,12 @@ export function createFinanceRouter(prisma: PrismaClient) {
       if (date && totalRevenue === 0) {
         const monthlyRevWhere: any = { month: m, status: 'Completed' };
         if (buildingId && buildingId !== 'all') {
-          monthlyRevWhere.student = { beds: { some: { room: { buildingId } } } };
+          monthlyRevWhere.student = {
+            OR: [
+              { beds: { some: { room: { buildingId } } } },
+              { beds: { none: {} } }
+            ]
+          };
         }
         const monthlyRevAgg = await prisma.fee.aggregate({
           where: monthlyRevWhere,

@@ -12,7 +12,7 @@ import { PrismaClient } from '@prisma/client';
 import fs from 'fs';
 import path from 'path';
 import { initReminderScheduler, executeFeeReminderDispatch, executeSingleStudentReminder, getReminderScheduleSettings, updateReminderScheduleTime } from './services/reminderScheduler';
-import { calculateStudentDueStatus, getOrdinal } from './services/billingHelper';
+import { calculateStudentDueStatus, getStudentMonthFeeStatus, getOrdinal, formatMonthLabel, getCycleForMonth, toMonthString } from './services/billingHelper';
 import { generateFeeReceiptPDFBuffer } from './services/pdfService';
 import { sendPaymentReceiptEmail, sendEmail } from './services/emailService';
 import { createFinanceRouter } from './routes/financeRoutes';
@@ -23,7 +23,9 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 const prisma = new PrismaClient();
-app.use('/api/finance', createFinanceRouter(prisma));
+const financeRouter = createFinanceRouter(prisma);
+const invalidateFinanceCache = () => (financeRouter as any).invalidateCache?.();
+app.use('/api/finance', financeRouter);
 
 const UPLOADS_DIR = path.join(__dirname, '../../uploads');
 if (!fs.existsSync(UPLOADS_DIR)) {
@@ -189,11 +191,15 @@ app.get('/api/fees/receipt/:feeId', async (req, res) => {
       // 2. Generate PDF on the fly if not generated yet, and persist to PostgreSQL
       const settings = readSettings();
       const bed = fee.student.beds[0] || null;
+      const joinDate = fee.student.dateOfJoining ? new Date(fee.student.dateOfJoining) : new Date();
+      const joinDay = joinDate.getDate() || 1;
+      const cycle = getCycleForMonth(joinDay, fee.month || currentMonth());
 
       pdfBuffer = await generateFeeReceiptPDFBuffer({
         receiptNo,
         paymentDate: fee.date ? fee.date.toLocaleDateString('en-IN') : new Date().toLocaleDateString('en-IN'),
         monthLabel: monthLabel(fee.month),
+        cycleLabel: cycle.cycleLabel,
         amount: fee.amount,
         method: fee.method,
         upiProvider: fee.upiProvider,
@@ -238,17 +244,18 @@ app.get('/api/fees/receipt/:feeId', async (req, res) => {
 // ─── DASHBOARD STATS (parallelized — all queries fire simultaneously) ─────────
 app.get('/api/stats', async (req, res) => {
   const { buildingId } = req.query as { buildingId?: string };
-  const cm = currentMonth();
 
   const isBuildingFiltered = buildingId && buildingId !== 'all';
-  const studentWhere: any = isBuildingFiltered
-    ? {
-        OR: [
-          { beds: { some: { room: { buildingId } } } },
-          { beds: { none: {} } }
-        ]
-      }
-    : {};
+  // Only active students count for stats
+  const studentWhere: any = {
+    status: 'Active',
+    ...(isBuildingFiltered ? {
+      OR: [
+        { beds: { some: { room: { buildingId } } } },
+        { beds: { none: {} } }
+      ]
+    } : {})
+  };
   const roomWhere: any = isBuildingFiltered ? { buildingId } : {};
   const bedWhere: any = isBuildingFiltered ? { room: { buildingId } } : {};
   const occupiedBedWhere: any = isBuildingFiltered ? { status: 'occupied', room: { buildingId } } : { status: 'occupied' };
@@ -263,18 +270,23 @@ app.get('/api/stats', async (req, res) => {
         }
       }
     : { status: { in: ['pending', 'in-progress'] } };
+  const cm = currentMonth();
   const feeWhere: any = isBuildingFiltered
     ? {
         month: cm,
         status: 'Completed',
         student: {
+          status: 'Active',
           OR: [
             { beds: { some: { room: { buildingId } } } },
             { beds: { none: {} } }
           ]
         }
       }
-    : { month: cm, status: 'Completed' };
+    : { month: cm, status: 'Completed', student: { status: 'Active' } };
+
+  const settings = readSettings();
+  const monthlyFee = settings.monthlyFee || 5500;
 
   const [
     totalStudents,
@@ -282,7 +294,6 @@ app.get('/api/stats', async (req, res) => {
     totalBeds,
     occupiedBeds,
     activeComplaints,
-    paidThisMonth,
     monthlyCollection
   ] = await Promise.all([
     prisma.student.count({ where: studentWhere }),
@@ -290,9 +301,22 @@ app.get('/api/stats', async (req, res) => {
     prisma.bed.count({ where: bedWhere }),
     prisma.bed.count({ where: occupiedBedWhere }),
     prisma.complaint.count({ where: complaintWhere }),
-    prisma.fee.count({ where: feeWhere }),
     prisma.fee.aggregate({ where: feeWhere, _sum: { amount: true } })
   ]);
+
+  // Dynamic pending fees: count only active students who have at least 1 overdue month right now
+  const now = new Date();
+  const activeStudentsForPending = await prisma.student.findMany({
+    where: studentWhere,
+    include: {
+      beds: { include: { room: { include: { building: true } } } },
+      fees: true
+    }
+  });
+  const pendingFees = activeStudentsForPending.filter(s => {
+    const dueStatus = calculateStudentDueStatus(s, monthlyFee, now);
+    return dueStatus.pendingMonthsCount > 0;
+  }).length;
 
   res.json({
     totalStudents,
@@ -300,7 +324,7 @@ app.get('/api/stats', async (req, res) => {
     occupiedBeds,
     availableBeds: totalBeds - occupiedBeds,
     activeComplaints,
-    pendingFees: totalStudents - paidThisMonth,
+    pendingFees,
     monthlyCollection: monthlyCollection._sum.amount || 0
   });
 });
@@ -404,33 +428,13 @@ app.get('/api/students', async (req, res) => {
     const feeRecord = s.fees.find(f => f.month === m);
     const bed = s.beds.length > 0 ? s.beds[0] : null;
     const dueStatus = calculateStudentDueStatus(s, monthlyFee, now);
+    const monthStatus = getStudentMonthFeeStatus(s, m, now, monthlyFee);
 
     const sJoinDate = s.dateOfJoining ? new Date(s.dateOfJoining) : new Date();
-    const sJoinYear = sJoinDate.getFullYear();
-    const sJoinMonth = sJoinDate.getMonth() + 1;
-    const sJoinDay = sJoinDate.getDate() || 1;
-
-    // Check if the queried month is prior to student's admission
-    const isBeforeJoining = (qYear < sJoinYear) || (qYear === sJoinYear && qMonth < sJoinMonth);
-    const isFutureMonth = (qYear > nowYear) || (qYear === nowYear && qMonth > nowMonth);
-    const isCurrentMonth = (qYear === nowYear && qMonth === nowMonth);
-    const daysInQueryMonth = new Date(qYear, qMonth, 0).getDate();
-    const cycleDueDay = Math.min(sJoinDay, daysInQueryMonth);
-
-    let feeStatus: 'Paid' | 'Pending' | 'Upcoming' | 'Not Enrolled';
-    if (isBeforeJoining) {
-      feeStatus = 'Not Enrolled';
-    } else if (feeRecord && feeRecord.status === 'Completed') {
-      feeStatus = 'Paid';
-    } else if (isFutureMonth || (isCurrentMonth && nowDay < cycleDueDay)) {
-      // Due day in the current/future month has NOT arrived yet (e.g. today is 1st, cycle due on 10th)
-      feeStatus = 'Upcoming';
-    } else {
-      feeStatus = 'Pending';
-    }
-
     const joiningMonthLabel = sJoinDate.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
     const dateOfJoiningFormatted = sJoinDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+    const isBeforeJoining = monthStatus.status === 'Not Enrolled';
+    const feeStatus = monthStatus.status;
 
     return {
       id: s.id,
@@ -476,6 +480,8 @@ app.get('/api/students', async (req, res) => {
       noticeReason: (s as any).noticeReason || null,
       // Month-specific fee status
       feeStatus,
+      cycleLabel: monthStatus.cycleLabel,
+      hasArrears: dueStatus.pendingMonthsCount > 0,
       feeRecord: feeRecord || null,
       // Legacy overall field
       overallFeeStatus: s.feeStatus,
@@ -857,12 +863,16 @@ app.get('/api/rooms/:buildingId', async (req, res) => {
       building: true,
       beds: {
         include: {
-          student: { include: { fees: { where: { month: m } } } }
+          student: { include: { fees: true } }
         }
       }
     },
     orderBy: [{ floor: 'asc' }, { roomNumber: 'asc' }]
   });
+
+  const settings = readSettings();
+  const monthlyFee = settings.monthlyFee || 5500;
+  const now = new Date();
 
   const formatted = rooms.map(r => {
     const sortedBeds = [...r.beds].sort((a, b) => a.bedNumber - b.bedNumber);
@@ -875,24 +885,46 @@ app.get('/api/rooms/:buildingId', async (req, res) => {
       occupied,
       status: occupied === r.beds.length ? 'full' : occupied === 0 ? 'available' : 'partial',
       beds: sortedBeds.map((b, idx) => {
-        const feeRecord = b.student?.fees?.[0];
+        if (!b.student) {
+          return {
+            id: b.id,
+            bedIndex: idx + 1,
+            status: b.status,
+            student: null,
+            studentDbId: null,
+            feeStatus: null,
+            studentObj: null
+          };
+        }
+        // Use unified billing helper for accurate fee status
+        const monthStatus = getStudentMonthFeeStatus(b.student, m, now, monthlyFee);
+        const dueStatus = calculateStudentDueStatus(b.student, monthlyFee, now);
+        const feeRecord = b.student?.fees?.find(f => f.month === m && f.status === 'Completed') || null;
         return {
           id: b.id,
           bedIndex: idx + 1,
           status: b.status,
-          student: b.student ? b.student.name : null,
-          studentDbId: b.student?.id || null,
-          feeStatus: b.student ? (feeRecord && feeRecord.status === 'Completed' ? 'Paid' : 'Pending') : null,
-          studentObj: b.student ? {
+          student: b.student.name,
+          studentDbId: b.student.id,
+          feeStatus: monthStatus.status,
+          cycleLabel: monthStatus.cycleLabel,
+          dueDayLabel: monthStatus.cycleDueDay ? `${monthStatus.cycleDueDay}th` : null,
+          hasArrears: monthStatus.hasAccumulatedArrears,
+          arrearsCount: monthStatus.pendingMonthsCount,
+          pendingMonths: dueStatus.pendingMonths,
+          studentObj: {
             dbId: b.student.id,
             name: b.student.name,
             course: b.student.course,
             branch: b.student.branch,
             phone: b.student.phone,
             parentName: b.student.parentName,
-            feeStatus: feeRecord && feeRecord.status === 'Completed' ? 'Paid' : 'Pending',
-            feeRecord: feeRecord || null
-          } : null
+            feeStatus: monthStatus.status,
+            cycleLabel: monthStatus.cycleLabel,
+            feeRecord: feeRecord,
+            pendingMonths: dueStatus.pendingMonths,
+            pendingMonthsCount: dueStatus.pendingMonthsCount
+          }
         };
       })
     };
@@ -1071,11 +1103,22 @@ app.post('/api/fees/pay', async (req, res) => {
         } as any
       });
     }
-    // Update legacy feeStatus field on student
-    await prisma.student.update({
+    // Recompute and sync Student.feeStatus after payment (recomputing handles partial backlog correctly)
+    const updatedForStatus = await prisma.student.findUnique({
       where: { id: studentId },
-      data: { feeStatus: 'Paid' }
+      include: { beds: { include: { room: { include: { building: true } } } }, fees: true }
     });
+    if (updatedForStatus) {
+      const settings = readSettings();
+      const monthlyFee = settings.monthlyFee || 5500;
+      const dueStatus = calculateStudentDueStatus(updatedForStatus, monthlyFee, new Date());
+      await prisma.student.update({
+        where: { id: studentId },
+        data: { feeStatus: dueStatus.pendingMonthsCount === 0 ? 'Paid' : 'Pending' }
+      });
+    }
+    // Bust finance summary cache so Finance page reflects updated totals immediately
+    invalidateFinanceCache();
 
     // Fetch full student & room info for PDF & WhatsApp dispatch
     const student = await prisma.student.findUnique({
@@ -1089,6 +1132,9 @@ app.post('/api/fees/pay', async (req, res) => {
       const receiptNo = fee.receiptNo || generatedReceiptNo;
       const formattedDate = fee.date ? fee.date.toLocaleDateString('en-IN') : new Date().toLocaleDateString('en-IN');
       const label = monthLabel(m);
+      const joinDate = student.dateOfJoining ? new Date(student.dateOfJoining) : new Date();
+      const joinDay = joinDate.getDate() || 1;
+      const cycle = getCycleForMonth(joinDay, m);
 
       // 1. Generate PDF Receipt Buffer
       try {
@@ -1096,6 +1142,7 @@ app.post('/api/fees/pay', async (req, res) => {
           receiptNo,
           paymentDate: formattedDate,
           monthLabel: label,
+          cycleLabel: cycle.cycleLabel,
           amount: Number(amount),
           method,
           upiProvider: upiProvider || null,
@@ -1206,6 +1253,27 @@ app.post('/api/fees/unpay', async (req, res) => {
     const existing = await prisma.fee.findFirst({ where: { studentId, month: m } });
     if (existing) {
       await prisma.fee.delete({ where: { id: existing.id } });
+
+      // Recompute and sync Student.feeStatus after deletion
+      const updatedStudent = await prisma.student.findUnique({
+        where: { id: studentId },
+        include: {
+          beds: { include: { room: { include: { building: true } } } },
+          fees: true
+        }
+      });
+      if (updatedStudent) {
+        const settings = readSettings();
+        const monthlyFee = settings.monthlyFee || 5500;
+        const dueStatus = calculateStudentDueStatus(updatedStudent, monthlyFee, new Date());
+        await prisma.student.update({
+          where: { id: studentId },
+          data: { feeStatus: dueStatus.pendingMonthsCount === 0 ? 'Paid' : 'Pending' }
+        });
+      }
+      // Bust finance summary cache so Finance page reflects updated totals immediately
+      invalidateFinanceCache();
+
       return res.json({ success: true });
     }
     return res.status(404).json({ error: 'Fee record not found' });
@@ -1241,6 +1309,9 @@ app.post('/api/fees/:feeId/email-receipt', async (req, res) => {
     const receiptNo = fee.receiptNo || 'REC-' + fee.id.substring(0, 8);
     const label = monthLabel(fee.month);
     const formattedDate = fee.date ? fee.date.toLocaleDateString('en-IN') : new Date().toLocaleDateString('en-IN');
+    const joinDate = fee.student.dateOfJoining ? new Date(fee.student.dateOfJoining) : new Date();
+    const joinDay = joinDate.getDate() || 1;
+    const cycle = getCycleForMonth(joinDay, fee.month || currentMonth());
 
     // Get or generate PDF Buffer
     let pdfBuffer: Buffer;
@@ -1251,6 +1322,7 @@ app.post('/api/fees/:feeId/email-receipt', async (req, res) => {
         receiptNo,
         paymentDate: formattedDate,
         monthLabel: label,
+        cycleLabel: cycle.cycleLabel,
         amount: Number(fee.amount),
         method: fee.method,
         upiProvider: fee.upiProvider || null,
@@ -1500,58 +1572,34 @@ app.get('/api/fees/monthly-status', async (req, res) => {
 
   const studentWhere: any = (buildingId && buildingId !== 'all')
     ? {
+        status: 'Active',
         OR: [
           { beds: { some: { room: { buildingId } } } },
           { beds: { none: {} } }
         ]
       }
-    : {};
+    : { status: 'Active' };
 
   const students = await prisma.student.findMany({
     where: studentWhere,
     include: {
       beds: { include: { room: true } },
-      fees: { where: { status: 'Completed' } }
+      fees: true
     }
   });
 
   const now = new Date();
-  const nowYear = now.getFullYear();
-  const nowMonth = now.getMonth() + 1;
-  const nowDay = now.getDate();
-
-  const [qYear, qMonth] = m.split('-').map(Number);
 
   const mapped = students.map(s => {
-    const feeRecord = s.fees.find(f => f.month === m) || null;
+    const feeRecord = s.fees.find(f => f.month === m && f.status === 'Completed') || null;
     const bed = s.beds[0] || null;
     const dueStatus = calculateStudentDueStatus(s, monthlyFee, now);
+    const monthStatus = getStudentMonthFeeStatus(s, m, now, monthlyFee);
 
     const sJoinDate = s.dateOfJoining ? new Date(s.dateOfJoining) : new Date();
-    const sJoinYear = sJoinDate.getFullYear();
-    const sJoinMonth = sJoinDate.getMonth() + 1;
-    const sJoinDay = sJoinDate.getDate() || 1;
-
-    // Check if the queried month is prior to student's admission
-    const isBeforeJoining = (qYear < sJoinYear) || (qYear === sJoinYear && qMonth < sJoinMonth);
-    const isFutureMonth = (qYear > nowYear) || (qYear === nowYear && qMonth > nowMonth);
-    const isCurrentMonth = (qYear === nowYear && qMonth === nowMonth);
-    const daysInQueryMonth = new Date(qYear, qMonth, 0).getDate();
-    const cycleDueDay = Math.min(sJoinDay, daysInQueryMonth);
-
-    let feeStatus: 'Paid' | 'Pending' | 'Upcoming' | 'Not Enrolled';
-    if (isBeforeJoining) {
-      feeStatus = 'Not Enrolled';
-    } else if (feeRecord && feeRecord.status === 'Completed') {
-      feeStatus = 'Paid';
-    } else if (isFutureMonth || (isCurrentMonth && nowDay < cycleDueDay)) {
-      feeStatus = 'Upcoming';
-    } else {
-      feeStatus = 'Pending';
-    }
-
     const joiningMonthLabel = sJoinDate.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
     const dateOfJoiningFormatted = sJoinDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+    const isBeforeJoining = monthStatus.status === 'Not Enrolled';
 
     return {
       studentId: s.id,
@@ -1573,9 +1621,12 @@ app.get('/api/fees/monthly-status', async (req, res) => {
       dueDayLabel: dueStatus.dueDayLabel,
       nextDueDate: dueStatus.nextDueDate,
       pendingMonthsCount: isBeforeJoining ? 0 : dueStatus.pendingMonthsCount,
+      pendingMonths: isBeforeJoining ? [] : dueStatus.pendingMonths,
       pendingMonthsList: isBeforeJoining ? [] : dueStatus.pendingMonths.map(p => p.monthLabel),
       totalPendingAmount: isBeforeJoining ? 0 : dueStatus.totalPendingAmount,
-      feeStatus,
+      feeStatus: monthStatus.status,
+      cycleLabel: monthStatus.cycleLabel,
+      hasArrears: dueStatus.pendingMonthsCount > 0,
       amount: feeRecord?.amount || (isBeforeJoining ? 0 : monthlyFee),
       paymentDate: feeRecord && feeRecord.status === 'Completed' ? feeRecord.date.toISOString().split('T')[0] : null,
       method: feeRecord?.method || null,
@@ -1606,34 +1657,51 @@ app.get('/api/fees/monthly-status', async (req, res) => {
 app.get('/api/reports/fees', async (req, res) => {
   const { month, buildingId } = req.query as { month?: string; buildingId?: string };
   const m = month || currentMonth();
+  // Include all statuses — unallocated students are included explicitly
   const studentWhere: any = (buildingId && buildingId !== 'all')
-    ? { beds: { some: { room: { buildingId } } } }
+    ? {
+        OR: [
+          { beds: { some: { room: { buildingId } } } },
+          { beds: { none: {} } }
+        ]
+      }
     : {};
+  const settings = readSettings();
+  const monthlyFee = settings.monthlyFee || 5500;
+  const now = new Date();
+
   const students = await prisma.student.findMany({
     where: studentWhere,
     include: {
       beds: { include: { room: true } },
-      fees: { where: { month: m } }
+      fees: true
     }
   });
-  res.json(students.map(s => {
-    const fee = s.fees[0] || null;
+
+  const rows = students.map(s => {
+    const monthStatus = getStudentMonthFeeStatus(s, m, now, monthlyFee);
+    // Skip residents who were not yet admitted in this month
+    if (monthStatus.status === 'Not Enrolled') return null;
+    const fee = s.fees.find(f => f.month === m && f.status === 'Completed') || null;
     const bed = s.beds[0] || null;
     return {
       name: s.name, course: s.course, branch: s.branch, year: s.year,
       address: s.address, phone: s.phone, parentPhone: s.parentPhone,
       room: bed ? bed.room.roomNumber : 'Unallocated',
       bedNumber: bed ? bed.bedNumber : null,
-      feeStatus: fee && fee.status === 'Completed' ? 'Paid' : 'Pending',
-      amount: fee?.amount || 5500,
-      paymentDate: fee?.date.toISOString().split('T')[0] || null,
+      feeStatus: monthStatus.status,
+      cycleLabel: monthStatus.cycleLabel,
+      amount: fee?.amount || monthlyFee,
+      paymentDate: fee?.date?.toISOString().split('T')[0] || null,
       method: fee?.method || null,
       upiProvider: fee?.upiProvider || null,
       transactionRef: fee?.transactionRef || null,
       receiptNo: (fee as any)?.receiptNo || null,
       month: m, monthLabel: monthLabel(m)
     };
-  }));
+  }).filter(Boolean);
+
+  res.json(rows);
 });
 
 // Reports: Room occupancy
@@ -2008,10 +2076,10 @@ app.get('/api/notifications', async (req, res) => {
     let totalOverdueAmount = 0;
 
     students.forEach(s => {
+      if (s.status !== 'Active') return; // Skip vacated students from notifications
       const dueStatus = calculateStudentDueStatus(s, monthlyFee, today);
-      const isUnpaidCurrentMonth = !s.fees.some(f => f.month === cm && f.status === 'Completed');
 
-      if (dueStatus.isDueToday || (isUnpaidCurrentMonth && dueStatus.dueDayOfMonth === todayDay)) {
+      if (dueStatus.isDueToday) {
         dueTodayStudents.push({ ...s, dueStatus });
         totalDueTodayAmount += dueStatus.totalPendingAmount || monthlyFee;
       } else if (dueStatus.pendingMonthsCount > 0) {
