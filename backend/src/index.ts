@@ -392,11 +392,45 @@ app.get('/api/students', async (req, res) => {
     }
   });
 
+  const now = new Date();
+  const nowYear = now.getFullYear();
+  const nowMonth = now.getMonth() + 1;
+  const nowDay = now.getDate();
+
+  const [qYear, qMonth] = m.split('-').map(Number);
+
   const formatted = students.map(s => {
     // Get fee record for specified month
     const feeRecord = s.fees.find(f => f.month === m);
     const bed = s.beds.length > 0 ? s.beds[0] : null;
-    const dueStatus = calculateStudentDueStatus(s, monthlyFee);
+    const dueStatus = calculateStudentDueStatus(s, monthlyFee, now);
+
+    const sJoinDate = s.dateOfJoining ? new Date(s.dateOfJoining) : new Date();
+    const sJoinYear = sJoinDate.getFullYear();
+    const sJoinMonth = sJoinDate.getMonth() + 1;
+    const sJoinDay = sJoinDate.getDate() || 1;
+
+    // Check if the queried month is prior to student's admission
+    const isBeforeJoining = (qYear < sJoinYear) || (qYear === sJoinYear && qMonth < sJoinMonth);
+    const isFutureMonth = (qYear > nowYear) || (qYear === nowYear && qMonth > nowMonth);
+    const isCurrentMonth = (qYear === nowYear && qMonth === nowMonth);
+    const daysInQueryMonth = new Date(qYear, qMonth, 0).getDate();
+    const cycleDueDay = Math.min(sJoinDay, daysInQueryMonth);
+
+    let feeStatus: 'Paid' | 'Pending' | 'Upcoming' | 'Not Enrolled';
+    if (isBeforeJoining) {
+      feeStatus = 'Not Enrolled';
+    } else if (feeRecord && feeRecord.status === 'Completed') {
+      feeStatus = 'Paid';
+    } else if (isFutureMonth || (isCurrentMonth && nowDay < cycleDueDay)) {
+      // Due day in the current/future month has NOT arrived yet (e.g. today is 1st, cycle due on 10th)
+      feeStatus = 'Upcoming';
+    } else {
+      feeStatus = 'Pending';
+    }
+
+    const joiningMonthLabel = sJoinDate.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
+    const dateOfJoiningFormatted = sJoinDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 
     return {
       id: s.id,
@@ -411,12 +445,15 @@ app.get('/api/students', async (req, res) => {
       year: s.year,
       rollNumber: s.rollNumber,
       dateOfJoining: s.dateOfJoining,
+      dateOfJoiningFormatted,
+      joiningMonthLabel,
+      isBeforeJoining,
       dueDayOfMonth: dueStatus.dueDayOfMonth,
       dueDayLabel: dueStatus.dueDayLabel,
       nextDueDate: dueStatus.nextDueDate,
-      pendingMonthsCount: dueStatus.pendingMonthsCount,
-      pendingMonths: dueStatus.pendingMonths,
-      totalPendingAmount: dueStatus.totalPendingAmount,
+      pendingMonthsCount: isBeforeJoining ? 0 : dueStatus.pendingMonthsCount,
+      pendingMonths: isBeforeJoining ? [] : dueStatus.pendingMonths,
+      totalPendingAmount: isBeforeJoining ? 0 : dueStatus.totalPendingAmount,
       aadhar: s.aadhar,
       aadharCardUrl: (s as any).aadharCardUrl || null,
       phone: s.phone,
@@ -438,7 +475,7 @@ app.get('/api/students', async (req, res) => {
       noticeVacateDate: (s as any).noticeVacateDate ? (s as any).noticeVacateDate.toISOString().split('T')[0] : null,
       noticeReason: (s as any).noticeReason || null,
       // Month-specific fee status
-      feeStatus: feeRecord && feeRecord.status === 'Completed' ? 'Paid' : 'Pending',
+      feeStatus,
       feeRecord: feeRecord || null,
       // Legacy overall field
       overallFeeStatus: s.feeStatus,
@@ -462,11 +499,11 @@ app.get('/api/students', async (req, res) => {
     };
   });
 
-  // Sort: Pending students to top, ordered by highest pending months count desc
+  // Sort: Pending students to top, ordered by highest pending months count desc, then Upcoming, Paid, Not Enrolled
+  const statusPriority: Record<string, number> = { Pending: 0, Upcoming: 1, Paid: 2, 'Not Enrolled': 3 };
   formatted.sort((a, b) => {
-    if (a.feeStatus !== b.feeStatus) {
-      return a.feeStatus === 'Pending' ? -1 : 1;
-    }
+    const diff = (statusPriority[a.feeStatus] ?? 99) - (statusPriority[b.feeStatus] ?? 99);
+    if (diff !== 0) return diff;
     if (b.pendingMonthsCount !== a.pendingMonthsCount) {
       return b.pendingMonthsCount - a.pendingMonthsCount;
     }
@@ -1478,10 +1515,43 @@ app.get('/api/fees/monthly-status', async (req, res) => {
     }
   });
 
+  const now = new Date();
+  const nowYear = now.getFullYear();
+  const nowMonth = now.getMonth() + 1;
+  const nowDay = now.getDate();
+
+  const [qYear, qMonth] = m.split('-').map(Number);
+
   const mapped = students.map(s => {
     const feeRecord = s.fees.find(f => f.month === m) || null;
     const bed = s.beds[0] || null;
-    const dueStatus = calculateStudentDueStatus(s, monthlyFee);
+    const dueStatus = calculateStudentDueStatus(s, monthlyFee, now);
+
+    const sJoinDate = s.dateOfJoining ? new Date(s.dateOfJoining) : new Date();
+    const sJoinYear = sJoinDate.getFullYear();
+    const sJoinMonth = sJoinDate.getMonth() + 1;
+    const sJoinDay = sJoinDate.getDate() || 1;
+
+    // Check if the queried month is prior to student's admission
+    const isBeforeJoining = (qYear < sJoinYear) || (qYear === sJoinYear && qMonth < sJoinMonth);
+    const isFutureMonth = (qYear > nowYear) || (qYear === nowYear && qMonth > nowMonth);
+    const isCurrentMonth = (qYear === nowYear && qMonth === nowMonth);
+    const daysInQueryMonth = new Date(qYear, qMonth, 0).getDate();
+    const cycleDueDay = Math.min(sJoinDay, daysInQueryMonth);
+
+    let feeStatus: 'Paid' | 'Pending' | 'Upcoming' | 'Not Enrolled';
+    if (isBeforeJoining) {
+      feeStatus = 'Not Enrolled';
+    } else if (feeRecord && feeRecord.status === 'Completed') {
+      feeStatus = 'Paid';
+    } else if (isFutureMonth || (isCurrentMonth && nowDay < cycleDueDay)) {
+      feeStatus = 'Upcoming';
+    } else {
+      feeStatus = 'Pending';
+    }
+
+    const joiningMonthLabel = sJoinDate.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
+    const dateOfJoiningFormatted = sJoinDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 
     return {
       studentId: s.id,
@@ -1496,14 +1566,17 @@ app.get('/api/fees/monthly-status', async (req, res) => {
       month: m,
       monthLabel: monthLabel(m),
       dateOfJoining: s.dateOfJoining,
+      dateOfJoiningFormatted,
+      joiningMonthLabel,
+      isBeforeJoining,
       dueDayOfMonth: dueStatus.dueDayOfMonth,
       dueDayLabel: dueStatus.dueDayLabel,
       nextDueDate: dueStatus.nextDueDate,
-      pendingMonthsCount: dueStatus.pendingMonthsCount,
-      pendingMonthsList: dueStatus.pendingMonths.map(p => p.monthLabel),
-      totalPendingAmount: dueStatus.totalPendingAmount,
-      feeStatus: feeRecord && feeRecord.status === 'Completed' ? 'Paid' : 'Pending',
-      amount: feeRecord?.amount || monthlyFee,
+      pendingMonthsCount: isBeforeJoining ? 0 : dueStatus.pendingMonthsCount,
+      pendingMonthsList: isBeforeJoining ? [] : dueStatus.pendingMonths.map(p => p.monthLabel),
+      totalPendingAmount: isBeforeJoining ? 0 : dueStatus.totalPendingAmount,
+      feeStatus,
+      amount: feeRecord?.amount || (isBeforeJoining ? 0 : monthlyFee),
       paymentDate: feeRecord && feeRecord.status === 'Completed' ? feeRecord.date.toISOString().split('T')[0] : null,
       method: feeRecord?.method || null,
       upiProvider: feeRecord?.upiProvider || null,
@@ -1515,11 +1588,11 @@ app.get('/api/fees/monthly-status', async (req, res) => {
     };
   });
 
-  // Sort: Pending students to top, ordered by highest pending months count desc
+  // Sort: Pending students to top, ordered by highest pending months count desc, then Upcoming, Paid, Not Enrolled
+  const statusPriority: Record<string, number> = { Pending: 0, Upcoming: 1, Paid: 2, 'Not Enrolled': 3 };
   mapped.sort((a, b) => {
-    if (a.feeStatus !== b.feeStatus) {
-      return a.feeStatus === 'Pending' ? -1 : 1;
-    }
+    const diff = (statusPriority[a.feeStatus] ?? 99) - (statusPriority[b.feeStatus] ?? 99);
+    if (diff !== 0) return diff;
     if (b.pendingMonthsCount !== a.pendingMonthsCount) {
       return b.pendingMonthsCount - a.pendingMonthsCount;
     }

@@ -507,6 +507,8 @@ export default function Fees() {
 
   const paidCount = monthlyStatus.filter(s => s.feeStatus === 'Paid').length;
   const pendingCount = monthlyStatus.filter(s => s.feeStatus === 'Pending').length;
+  const enrolledCount = monthlyStatus.filter(s => s.feeStatus !== 'Not Enrolled').length;
+  const collectionRate = enrolledCount > 0 ? `${Math.round(paidCount / enrolledCount * 100)}%` : '—';
   const totalCollected = monthlyStatus.filter(s => s.feeStatus === 'Paid').reduce((sum, s) => sum + s.amount, 0);
 
   // Fee statistics — transactions are already filtered by selectedMonth from API
@@ -608,7 +610,7 @@ export default function Fees() {
         {[
           { icon: CheckCircle2, label: 'Paid', value: paidCount, sub: `₹${totalCollected.toLocaleString()}`, color: 'var(--success)', bg: 'rgba(34,197,94,0.1)' },
           { icon: XCircle, label: 'Pending', value: pendingCount, sub: `₹${(pendingCount * monthlyFee).toLocaleString()} due`, color: 'var(--warning)', bg: 'rgba(234,179,8,0.1)' },
-          { icon: TrendingUp, label: 'Collection Rate', value: monthlyStatus.length > 0 ? `${Math.round(paidCount / monthlyStatus.length * 100)}%` : '0%', sub: `${MONTHS.find(m => m.value === selectedMonth)?.label}`, color: 'var(--primary)', bg: 'rgba(249,115,22,0.1)' },
+          { icon: TrendingUp, label: 'Collection Rate', value: collectionRate, sub: `${MONTHS.find(m => m.value === selectedMonth)?.label}`, color: 'var(--primary)', bg: 'rgba(249,115,22,0.1)' },
         ].map(({ icon: Icon, label, value, sub, color, bg }) => (
           <div key={label} className="glass-panel" style={{ padding: '1.25rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
             <div style={{ background: bg, padding: '14px', borderRadius: 14, color, flexShrink: 0 }}>
@@ -701,16 +703,51 @@ export default function Fees() {
                 
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: isMobile ? 'space-between' : 'flex-end', gap: '12px', marginTop: isMobile ? '4px' : 0, paddingTop: isMobile ? '8px' : 0, borderTop: isMobile ? '1px dashed rgba(255,255,255,0.05)' : 'none' }}>
                   {/* Fee status badge */}
-                  <span style={{
-                    fontSize: '0.72rem', fontWeight: 700, padding: '4px 10px', borderRadius: 20,
-                    background: s.feeStatus === 'Paid' ? 'rgba(34,197,94,0.15)' : 'rgba(234,179,8,0.15)',
-                    color: s.feeStatus === 'Paid' ? 'var(--success)' : 'var(--warning)',
-                    border: `1px solid ${s.feeStatus === 'Paid' ? 'rgba(34,197,94,0.3)' : 'rgba(234,179,8,0.3)'}`,
-                    flexShrink: 0,
-                    display: 'flex', alignItems: 'center', gap: '4px'
-                  }}>
-                    {s.feeStatus === 'Paid' ? <><CheckCircle2 size={12} /> PAID</> : <><Clock size={12} /> PENDING</>}
-                  </span>
+                  {s.feeStatus === 'Paid' ? (
+                    <span style={{
+                      fontSize: '0.72rem', fontWeight: 700, padding: '4px 10px', borderRadius: 20,
+                      background: 'rgba(34,197,94,0.15)',
+                      color: 'var(--success)',
+                      border: '1px solid rgba(34,197,94,0.3)',
+                      flexShrink: 0,
+                      display: 'flex', alignItems: 'center', gap: '4px'
+                    }}>
+                      <CheckCircle2 size={12} /> PAID
+                    </span>
+                  ) : s.feeStatus === 'Not Enrolled' ? (
+                    <span style={{
+                      fontSize: '0.72rem', fontWeight: 600, padding: '4px 10px', borderRadius: 20,
+                      background: 'rgba(255,255,255,0.06)',
+                      color: 'var(--text-muted)',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      flexShrink: 0,
+                      display: 'flex', alignItems: 'center', gap: '4px'
+                    }}>
+                      Joined {s.joiningMonthLabel || 'Later'}
+                    </span>
+                  ) : s.feeStatus === 'Upcoming' ? (
+                    <span style={{
+                      fontSize: '0.72rem', fontWeight: 700, padding: '4px 10px', borderRadius: 20,
+                      background: 'rgba(56,189,248,0.15)',
+                      color: '#38bdf8',
+                      border: '1px solid rgba(56,189,248,0.3)',
+                      flexShrink: 0,
+                      display: 'flex', alignItems: 'center', gap: '4px'
+                    }}>
+                      <Clock size={12} /> DUE {s.dueDayLabel || '10TH'}
+                    </span>
+                  ) : (
+                    <span style={{
+                      fontSize: '0.72rem', fontWeight: 700, padding: '4px 10px', borderRadius: 20,
+                      background: 'rgba(234,179,8,0.15)',
+                      color: 'var(--warning)',
+                      border: '1px solid rgba(234,179,8,0.3)',
+                      flexShrink: 0,
+                      display: 'flex', alignItems: 'center', gap: '4px'
+                    }}>
+                      <Clock size={12} /> OVERDUE
+                    </span>
+                  )}
                   {/* WhatsApp status badge if available */}
                   {s.feeStatus === 'Paid' && s.whatsappStatus && (
                     <span style={{
@@ -724,15 +761,17 @@ export default function Fees() {
                   )}
                   {/* Actions */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <button
-                      className="icon-btn-small"
-                      title={`Send Personal Voice & Text Reminder to ${s.name}`}
-                      disabled={sendingReminderId === s.studentId}
-                      onClick={() => handleSendIndividualReminder(s)}
-                      style={{ color: 'var(--primary)', border: '1px solid rgba(249,115,22,0.25)', background: 'rgba(249,115,22,0.08)' }}
-                    >
-                      {sendingReminderId === s.studentId ? <Clock size={13} className="animate-spin" /> : <Send size={13} />}
-                    </button>
+                    {s.feeStatus === 'Pending' && (
+                      <button
+                        className="icon-btn-small"
+                        title={`Send Personal Voice & Text Reminder to ${s.name}`}
+                        disabled={sendingReminderId === s.studentId}
+                        onClick={() => handleSendIndividualReminder(s)}
+                        style={{ color: 'var(--primary)', border: '1px solid rgba(249,115,22,0.25)', background: 'rgba(249,115,22,0.08)' }}
+                      >
+                        {sendingReminderId === s.studentId ? <Clock size={13} className="animate-spin" /> : <Send size={13} />}
+                      </button>
+                    )}
                     {s.feeStatus === 'Paid' ? (
                       <>
                         <a

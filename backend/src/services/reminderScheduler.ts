@@ -200,13 +200,18 @@ export async function executeSingleStudentReminder(studentId: string): Promise<{
   const hostelName = settings.hostelName || 'VMR Hostel';
   const standardFee = settings.monthlyFee || 5500;
 
-  const dueStatus = calculateStudentDueStatus(student, standardFee);
-  const studentTarget = dueStatus.phone || undefined;
-  const monthsList = dueStatus.pendingMonths.length > 0
-    ? dueStatus.pendingMonths.map(p => p.monthLabel)
-    : [formatMonthLabel(toMonthString(new Date()))];
+  const dueStatus = calculateStudentDueStatus(student, standardFee, new Date());
 
-  const totalAmt = dueStatus.totalPendingAmount > 0 ? dueStatus.totalPendingAmount : standardFee;
+  if (dueStatus.pendingMonthsCount === 0) {
+    return {
+      success: false,
+      message: `${dueStatus.studentName} has no pending dues! Next cycle fee is due on ${dueStatus.nextDueDate || dueStatus.dueDayLabel}. Reminders are only dispatched after the due date.`
+    };
+  }
+
+  const studentTarget = dueStatus.phone || undefined;
+  const monthsList = dueStatus.pendingMonths.map(p => p.monthLabel);
+  const totalAmt = dueStatus.totalPendingAmount;
 
   const emailTo = dueStatus.email || student.email || process.env.EMAIL_FALLBACK_RECIPIENT || 'rishivardhan165@gmail.com';
   const emailRes = await sendFeeReminderEmail(emailTo, dueStatus.studentName, totalAmt, dueStatus.nextDueDate || dueStatus.dueDayLabel);

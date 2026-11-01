@@ -58,6 +58,12 @@ export function clampDate(year: number, monthZeroIndexed: number, targetDay: num
 
 /**
  * Calculates all billing cycles and pending dues for a student from their date of joining up to the reference date.
+ * Cycle rule:
+ * - A student's billing cycle is anchored to their joinDay (e.g. joined on Oct 10 -> cycles are Oct 10-Nov 10, Nov 10-Dec 10, etc.).
+ * - Before the join date: 0 dues (they weren't enrolled).
+ * - A cycle for month (year Y, month M) only becomes due ON or AFTER the cycle's due date clampDate(Y, M, joinDay).
+ *   For example, for a student joined on the 10th: on the 1st-9th of the month, that month's fee is NOT yet due,
+ *   so they have 0 dues for that month and cannot be sent reminders on the 1st. Reminders only trigger after the 10th.
  */
 export function calculateStudentDueStatus(
   student: StudentWithFeesAndBeds,
@@ -73,35 +79,40 @@ export function calculateStudentDueStatus(
   const refMonth = referenceDate.getMonth(); // 0-indexed
   const refDay = referenceDate.getDate();
 
-  // Find all calendar/anniversary months from join month up to current month (limit to maximum 24 months back for safety)
+  // Normalize reference date to beginning of day
+  const refDateStart = new Date(refYear, refMonth, refDay);
+  const joinDateStart = new Date(joinYear, joinMonth, joinDay);
+
   const requiredMonths: string[] = [];
-  let currY = joinYear;
-  let currM = joinMonth;
 
-  // If join date is in the future, at least include current month
-  if (new Date(joinYear, joinMonth, 1) > new Date(refYear, refMonth, 1)) {
-    currY = refYear;
-    currM = refMonth;
-  }
+  // Only calculate dues if the student joined on or before reference date
+  if (refDateStart >= joinDateStart) {
+    let currY = joinYear;
+    let currM = joinMonth;
 
-  // Safety: don't scan more than 12 months in the past for backlog unless explicitly needed
-  const earliestAllowed = new Date(refYear, refMonth - 11, 1);
-  if (new Date(currY, currM, 1) < earliestAllowed) {
-    currY = earliestAllowed.getFullYear();
-    currM = earliestAllowed.getMonth();
-  }
+    // Safety: don't scan more than 12 months in the past for backlog unless explicitly needed
+    const earliestAllowed = new Date(refYear, refMonth - 11, 1);
+    if (new Date(currY, currM, 1) < earliestAllowed) {
+      currY = earliestAllowed.getFullYear();
+      currM = earliestAllowed.getMonth();
+    }
 
-  while (
-    currY < refYear || 
-    (currY === refYear && currM <= refMonth)
-  ) {
-    const mStr = `${currY}-${String(currM + 1).padStart(2, '0')}`;
-    requiredMonths.push(mStr);
+    while (
+      currY < refYear || 
+      (currY === refYear && currM <= refMonth)
+    ) {
+      const cycleDueDate = clampDate(currY, currM, joinDay);
+      // The cycle only becomes due if the cycle's due date has arrived (on or before referenceDate)
+      if (cycleDueDate <= refDateStart) {
+        const mStr = `${currY}-${String(currM + 1).padStart(2, '0')}`;
+        requiredMonths.push(mStr);
+      }
 
-    currM++;
-    if (currM > 11) {
-      currM = 0;
-      currY++;
+      currM++;
+      if (currM > 11) {
+        currM = 0;
+        currY++;
+      }
     }
   }
 
@@ -131,9 +142,20 @@ export function calculateStudentDueStatus(
 
   const totalPendingAmount = pendingMonths.reduce((sum, p) => sum + p.amount, 0);
 
-  // Dynamic due date for current month
+  // Dynamic next due date:
+  // If today is before this month's due date, the next due date is this month's due date.
+  // If today is on or after this month's due date, the next due date is next month's due date.
   const currentMonthDueDate = clampDate(refYear, refMonth, joinDay);
-  const nextDueDateFormatted = currentMonthDueDate.toLocaleDateString('en-IN', {
+  let nextDueDateObj: Date;
+  if (refDay < currentMonthDueDate.getDate()) {
+    nextDueDateObj = currentMonthDueDate;
+  } else {
+    const nextM = refMonth + 1;
+    const nextY = nextM > 11 ? refYear + 1 : refYear;
+    nextDueDateObj = clampDate(nextY, nextM % 12, joinDay);
+  }
+
+  const nextDueDateFormatted = nextDueDateObj.toLocaleDateString('en-IN', {
     day: 'numeric',
     month: 'short',
     year: 'numeric'

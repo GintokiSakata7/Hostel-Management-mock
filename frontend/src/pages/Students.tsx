@@ -215,64 +215,162 @@ function StudentDetailCard({ student, selectedMonth, onClose, onRefresh, isMobil
           </div>
 
           {/* Monthly Fee Banner Widget */}
-          <div style={{ 
-            borderRadius: 16, 
-            padding: '1.1rem 1.25rem', 
-            background: isPaidThisMonth 
-              ? 'linear-gradient(135deg, rgba(34,197,94,0.15) 0%, rgba(16,185,129,0.05) 100%)' 
-              : 'linear-gradient(135deg, rgba(249,115,22,0.18) 0%, rgba(234,179,8,0.08) 100%)', 
-            border: `1px solid ${isPaidThisMonth ? 'rgba(34,197,94,0.35)' : 'rgba(249,115,22,0.4)'}`, 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'space-between', 
-            marginBottom: '1.25rem',
-            boxShadow: isPaidThisMonth ? '0 4px 20px rgba(34,197,94,0.1)' : '0 4px 20px rgba(249,115,22,0.15)'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          {(() => {
+            const isNotEnrolled = student.feeStatus === 'Not Enrolled' || student.isBeforeJoining;
+            const isUpcoming = student.feeStatus === 'Upcoming';
+
+            if (isNotEnrolled) {
+              return (
+                <div style={{
+                  borderRadius: 16,
+                  padding: '1.1rem 1.25rem',
+                  background: 'rgba(255,255,255,0.03)',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  marginBottom: '1.25rem'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{
+                      width: 44,
+                      height: 44,
+                      borderRadius: 12,
+                      background: 'rgba(255,255,255,0.05)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'var(--text-muted)'
+                    }}>
+                      <Calendar size={22} />
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--text-main)', letterSpacing: '0.01em' }}>
+                        Not Enrolled in {monthLabel}
+                      </div>
+                      <div style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>
+                        Admitted on {student.dateOfJoiningFormatted || student.joiningMonthLabel || 'a later date'}
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', background: 'rgba(255,255,255,0.06)', padding: '4px 10px', borderRadius: 8 }}>
+                      No dues for this month
+                    </span>
+                  </div>
+                </div>
+              );
+            }
+
+            if (isUpcoming) {
+              return (
+                <div style={{
+                  borderRadius: 16,
+                  padding: '1.1rem 1.25rem',
+                  background: 'linear-gradient(135deg, rgba(56,189,248,0.15) 0%, rgba(59,130,246,0.05) 100%)',
+                  border: '1px solid rgba(56,189,248,0.3)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  marginBottom: '1.25rem',
+                  boxShadow: '0 4px 20px rgba(56,189,248,0.1)'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{
+                      width: 44,
+                      height: 44,
+                      borderRadius: 12,
+                      background: 'rgba(56,189,248,0.2)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: '#38bdf8'
+                    }}>
+                      <Clock size={22} />
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 800, fontSize: '0.95rem', color: '#38bdf8', letterSpacing: '0.01em' }}>
+                        🗓️ Current Cycle (Upcoming)
+                      </div>
+                      <div style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>
+                        Due on {student.nextDueDate || `${student.dueDayLabel || '10th'} of month`}
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                    <div style={{ textAlign: 'right', marginRight: 4 }}>
+                      <div style={{ fontWeight: 800, fontSize: '1.25rem', color: 'var(--text-main)' }}>₹{monthlyFee.toLocaleString()}</div>
+                      <div style={{ fontSize: '0.7rem', color: '#38bdf8' }}>Due {student.dueDayLabel || '10th'}</div>
+                    </div>
+                    <button className="primary-btn" style={{ padding: '7px 16px', fontSize: '0.82rem', gap: '6px' }} onClick={() => setShowPayment(true)}>
+                      <IndianRupee size={14} /> Pay Early
+                    </button>
+                  </div>
+                </div>
+              );
+            }
+
+            return (
               <div style={{ 
-                width: 44, 
-                height: 44, 
-                borderRadius: 12, 
-                background: isPaidThisMonth ? 'rgba(34,197,94,0.2)' : 'rgba(249,115,22,0.2)', 
+                borderRadius: 16, 
+                padding: '1.1rem 1.25rem', 
+                background: isPaidThisMonth 
+                  ? 'linear-gradient(135deg, rgba(34,197,94,0.15) 0%, rgba(16,185,129,0.05) 100%)' 
+                  : 'linear-gradient(135deg, rgba(249,115,22,0.18) 0%, rgba(234,179,8,0.08) 100%)', 
+                border: `1px solid ${isPaidThisMonth ? 'rgba(34,197,94,0.35)' : 'rgba(249,115,22,0.4)'}`, 
                 display: 'flex', 
                 alignItems: 'center', 
-                justifyContent: 'center',
-                color: isPaidThisMonth ? '#4ade80' : '#fb923c' 
+                justifyContent: 'space-between', 
+                marginBottom: '1.25rem',
+                boxShadow: isPaidThisMonth ? '0 4px 20px rgba(34,197,94,0.1)' : '0 4px 20px rgba(249,115,22,0.15)'
               }}>
-                <IndianRupee size={22} />
-              </div>
-              <div>
-                <div style={{ fontWeight: 800, fontSize: '0.95rem', color: isPaidThisMonth ? '#4ade80' : '#fb923c', letterSpacing: '0.01em' }}>
-                  {isPaidThisMonth ? '✓ Fee Paid' : '⚡ Fee Pending'}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{ 
+                    width: 44, 
+                    height: 44, 
+                    borderRadius: 12, 
+                    background: isPaidThisMonth ? 'rgba(34,197,94,0.2)' : 'rgba(249,115,22,0.2)', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center',
+                    color: isPaidThisMonth ? '#4ade80' : '#fb923c' 
+                  }}>
+                    <IndianRupee size={22} />
+                  </div>
+                  <div>
+                    <div style={{ fontWeight: 800, fontSize: '0.95rem', color: isPaidThisMonth ? '#4ade80' : '#fb923c', letterSpacing: '0.01em' }}>
+                      {isPaidThisMonth ? '✓ Fee Paid' : '⚡ Fee Pending'}
+                    </div>
+                    <div style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>For {monthLabel}</div>
+                  </div>
                 </div>
-                <div style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>For {monthLabel}</div>
-              </div>
-            </div>
 
-            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-              <div style={{ textAlign: 'right', marginRight: 4 }}>
-                <div style={{ fontWeight: 800, fontSize: '1.25rem', color: 'var(--text-main)' }}>₹{monthlyFee.toLocaleString()}</div>
-                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Due 10th</div>
-              </div>
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                  <div style={{ textAlign: 'right', marginRight: 4 }}>
+                    <div style={{ fontWeight: 800, fontSize: '1.25rem', color: 'var(--text-main)' }}>₹{(student.totalPendingAmount || monthlyFee).toLocaleString()}</div>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Due {student.dueDayLabel || '10th'}</div>
+                  </div>
 
-              {isPaidThisMonth ? (
-                <button className="primary-btn" title="Print Receipt" onClick={() => setShowReceipt(true)} style={{ background: 'rgba(34,197,94,0.2)', color: '#4ade80', border: '1px solid rgba(34,197,94,0.4)', padding: '7px 12px', fontSize: '0.82rem', gap: '6px' }}>
-                  <Printer size={15} /> Receipt
-                </button>
-              ) : (
-                <div style={{ display: 'flex', gap: '6px' }}>
-                  {onSendReminder && (
-                    <button className="icon-btn-small" title="Send Fee Reminder (Voice & Text)" onClick={() => onSendReminder(student)} style={{ background: 'rgba(249,115,22,0.2)', color: 'var(--primary)', border: '1px solid rgba(249,115,22,0.4)', width: 36, height: 36 }}>
-                      <Send size={15} />
+                  {isPaidThisMonth ? (
+                    <button className="primary-btn" title="Print Receipt" onClick={() => setShowReceipt(true)} style={{ background: 'rgba(34,197,94,0.2)', color: '#4ade80', border: '1px solid rgba(34,197,94,0.4)', padding: '7px 12px', fontSize: '0.82rem', gap: '6px' }}>
+                      <Printer size={15} /> Receipt
                     </button>
+                  ) : (
+                    <div style={{ display: 'flex', gap: '6px' }}>
+                      {onSendReminder && (
+                        <button className="icon-btn-small" title="Send Fee Reminder (Voice & Text)" onClick={() => onSendReminder(student)} style={{ background: 'rgba(249,115,22,0.2)', color: 'var(--primary)', border: '1px solid rgba(249,115,22,0.4)', width: 36, height: 36 }}>
+                          <Send size={15} />
+                        </button>
+                      )}
+                      <button className="primary-btn" style={{ padding: '7px 16px', fontSize: '0.82rem', gap: '6px' }} onClick={() => setShowPayment(true)}>
+                        <IndianRupee size={14} /> Pay Now
+                      </button>
+                    </div>
                   )}
-                  <button className="primary-btn" style={{ padding: '7px 16px', fontSize: '0.82rem', gap: '6px' }} onClick={() => setShowPayment(true)}>
-                    <IndianRupee size={14} /> Pay Now
-                  </button>
                 </div>
-              )}
-            </div>
-          </div>
+              </div>
+            );
+          })()}
 
           {/* Navigation Tabs Bar */}
           <div style={{
@@ -570,7 +668,15 @@ const F = ({ label, col, hint, error, children }: { label: string; col?: boolean
 
 function AdmissionForm({ student, onClose, onSave, isMobile, onPreviewDoc }: { student: any; onClose: () => void; onSave: () => void; isMobile: boolean; onPreviewDoc: (url: string) => void }) {
   const { showToast } = useToast();
-  const [form, setForm] = useState(student ? { ...EMPTY_FORM, ...student } : { ...EMPTY_FORM, dateOfJoining: new Date().toISOString().split('T')[0] });
+  const [form, setForm] = useState(
+    student
+      ? {
+          ...EMPTY_FORM,
+          ...student,
+          dateOfJoining: student.dateOfJoining ? student.dateOfJoining.split('T')[0] : new Date().toISOString().split('T')[0]
+        }
+      : { ...EMPTY_FORM, dateOfJoining: new Date().toISOString().split('T')[0] }
+  );
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [saving, setSaving] = useState(false);
   const [uploadingAadhar, setUploadingAadhar] = useState(false);
@@ -596,6 +702,9 @@ function AdmissionForm({ student, onClose, onSave, isMobile, onPreviewDoc }: { s
         return '';
       case 'course':
         if (!v) return 'Academic course is required';
+        return '';
+      case 'dateOfJoining':
+        if (!v) return 'Date of joining is required';
         return '';
       default:
         return '';
@@ -659,7 +768,7 @@ function AdmissionForm({ student, onClose, onSave, isMobile, onPreviewDoc }: { s
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const requiredKeys = ['name', 'phone', 'parentPhone', 'email', 'course'];
+    const requiredKeys = ['name', 'phone', 'parentPhone', 'email', 'course', 'dateOfJoining'];
     const newTouched: Record<string, boolean> = {};
     let hasError = false;
 
@@ -857,6 +966,17 @@ function AdmissionForm({ student, onClose, onSave, isMobile, onPreviewDoc }: { s
                   </option>
                 ))}
               </select>
+            </F>
+
+            <F label="Date of Joining *" error={getFieldError('dateOfJoining')} hint="Anchors billing (e.g. 10th-10th)">
+              <input
+                required
+                type="date"
+                className={`custom-input ${getFieldError('dateOfJoining') ? 'input-error' : ''}`}
+                value={form.dateOfJoining}
+                onChange={e => f('dateOfJoining', e.target.value)}
+                onBlur={() => handleFieldBlur('dateOfJoining')}
+              />
             </F>
           </div>
 
@@ -1599,9 +1719,23 @@ export default function Students() {
                         {student.name}
                       </div>
                       {residentTab === 'active' ? (
-                        <span className={student.feeStatus === 'Paid' ? 'status-badge badge-paid' : 'status-badge badge-pending'} style={{ fontSize: '0.68rem', padding: '3px 8px', flexShrink: 0 }}>
-                          {student.feeStatus === 'Paid' ? '✓ Paid' : `⚡ Due`}
-                        </span>
+                        student.feeStatus === 'Paid' ? (
+                          <span className="status-badge badge-paid" style={{ fontSize: '0.68rem', padding: '3px 8px', flexShrink: 0 }}>
+                            ✓ Paid
+                          </span>
+                        ) : student.feeStatus === 'Not Enrolled' ? (
+                          <span style={{ fontSize: '0.68rem', padding: '3px 8px', borderRadius: 8, background: 'rgba(255,255,255,0.06)', color: 'var(--text-muted)', border: '1px solid rgba(255,255,255,0.1)', fontWeight: 600, flexShrink: 0 }}>
+                            Joined {student.joiningMonthLabel || 'Later'}
+                          </span>
+                        ) : student.feeStatus === 'Upcoming' ? (
+                          <span style={{ fontSize: '0.68rem', padding: '3px 8px', borderRadius: 8, background: 'rgba(56,189,248,0.12)', color: '#38bdf8', border: '1px solid rgba(56,189,248,0.25)', fontWeight: 700, flexShrink: 0 }}>
+                            🗓️ Due {student.dueDayLabel || '10th'}
+                          </span>
+                        ) : (
+                          <span className="status-badge badge-pending" style={{ fontSize: '0.68rem', padding: '3px 8px', flexShrink: 0 }}>
+                            ⚡ Due
+                          </span>
+                        )
                       ) : (
                         <span style={{ fontSize: '0.68rem', padding: '3px 8px', borderRadius: 8, background: 'rgba(239,68,68,0.15)', color: '#ef4444', fontWeight: 700, flexShrink: 0 }}>
                           Vacated
@@ -1642,7 +1776,7 @@ export default function Students() {
                   </div>
                 </div>
 
-                {/* Due Banner with 1-Tap Remind */}
+                {/* Due Banner with 1-Tap Remind (Only when fees are actively overdue/pending) */}
                 {residentTab === 'active' && student.feeStatus === 'Pending' && (
                   <div style={{
                     background: 'rgba(249,115,22,0.1)',
@@ -1656,6 +1790,11 @@ export default function Students() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.78rem', color: 'var(--primary)' }}>
                       <IndianRupee size={14} />
                       <span>Due: <strong>₹{(student.totalPendingAmount || monthlyFee).toLocaleString('en-IN')}</strong></span>
+                      {student.pendingMonthsCount > 1 && (
+                        <span style={{ fontSize: '0.7rem', color: '#f87171', fontWeight: 700 }}>
+                          ({student.pendingMonthsCount} mos)
+                        </span>
+                      )}
                     </div>
                     <button
                       type="button"
@@ -1681,6 +1820,41 @@ export default function Students() {
                       {sendingReminderId === student.dbId ? <Clock size={11} className="animate-spin" /> : <Send size={11} />}
                       <span>{sendingReminderId === student.dbId ? 'Sending…' : 'Remind'}</span>
                     </button>
+                  </div>
+                )}
+
+                {/* Info strip when student was not enrolled in selected month */}
+                {residentTab === 'active' && student.feeStatus === 'Not Enrolled' && (
+                  <div style={{
+                    background: 'rgba(255,255,255,0.02)',
+                    border: '1px solid rgba(255,255,255,0.06)',
+                    borderRadius: 10,
+                    padding: '6px 10px',
+                    fontSize: '0.72rem',
+                    color: 'var(--text-muted)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6
+                  }}>
+                    <span>ℹ️ Not enrolled in {MONTHS.find(m => m.value === selectedMonth)?.label || selectedMonth} · Joined {student.dateOfJoiningFormatted || student.joiningMonthLabel}</span>
+                  </div>
+                )}
+
+                {/* Info strip when student's fee cycle is current / upcoming */}
+                {residentTab === 'active' && student.feeStatus === 'Upcoming' && (
+                  <div style={{
+                    background: 'rgba(56,189,248,0.06)',
+                    border: '1px solid rgba(56,189,248,0.2)',
+                    borderRadius: 10,
+                    padding: '6px 10px',
+                    fontSize: '0.72rem',
+                    color: '#38bdf8',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
+                  }}>
+                    <span>🗓️ Next Cycle Due: <strong>{student.nextDueDate || student.dueDayLabel}</strong></span>
+                    <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>Cycle {student.dueDayLabel || '10th'} to {student.dueDayLabel || '10th'}</span>
                   </div>
                 )}
 
