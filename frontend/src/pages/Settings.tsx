@@ -30,9 +30,11 @@ const TABS = [
 ];
 
 function useIsMobile() {
-  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  const [isMobile, setIsMobile] = useState(
+    typeof window !== 'undefined' ? window.innerWidth <= 860 : false
+  );
   useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    const handleResize = () => setIsMobile(window.innerWidth <= 860);
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
@@ -506,19 +508,17 @@ function FloorPlanTab() {
     setNewFloorNumber(nextF);
     setNewFloorInitialRoom(`${nextF}01`);
     setNewFloorCapacity('2');
-    setShowAddFloor(v => !v);
-    setShowAddRoom(false);
+    setShowAddFloor(true);
   };
 
   const handleOpenAddRoom = (defaultFloor?: string) => {
     const targetFloor = defaultFloor || (allFloorKeys.length > 0 ? allFloorKeys[0] : '1');
-    setNewRoom(p => ({
-      ...p,
+    setNewRoom({
       floor: targetFloor,
-      roomNumber: p.roomNumber || `${targetFloor}01`
-    }));
-    setShowAddRoom(v => !v);
-    setShowAddFloor(false);
+      roomNumber: `${targetFloor}01`,
+      capacity: '2'
+    });
+    setShowAddRoom(true);
   };
 
   const addBuilding = async () => {
@@ -721,59 +721,11 @@ function FloorPlanTab() {
               className="icon-btn-small"
               style={{ background: 'rgba(249,115,22,0.15)', color: 'var(--primary)', border: '1px solid rgba(249,115,22,0.3)' }}
               title="Add Building"
-              onClick={() => setShowAddBuilding(v => !v)}
+              onClick={() => setShowAddBuilding(true)}
             >
               <Plus size={14} />
             </button>
           </div>
-
-          {showAddBuilding && (
-            <div style={{
-              background: 'rgba(255,255,255,0.04)',
-              border: '1px solid var(--border-dim)',
-              borderRadius: 12,
-              padding: '0.75rem',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '0.5rem'
-            }}>
-              <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-main)' }}>Add New Building</div>
-              <input
-                className="custom-input"
-                style={{ fontSize: '0.82rem', padding: '6px 10px' }}
-                value={newBuildingName}
-                onChange={e => setNewBuildingName(e.target.value)}
-                placeholder="Building name (e.g. Block C)…"
-                onKeyDown={e => e.key === 'Enter' && addBuilding()}
-                autoFocus
-              />
-              <div style={{ display: 'flex', gap: '6px' }}>
-                <button
-                  className="primary-btn"
-                  style={{ flex: 1, justifyContent: 'center', fontSize: '0.75rem', padding: '5px 8px', minHeight: 30 }}
-                  onClick={addBuilding}
-                  disabled={loading}
-                >
-                  <Plus size={12} /> Add
-                </button>
-                <button
-                  onClick={() => setShowAddBuilding(false)}
-                  style={{
-                    flex: 1,
-                    background: 'rgba(255,255,255,0.06)',
-                    border: '1px solid var(--border-dim)',
-                    borderRadius: 8,
-                    color: 'var(--text-muted)',
-                    cursor: 'pointer',
-                    fontSize: '0.75rem',
-                    padding: '5px 8px'
-                  }}
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          )}
 
           {buildings.map(b => {
             const isSelected = selectedBuilding?.id === b.id;
@@ -781,17 +733,7 @@ function FloorPlanTab() {
               <div
                 key={b.id}
                 onClick={() => setSelectedBuilding(b)}
-                style={{
-                  padding: '0.75rem 0.875rem',
-                  borderRadius: 14,
-                  cursor: 'pointer',
-                  border: isSelected ? '1px solid var(--primary)' : '1px solid rgba(255,255,255,0.08)',
-                  background: isSelected
-                    ? 'linear-gradient(135deg, rgba(249,115,22,0.18), rgba(249,115,22,0.06))'
-                    : 'rgba(255,255,255,0.03)',
-                  boxShadow: isSelected ? '0 4px 14px rgba(249,115,22,0.2)' : 'none',
-                  transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)'
-                }}
+                className={`building-sidebar-card ${isSelected ? 'active' : ''}`}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '6px' }}>
                   <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
@@ -799,11 +741,11 @@ function FloorPlanTab() {
                       width: 32,
                       height: 32,
                       borderRadius: 8,
-                      background: isSelected ? 'rgba(249,115,22,0.25)' : 'rgba(255,255,255,0.06)',
+                      background: isSelected ? 'rgba(249,115,22,0.25)' : 'rgba(128,128,128,0.1)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      border: `1px solid ${isSelected ? 'rgba(249,115,22,0.4)' : 'rgba(255,255,255,0.08)'}`
+                      border: `1px solid ${isSelected ? 'rgba(249,115,22,0.4)' : 'var(--border-dim)'}`
                     }}>
                       <Building2 size={16} color={isSelected ? 'var(--primary)' : 'var(--text-muted)'} />
                     </div>
@@ -838,8 +780,8 @@ function FloorPlanTab() {
         </div>
       )}
 
-      {/* Main Workspace (On mobile, includes unified non-redundant building & floor hub) */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1rem', overflow: 'auto' }}>
+      {/* Main Workspace */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1rem', overflow: 'auto', minWidth: 0 }}>
         {!selectedBuilding ? (
           <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', flexDirection: 'column', gap: '1rem', padding: '3rem' }}>
             <Layers3 size={48} style={{ opacity: 0.2 }} />
@@ -847,18 +789,10 @@ function FloorPlanTab() {
           </div>
         ) : (
           <>
-            {/* MOBILE ONLY: Unified Building & Action Hub (eliminates duplicate building cards) */}
+            {/* MOBILE ONLY: Unified Building & Action Hub */}
             {isMobile ? (
-              <div style={{
-                background: 'rgba(255,255,255,0.03)',
-                border: '1px solid rgba(255,255,255,0.08)',
-                borderRadius: 16,
-                padding: '1rem',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '0.85rem'
-              }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
+              <div className="floorplan-header-card" style={{ flexDirection: 'column', gap: '0.85rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', width: '100%' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: 0 }}>
                     <div style={{
                       width: 36, height: 36, borderRadius: 10,
@@ -893,7 +827,7 @@ function FloorPlanTab() {
                         }}
                       >
                         {buildings.map(b => (
-                          <option key={b.id} value={b.id} style={{ background: '#111827', color: '#fff' }}>
+                          <option key={b.id} value={b.id} style={{ background: 'var(--surface-card, #111827)', color: 'var(--text-main, #fff)' }}>
                             {b.name}
                           </option>
                         ))}
@@ -906,7 +840,7 @@ function FloorPlanTab() {
                       className="icon-btn-small"
                       style={{ background: 'rgba(249,115,22,0.15)', color: 'var(--primary)', border: '1px solid rgba(249,115,22,0.3)', width: 34, height: 34 }}
                       title="Add New Building"
-                      onClick={() => setShowAddBuilding(v => !v)}
+                      onClick={() => setShowAddBuilding(true)}
                     >
                       <Plus size={16} />
                     </button>
@@ -921,58 +855,9 @@ function FloorPlanTab() {
                   </div>
                 </div>
 
-                {/* Mobile Add Building inline expansion */}
-                {showAddBuilding && (
-                  <div style={{
-                    background: 'rgba(255,255,255,0.03)',
-                    border: '1px solid var(--border-dim)',
-                    borderRadius: 12,
-                    padding: '0.75rem',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '0.5rem'
-                  }}>
-                    <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-main)' }}>Add New Building</div>
-                    <input
-                      className="custom-input"
-                      style={{ fontSize: '0.82rem', padding: '6px 10px' }}
-                      value={newBuildingName}
-                      onChange={e => setNewBuildingName(e.target.value)}
-                      placeholder="Building name (e.g. Block C)…"
-                      onKeyDown={e => e.key === 'Enter' && addBuilding()}
-                      autoFocus
-                    />
-                    <div style={{ display: 'flex', gap: '6px' }}>
-                      <button
-                        className="primary-btn"
-                        style={{ flex: 1, justifyContent: 'center', fontSize: '0.75rem', padding: '5px 8px', minHeight: 30 }}
-                        onClick={addBuilding}
-                        disabled={loading}
-                      >
-                        <Plus size={12} /> Add
-                      </button>
-                      <button
-                        onClick={() => setShowAddBuilding(false)}
-                        style={{
-                          flex: 1,
-                          background: 'rgba(255,255,255,0.06)',
-                          border: '1px solid var(--border-dim)',
-                          borderRadius: 8,
-                          color: 'var(--text-muted)',
-                          cursor: 'pointer',
-                          fontSize: '0.75rem',
-                          padding: '5px 8px'
-                        }}
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
-                )}
-
                 {/* Quick 1-tap pill switcher if more than 1 building exists */}
                 {buildings.length > 1 && (
-                  <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '2px', scrollbarWidth: 'none' }}>
+                  <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '2px', scrollbarWidth: 'none', width: '100%' }}>
                     {buildings.map(b => {
                       const isSelected = selectedBuilding?.id === b.id;
                       return (
@@ -982,8 +867,8 @@ function FloorPlanTab() {
                           style={{
                             padding: '4px 10px',
                             borderRadius: 20,
-                            border: isSelected ? '1px solid var(--primary)' : '1px solid rgba(255,255,255,0.08)',
-                            background: isSelected ? 'rgba(249,115,22,0.2)' : 'rgba(255,255,255,0.03)',
+                            border: isSelected ? '1px solid var(--primary)' : '1px solid var(--border-dim)',
+                            background: isSelected ? 'rgba(249,115,22,0.2)' : 'rgba(128,128,128,0.06)',
                             color: isSelected ? 'var(--primary)' : 'var(--text-muted)',
                             fontSize: '0.74rem',
                             fontWeight: 700,
@@ -1008,19 +893,21 @@ function FloorPlanTab() {
                   flexDirection: 'column',
                   gap: '0.75rem',
                   paddingTop: '0.65rem',
-                  borderTop: '1px solid rgba(255,255,255,0.06)'
+                  borderTop: '1px solid var(--border-dim)',
+                  width: '100%'
                 }}>
                   <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>
                     {floorData ? `${allFloorKeys.length} Floors · ${selectedBuilding?.totalRooms || 0} Rooms · ${selectedBuilding?.totalBeds || 0} Total Beds` : 'Loading…'}
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: '8px' }}>
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                     <button
                       className="primary-btn"
                       style={{
+                        flex: '1 1 120px',
                         justifyContent: 'center',
                         fontSize: '0.78rem',
-                        padding: '7px 8px',
+                        padding: '7px 10px',
                         minHeight: 34,
                         background: 'linear-gradient(135deg, rgba(249,115,22,0.22), rgba(249,115,22,0.12))',
                         border: '1px solid rgba(249,115,22,0.4)',
@@ -1034,9 +921,10 @@ function FloorPlanTab() {
                     <button
                       className="primary-btn"
                       style={{
+                        flex: '1 1 120px',
                         justifyContent: 'center',
                         fontSize: '0.78rem',
-                        padding: '7px 8px',
+                        padding: '7px 10px',
                         minHeight: 34
                       }}
                       onClick={() => handleOpenAddRoom()}
@@ -1046,7 +934,7 @@ function FloorPlanTab() {
 
                     <button
                       className="icon-btn"
-                      style={{ width: 34, height: 34 }}
+                      style={{ width: 34, height: 34, flexShrink: 0 }}
                       title="Refresh"
                       onClick={() => fetchFloorPlan(selectedBuilding.id)}
                     >
@@ -1057,17 +945,7 @@ function FloorPlanTab() {
               </div>
             ) : (
               /* DESKTOP ONLY: Top Header Card */
-              <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                flexWrap: 'wrap',
-                gap: '0.75rem',
-                background: 'rgba(255,255,255,0.02)',
-                border: '1px solid rgba(255,255,255,0.06)',
-                borderRadius: 14,
-                padding: '0.875rem 1.1rem'
-              }}>
+              <div className="floorplan-header-card">
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <Building2 size={18} color="var(--primary)" />
@@ -1080,7 +958,7 @@ function FloorPlanTab() {
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
                   <button
                     className="primary-btn"
                     style={{
@@ -1118,263 +996,25 @@ function FloorPlanTab() {
               </div>
             )}
 
-            {/* Add Floor Drawer */}
-            {showAddFloor && (
-              <div style={{
-                background: 'linear-gradient(135deg, rgba(249,115,22,0.1), rgba(255,255,255,0.03))',
-                border: '1px solid rgba(249,115,22,0.35)',
-                borderRadius: 14,
-                padding: '1.1rem',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '0.875rem',
-                boxShadow: '0 8px 24px rgba(0,0,0,0.35)'
-              }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <Layers3 size={16} color="var(--primary)" />
-                    <span style={{ fontWeight: 800, fontSize: '0.92rem', color: 'var(--text-main)' }}>
-                      Add New Floor to {selectedBuilding.name}
-                    </span>
-                  </div>
-                  <button
-                    onClick={() => setShowAddFloor(false)}
-                    style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.9rem', padding: 4 }}
-                  >
-                    ✕
-                  </button>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 1fr', gap: '0.75rem' }}>
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)' }}>Floor Number / Name *</label>
-                    <input
-                      className="custom-input"
-                      value={newFloorNumber}
-                      onChange={e => {
-                        const val = e.target.value;
-                        setNewFloorNumber(val);
-                        if (!newFloorInitialRoom || newFloorInitialRoom.endsWith('01')) {
-                          setNewFloorInitialRoom(val ? `${val}01` : '');
-                        }
-                      }}
-                      placeholder="e.g. 3, 4, Penthouse"
-                      autoFocus
-                    />
-                  </div>
-
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)' }}>First Room Number (Optional)</label>
-                    <input
-                      className="custom-input"
-                      value={newFloorInitialRoom}
-                      onChange={e => setNewFloorInitialRoom(e.target.value)}
-                      placeholder={`e.g. ${newFloorNumber || '3'}01 (or leave blank)`}
-                    />
-                  </div>
-
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)' }}>Room Bed Capacity</label>
-                    <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
-                      {['1', '2', '3', '4', '5', '6'].map(cap => (
-                        <button
-                          key={cap}
-                          type="button"
-                          onClick={() => setNewFloorCapacity(cap)}
-                          style={{
-                            flex: 1,
-                            minWidth: 32,
-                            padding: '6px 4px',
-                            borderRadius: 8,
-                            border: newFloorCapacity === cap ? '1px solid var(--primary)' : '1px solid rgba(255,255,255,0.08)',
-                            background: newFloorCapacity === cap ? 'rgba(249,115,22,0.25)' : 'rgba(255,255,255,0.04)',
-                            color: newFloorCapacity === cap ? 'var(--primary)' : 'var(--text-muted)',
-                            fontSize: '0.72rem',
-                            fontWeight: 700,
-                            cursor: 'pointer'
-                          }}
-                        >
-                          {cap} {cap === '1' ? 'Bed' : 'Beds'}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: 4 }}>
-                  <button
-                    onClick={() => setShowAddFloor(false)}
-                    style={{
-                      background: 'rgba(255,255,255,0.06)',
-                      border: '1px solid var(--border-dim)',
-                      borderRadius: 8,
-                      color: 'var(--text-muted)',
-                      cursor: 'pointer',
-                      padding: '0 16px',
-                      minHeight: 36,
-                      fontSize: '0.8rem'
-                    }}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    className="primary-btn"
-                    style={{ justifyContent: 'center', minHeight: 36, padding: '0 20px', fontSize: '0.82rem' }}
-                    onClick={handleAddFloor}
-                    disabled={loading}
-                  >
-                    <Layers3 size={14} /> {newFloorInitialRoom.trim() ? 'Create Floor & Room' : 'Create Floor'}
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Mobile / Responsive Add Room Drawer */}
-            {showAddRoom && (
-              <div style={{
-                background: 'linear-gradient(135deg, rgba(249,115,22,0.08), rgba(255,255,255,0.03))',
-                border: '1px solid rgba(249,115,22,0.3)',
-                borderRadius: 14,
-                padding: '1.1rem',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '0.875rem',
-                boxShadow: '0 8px 24px rgba(0,0,0,0.3)'
-              }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontWeight: 800, fontSize: '0.9rem', color: 'var(--text-main)' }}>
-                    Add Room to {selectedBuilding.name}
-                  </span>
-                  <button
-                    onClick={() => setShowAddRoom(false)}
-                    style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.8rem' }}
-                  >
-                    ✕
-                  </button>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 1fr', gap: '0.75rem' }}>
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)' }}>Room Number *</label>
-                    <input
-                      className="custom-input"
-                      value={newRoom.roomNumber}
-                      onChange={e => setNewRoom(p => ({ ...p, roomNumber: e.target.value }))}
-                      placeholder={`e.g. ${newRoom.floor}01, 204B`}
-                      autoFocus
-                    />
-                  </div>
-
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)' }}>Floor Number *</label>
-                    <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
-                      <input
-                        className="custom-input"
-                        style={{ width: 70 }}
-                        value={newRoom.floor}
-                        onChange={e => setNewRoom(p => ({ ...p, floor: e.target.value }))}
-                        placeholder="Floor"
-                      />
-                      {allFloorKeys.map(fl => (
-                        <button
-                          key={fl}
-                          type="button"
-                          onClick={() => setNewRoom(p => ({
-                            ...p,
-                            floor: fl,
-                            roomNumber: p.roomNumber && /^\d+$/.test(p.roomNumber) ? `${fl}01` : p.roomNumber
-                          }))}
-                          style={{
-                            padding: '0 8px',
-                            borderRadius: 8,
-                            border: newRoom.floor === fl ? '1px solid var(--primary)' : '1px solid rgba(255,255,255,0.08)',
-                            background: newRoom.floor === fl ? 'rgba(249,115,22,0.2)' : 'rgba(255,255,255,0.04)',
-                            color: newRoom.floor === fl ? 'var(--primary)' : 'var(--text-muted)',
-                            fontSize: '0.72rem',
-                            fontWeight: 700,
-                            cursor: 'pointer'
-                          }}
-                        >
-                          F{fl}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)' }}>Bed Capacity</label>
-                    <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
-                      {['1', '2', '3', '4', '5', '6'].map(cap => (
-                        <button
-                          key={cap}
-                          type="button"
-                          onClick={() => setNewRoom(p => ({ ...p, capacity: cap }))}
-                          style={{
-                            flex: 1,
-                            minWidth: 32,
-                            padding: '6px 4px',
-                            borderRadius: 8,
-                            border: newRoom.capacity === cap ? '1px solid var(--primary)' : '1px solid rgba(255,255,255,0.08)',
-                            background: newRoom.capacity === cap ? 'rgba(249,115,22,0.25)' : 'rgba(255,255,255,0.04)',
-                            color: newRoom.capacity === cap ? 'var(--primary)' : 'var(--text-muted)',
-                            fontSize: '0.72rem',
-                            fontWeight: 700,
-                            cursor: 'pointer'
-                          }}
-                        >
-                          {cap} {cap === '1' ? 'Bed' : 'Beds'}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: 4 }}>
-                  <button
-                    onClick={() => setShowAddRoom(false)}
-                    style={{
-                      background: 'rgba(255,255,255,0.06)',
-                      border: '1px solid var(--border-dim)',
-                      borderRadius: 8,
-                      color: 'var(--text-muted)',
-                      cursor: 'pointer',
-                      padding: '0 16px',
-                      minHeight: 36,
-                      fontSize: '0.8rem'
-                    }}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    className="primary-btn"
-                    style={{ justifyContent: 'center', minHeight: 36, padding: '0 20px', fontSize: '0.82rem' }}
-                    onClick={addRoom}
-                    disabled={loading}
-                  >
-                    <Plus size={14} /> Add Room
-                  </button>
-                </div>
-              </div>
-            )}
-
             {/* Occupancy Legends */}
-            <div style={{ display: 'flex', gap: '0.75rem', fontSize: '0.72rem', color: 'var(--text-muted)', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: '0.5rem', fontSize: '0.72rem', color: 'var(--text-muted)', flexWrap: 'wrap' }}>
               {[
                 { color: 'var(--success)', label: 'Available (Vacant Beds)' },
                 { color: 'var(--warning)', label: 'Partial Occupancy' },
                 { color: 'var(--danger)', label: 'Full (100% Occupied)' }
               ].map(l => (
-                <div key={l.label} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(255,255,255,0.03)', padding: '4px 10px', borderRadius: 20, border: '1px solid rgba(255,255,255,0.06)' }}>
+                <div key={l.label} className="legend-chip">
                   <div style={{ width: 8, height: 8, borderRadius: '50%', background: l.color, boxShadow: `0 0 6px ${l.color}` }} />
                   {l.label}
                 </div>
               ))}
             </div>
 
+            {/* FLOOR ACCORDIONS LIST */}
             {loadingFloor ? (
-              <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
-                <RefreshCw size={24} className="spin" style={{ opacity: 0.5, marginBottom: '0.5rem' }} />
-                <div>Loading floor plan…</div>
+              <div style={{ textAlign: 'center', padding: '3.5rem', color: 'var(--text-muted)' }}>
+                <RefreshCw size={26} className="animate-spin" style={{ opacity: 0.6, marginBottom: '0.75rem', display: 'inline-block' }} />
+                <div style={{ fontSize: '0.88rem' }}>Loading floor plan…</div>
               </div>
             ) : allFloorKeys.length > 0 ? (
               allFloorKeys.map((floor) => {
@@ -1385,46 +1025,42 @@ function FloorPlanTab() {
                 const isExpanded = expandedFloors.has(floor) || (!isNaN(Number(floor)) && expandedFloors.has(Number(floor)));
 
                 return (
-                  <div key={floor} style={{ border: '1px solid rgba(255,255,255,0.08)', borderRadius: 16, overflow: 'hidden', background: 'rgba(255,255,255,0.02)' }}>
+                  <div key={floor} className="floor-card">
                     {/* Floor Header Bar */}
                     <div
+                      className="floor-header"
                       style={{
-                        padding: '0.875rem 1.15rem',
-                        background: isExpanded ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.02)',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        fontWeight: 700,
-                        borderBottom: isExpanded ? '1px solid rgba(255,255,255,0.06)' : 'none',
-                        transition: 'background 0.2s ease'
+                        borderBottom: isExpanded ? '1px solid var(--border-dim)' : 'none'
                       }}
                       onClick={() => toggleFloor(floor)}
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                         <div style={{
-                          width: 28, height: 28, borderRadius: 8,
-                          background: 'rgba(249,115,22,0.18)',
+                          width: 32, height: 32, borderRadius: 9,
+                          background: 'rgba(249,115,22,0.16)',
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          border: '1px solid rgba(249,115,22,0.3)'
+                          border: '1px solid rgba(249,115,22,0.3)',
+                          flexShrink: 0
                         }}>
-                          <Layers3 size={15} color="var(--primary)" />
+                          <Layers3 size={16} color="var(--primary)" />
                         </div>
                         <div>
-                          <span style={{ fontSize: '0.92rem', fontWeight: 800, color: '#fff' }}>Floor {floor}</span>
-                          <span style={{ fontWeight: 500, fontSize: '0.72rem', color: 'var(--text-muted)', marginLeft: 8 }}>
+                          <span style={{ fontSize: '0.98rem', fontWeight: 800, color: 'var(--text-main)' }}>
+                            Floor {floor}
+                          </span>
+                          <span style={{ fontWeight: 600, fontSize: '0.74rem', color: 'var(--text-muted)', marginLeft: 8 }}>
                             {rooms.length} {rooms.length === 1 ? 'room' : 'rooms'}
                           </span>
                         </div>
                       </div>
 
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                         {rooms.length > 0 ? (
-                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
-                            <span style={{ fontSize: '0.72rem', color: totalOcc === totalCap ? 'var(--danger)' : 'var(--text-muted)', fontWeight: 600 }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3 }}>
+                            <span style={{ fontSize: '0.74rem', color: totalOcc === totalCap ? 'var(--danger)' : 'var(--text-muted)', fontWeight: 700 }}>
                               {totalOcc}/{totalCap} beds ({occPct}%)
                             </span>
-                            <div style={{ width: 60, height: 4, background: 'rgba(255,255,255,0.08)', borderRadius: 3, overflow: 'hidden' }}>
+                            <div style={{ width: 68, height: 4, background: 'rgba(128,128,128,0.18)', borderRadius: 3, overflow: 'hidden' }}>
                               <div style={{
                                 height: '100%',
                                 width: `${occPct}%`,
@@ -1434,11 +1070,11 @@ function FloorPlanTab() {
                             </div>
                           </div>
                         ) : (
-                          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                          <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
                             Empty Floor
                           </span>
                         )}
-                        {isExpanded ? <ChevronDown size={17} color="var(--primary)" /> : <ChevronRight size={17} color="var(--text-muted)" />}
+                        {isExpanded ? <ChevronDown size={18} color="var(--primary)" /> : <ChevronRight size={18} color="var(--text-muted)" />}
                       </div>
                     </div>
 
@@ -1446,12 +1082,11 @@ function FloorPlanTab() {
                     {isExpanded && (
                       rooms.length > 0 ? (
                         <div
-                          className="room-grid"
                           style={{
                             padding: isMobile ? '0.75rem' : '1rem',
                             display: 'grid',
                             gridTemplateColumns: isMobile ? 'repeat(auto-fill, minmax(140px, 1fr))' : 'repeat(auto-fill, minmax(175px, 1fr))',
-                            gap: '0.65rem'
+                            gap: '0.75rem'
                           }}
                         >
                           {rooms.map((room: any) => {
@@ -1459,58 +1094,38 @@ function FloorPlanTab() {
                             return (
                               <div
                                 key={room.id}
-                                style={{
-                                  border: '1px solid rgba(255,255,255,0.07)',
-                                  borderRadius: 12,
-                                  padding: '0.75rem',
-                                  background: 'rgba(255,255,255,0.02)',
-                                  transition: 'all 0.2s',
-                                  display: 'flex',
-                                  flexDirection: 'column',
-                                  justifyContent: 'space-between'
-                                }}
+                                className="room-card-item"
                               >
                                 <div>
-                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.45rem' }}>
                                     <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                                      <Home size={13} color="var(--primary)" />
-                                      <span style={{ fontWeight: 800, fontSize: '0.88rem', color: '#fff' }}>{room.roomNumber}</span>
+                                      <Home size={14} color="var(--primary)" />
+                                      <span style={{ fontWeight: 800, fontSize: '0.92rem', color: 'var(--text-main)' }}>
+                                        {room.roomNumber}
+                                      </span>
                                     </div>
-                                    <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
                                       <div style={{ width: 8, height: 8, borderRadius: '50%', background: statusColor, boxShadow: `0 0 5px ${statusColor}` }} />
                                       <button
                                         style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--danger)', opacity: 0.6, padding: 2 }}
                                         onClick={() => deleteRoom(room.id, room.roomNumber)}
                                         title="Delete room"
                                       >
-                                        <Trash2 size={12} />
+                                        <Trash2 size={13} />
                                       </button>
                                     </div>
                                   </div>
 
-                                  <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
+                                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.6rem' }}>
                                     {room.capacity} beds · {room.occupied} occupied
                                   </div>
 
-                                  <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                                  <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
                                     {room.beds.map((bed: any) => (
                                       <div
                                         key={bed.id}
-                                        title={bed.studentName || 'Empty'}
-                                        style={{
-                                          width: 28,
-                                          height: 28,
-                                          borderRadius: 7,
-                                          display: 'flex',
-                                          alignItems: 'center',
-                                          justifyContent: 'center',
-                                          background: bed.status === 'occupied' ? 'rgba(249,115,22,0.18)' : 'rgba(34,197,94,0.1)',
-                                          border: `1px solid ${bed.status === 'occupied' ? 'rgba(249,115,22,0.35)' : 'rgba(34,197,94,0.2)'}`,
-                                          fontSize: '0.65rem',
-                                          fontWeight: 800,
-                                          color: bed.status === 'occupied' ? 'var(--primary)' : 'var(--success)',
-                                          cursor: 'default'
-                                        }}
+                                        title={bed.studentName ? `Occupied by: ${bed.studentName}` : 'Vacant Bed'}
+                                        className={bed.status === 'occupied' ? 'bed-chip-occupied' : 'bed-chip-vacant'}
                                       >
                                         B{bed.bedNumber}
                                       </div>
@@ -1519,7 +1134,7 @@ function FloorPlanTab() {
                                 </div>
 
                                 {room.beds.some((b: any) => b.studentName) && (
-                                  <div style={{ marginTop: '0.5rem', paddingTop: '0.4rem', borderTop: '1px solid rgba(255,255,255,0.05)', fontSize: '0.63rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+                                  <div style={{ marginTop: '0.6rem', paddingTop: '0.45rem', borderTop: '1px solid var(--border-dim)', fontSize: '0.66rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
                                     {room.beds.filter((b: any) => b.studentName).map((b: any) => (
                                       <div key={b.id} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                         <span style={{ color: 'var(--primary)', fontWeight: 700 }}>B{b.bedNumber}:</span> {b.studentName}
@@ -1539,15 +1154,15 @@ function FloorPlanTab() {
                           alignItems: 'center',
                           justifyContent: 'space-between',
                           gap: '0.75rem',
-                          background: 'rgba(255,255,255,0.015)'
+                          background: 'rgba(128,128,128,0.03)'
                         }}>
-                          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                          <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
                             No rooms on Floor {floor} yet.
                           </div>
                           <div style={{ display: 'flex', gap: '8px' }}>
                             <button
                               className="primary-btn"
-                              style={{ fontSize: '0.74rem', padding: '6px 12px', minHeight: 30 }}
+                              style={{ fontSize: '0.76rem', padding: '6px 14px', minHeight: 32 }}
                               onClick={() => handleOpenAddRoom(floor)}
                             >
                               <Plus size={13} /> Add Room to Floor {floor}
@@ -1555,7 +1170,7 @@ function FloorPlanTab() {
                             {extraFloors.includes(floor) && (
                               <button
                                 className="ghost-btn"
-                                style={{ fontSize: '0.74rem', padding: '6px 10px', minHeight: 30, color: 'var(--danger)', border: '1px solid rgba(239,68,68,0.2)' }}
+                                style={{ fontSize: '0.76rem', padding: '6px 12px', minHeight: 32, color: 'var(--danger)', border: '1px solid rgba(239,68,68,0.25)' }}
                                 onClick={() => handleRemoveEmptyFloor(floor)}
                               >
                                 Remove Floor
@@ -1569,13 +1184,242 @@ function FloorPlanTab() {
                 );
               })
             ) : (
-              <div style={{ textAlign: 'center', padding: '2.5rem', color: 'var(--text-muted)', background: 'rgba(255,255,255,0.02)', borderRadius: 14 }}>
-                No floors or rooms added yet. Click "+ Add Floor" or "+ Add Room" to configure your floor plan.
+              <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)', background: 'rgba(128,128,128,0.03)', borderRadius: 16, border: '1px dashed var(--border-light)' }}>
+                <Layers3 size={36} style={{ opacity: 0.3, marginBottom: '0.75rem' }} />
+                <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-main)', marginBottom: 4 }}>No floors or rooms configured yet</div>
+                <div style={{ fontSize: '0.8rem', marginBottom: '1rem' }}>Click below to create your first floor and rooms.</div>
+                <button className="primary-btn" style={{ margin: '0 auto', fontSize: '0.82rem' }} onClick={handleOpenAddFloor}>
+                  <Layers3 size={15} /> Add First Floor
+                </button>
               </div>
             )}
           </>
         )}
       </div>
+
+      {/* MODAL: Add New Building */}
+      {showAddBuilding && (
+        <Modal isOpen onClose={() => setShowAddBuilding(false)} title="Add New Building">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div className="form-group" style={{ margin: 0 }}>
+              <label style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: 6, display: 'block' }}>
+                Building Name *
+              </label>
+              <input
+                className="custom-input"
+                style={{ fontSize: '0.9rem', padding: '10px 12px' }}
+                value={newBuildingName}
+                onChange={e => setNewBuildingName(e.target.value)}
+                placeholder="e.g. Block B, Main Hostel, Annex"
+                onKeyDown={e => e.key === 'Enter' && addBuilding()}
+                autoFocus
+              />
+            </div>
+            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+              <button
+                type="button"
+                className="ghost-btn"
+                onClick={() => setShowAddBuilding(false)}
+                style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid var(--border-dim)' }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="primary-btn"
+                onClick={addBuilding}
+                disabled={loading || !newBuildingName.trim()}
+                style={{ padding: '8px 20px', borderRadius: 8, fontWeight: 700 }}
+              >
+                <Plus size={15} /> Add Building
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* MODAL: Add New Floor */}
+      {showAddFloor && (
+        <Modal isOpen onClose={() => setShowAddFloor(false)} title={`Add Floor to ${selectedBuilding?.name || 'Building'}`}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div className="form-group" style={{ margin: 0 }}>
+              <label style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: 6, display: 'block' }}>
+                Floor Number or Name *
+              </label>
+              <input
+                className="custom-input"
+                value={newFloorNumber}
+                onChange={e => setNewFloorNumber(e.target.value)}
+                placeholder="e.g. 1, 2, Ground Floor"
+                autoFocus
+              />
+            </div>
+
+            <div className="form-group" style={{ margin: 0 }}>
+              <label style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: 6, display: 'block' }}>
+                Initial Room Number (Optional)
+              </label>
+              <input
+                className="custom-input"
+                value={newFloorInitialRoom}
+                onChange={e => setNewFloorInitialRoom(e.target.value)}
+                placeholder={`e.g. ${newFloorNumber}01 (leave blank to create empty floor)`}
+              />
+            </div>
+
+            {newFloorInitialRoom.trim() && (
+              <div className="form-group" style={{ margin: 0 }}>
+                <label style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: 6, display: 'block' }}>
+                  Room Bed Capacity
+                </label>
+                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                  {['1', '2', '3', '4', '5', '6'].map(cap => (
+                    <button
+                      key={cap}
+                      type="button"
+                      onClick={() => setNewFloorCapacity(cap)}
+                      style={{
+                        flex: 1,
+                        minWidth: 38,
+                        padding: '8px 6px',
+                        borderRadius: 8,
+                        border: newFloorCapacity === cap ? '1px solid var(--primary)' : '1px solid var(--border-dim)',
+                        background: newFloorCapacity === cap ? 'rgba(249,115,22,0.25)' : 'rgba(128,128,128,0.06)',
+                        color: newFloorCapacity === cap ? 'var(--primary)' : 'var(--text-muted)',
+                        fontSize: '0.8rem',
+                        fontWeight: 700,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      {cap} {cap === '1' ? 'Bed' : 'Beds'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+              <button
+                type="button"
+                className="ghost-btn"
+                onClick={() => setShowAddFloor(false)}
+                style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid var(--border-dim)' }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="primary-btn"
+                onClick={handleAddFloor}
+                disabled={loading || !newFloorNumber.trim()}
+                style={{ padding: '8px 20px', borderRadius: 8, fontWeight: 700 }}
+              >
+                <Layers3 size={15} /> {newFloorInitialRoom.trim() ? 'Create Floor & Room' : 'Create Floor'}
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* MODAL: Add New Room */}
+      {showAddRoom && (
+        <Modal isOpen onClose={() => setShowAddRoom(false)} title={`Add Room to ${selectedBuilding?.name || 'Building'}`}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div className="form-group" style={{ margin: 0 }}>
+              <label style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: 6, display: 'block' }}>
+                Room Number *
+              </label>
+              <input
+                className="custom-input"
+                value={newRoom.roomNumber}
+                onChange={e => setNewRoom(p => ({ ...p, roomNumber: e.target.value }))}
+                placeholder={`e.g. ${newRoom.floor}01, 204B`}
+                autoFocus
+              />
+            </div>
+
+            <div className="form-group" style={{ margin: 0 }}>
+              <label style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: 6, display: 'block' }}>
+                Target Floor *
+              </label>
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                {allFloorKeys.map(fl => (
+                  <button
+                    key={fl}
+                    type="button"
+                    onClick={() => setNewRoom(p => ({
+                      ...p,
+                      floor: fl,
+                      roomNumber: p.roomNumber && /^\d+$/.test(p.roomNumber) ? `${fl}01` : p.roomNumber
+                    }))}
+                    style={{
+                      padding: '6px 12px',
+                      borderRadius: 8,
+                      border: newRoom.floor === fl ? '1px solid var(--primary)' : '1px solid var(--border-dim)',
+                      background: newRoom.floor === fl ? 'rgba(249,115,22,0.25)' : 'rgba(128,128,128,0.06)',
+                      color: newRoom.floor === fl ? 'var(--primary)' : 'var(--text-muted)',
+                      fontSize: '0.78rem',
+                      fontWeight: 700,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Floor {fl}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="form-group" style={{ margin: 0 }}>
+              <label style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: 6, display: 'block' }}>
+                Bed Capacity
+              </label>
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                {['1', '2', '3', '4', '5', '6'].map(cap => (
+                  <button
+                    key={cap}
+                    type="button"
+                    onClick={() => setNewRoom(p => ({ ...p, capacity: cap }))}
+                    style={{
+                      flex: 1,
+                      minWidth: 38,
+                      padding: '8px 6px',
+                      borderRadius: 8,
+                      border: newRoom.capacity === cap ? '1px solid var(--primary)' : '1px solid var(--border-dim)',
+                      background: newRoom.capacity === cap ? 'rgba(249,115,22,0.25)' : 'rgba(128,128,128,0.06)',
+                      color: newRoom.capacity === cap ? 'var(--primary)' : 'var(--text-muted)',
+                      fontSize: '0.8rem',
+                      fontWeight: 700,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    {cap} {cap === '1' ? 'Bed' : 'Beds'}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+              <button
+                type="button"
+                className="ghost-btn"
+                onClick={() => setShowAddRoom(false)}
+                style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid var(--border-dim)' }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="primary-btn"
+                onClick={addRoom}
+                disabled={loading || !newRoom.roomNumber.trim()}
+                style={{ padding: '8px 20px', borderRadius: 8, fontWeight: 700 }}
+              >
+                <Plus size={15} /> Add Room
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }
@@ -1669,7 +1513,7 @@ export default function SettingsPage() {
         </p>
       </div>
 
-      <div style={{ display: 'flex', gap: '4px', marginBottom: '1.5rem', background: 'rgba(255,255,255,0.04)', borderRadius: 12, padding: '4px', flexShrink: 0, overflowX: 'auto' }}>
+      <div className="settings-nav-tabs">
         {TABS.map(({ id, label, icon: Icon }) => (
           <button key={id} onClick={() => setActiveTab(id)} style={{
             flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px',
