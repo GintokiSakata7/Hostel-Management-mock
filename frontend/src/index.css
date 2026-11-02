@@ -3507,4 +3507,55 @@ select option[value=""],
   border-color: rgba(0, 0, 0, 0.08);
 }
 
+/* ===================== CALLOUT BANNERS & NOTICES ===================== */
+.info-callout-banner {
+  margin-top: 1.25rem;
+  padding: 1rem 1.15rem;
+  border-radius: 12px;
+  font-size: 0.84rem;
+  line-height: 1.6;
+  background: rgba(59, 130, 246, 0.08);
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  color: #bfdbfe;
+}
+.info-callout-banner .callout-title {
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+  color: #60a5fa;
+}
+.info-callout-banner strong {
+  color: #ffffff;
+}
+
+/* Light theme: strong contrast, deep rich navy text on clean ice-blue surface */
+.light-theme .info-callout-banner {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+  color: #1e3a8a;
+  box-shadow: 0 1px 3px rgba(59, 130, 246, 0.05);
+}
+.light-theme .info-callout-banner .callout-title {
+  color: #1d4ed8;
+}
+.light-theme .info-callout-banner strong {
+  color: #0f172a;
+}
+
+.preview-fee-card {
+  text-align: center;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 8px;
+  padding: 0.75rem;
+  border: 1px solid var(--border-dim);
+}
+.light-theme .preview-fee-card {
+  background: #ffffff;
+  border-color: rgba(0, 0, 0, 0.08);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+}
+
+
 

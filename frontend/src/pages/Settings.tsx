@@ -238,8 +238,8 @@ function FeeTab({ settings, onSave }: { settings: any; onSave: (s: any) => void 
         </div>
 
         {/* Historical Billing Preservation Notice */}
-        <div style={{ marginTop: '1.25rem', padding: '1rem', background: 'rgba(59,130,246,0.08)', borderRadius: 12, border: '1px solid rgba(59,130,246,0.25)', fontSize: '0.82rem', lineHeight: 1.6, color: '#bfdbfe' }}>
-          <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px', color: '#60a5fa' }}>
+        <div className="info-callout-banner">
+          <div className="callout-title">
             <Info size={15} /> Effective-Date Fee Policy Active
           </div>
           <div>
@@ -258,7 +258,7 @@ function FeeTab({ settings, onSave }: { settings: any; onSave: (s: any) => void 
               { label: '3-Month Advance', value: `₹${(Number(form.monthlyFee || 0) * 3).toLocaleString()}` },
               { label: 'Annual Total', value: `₹${(Number(form.monthlyFee || 0) * 12).toLocaleString()}` },
             ].map(({ label, value }) => (
-              <div key={label} style={{ textAlign: 'center', background: 'rgba(255,255,255,0.04)', borderRadius: 8, padding: '0.75rem' }}>
+              <div key={label} className="preview-fee-card">
                 <div style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>{label}</div>
                 <div style={{ fontWeight: 800, fontSize: '1.05rem', color: 'var(--primary)', marginTop: 4 }}>{value}</div>
               </div>
