@@ -1160,7 +1160,7 @@ export default function Students() {
 
   const [searchTerm, setSearchTerm] = useState('');
   const [courseFilter, setCourseFilter] = useState('all');
-  const [feeFilter, setFeeFilter] = useState<'all' | 'Paid' | 'Pending'>('all');
+  const [feeFilter, setFeeFilter] = useState<'all' | 'Paid' | 'Pending' | 'Enrolled'>('all');
 
   const [showForm, setShowForm] = useState(false);
   const [editingStudent, setEditingStudent] = useState<any>(null);
@@ -1291,11 +1291,19 @@ export default function Students() {
     });
   };
 
-  const activeCount = students.filter(s => s.status !== 'Vacated').length;
-  const vacatedCount = students.filter(s => s.status === 'Vacated').length;
   const activeStudents = students.filter(s => s.status !== 'Vacated');
-  const paidCount = activeStudents.filter(s => s.feeStatus === 'Paid').length;
-  const pendingCount = activeStudents.filter(s => s.feeStatus === 'Pending').length;
+  const activeCount = activeStudents.length;
+  const vacatedCount = students.filter(s => s.status === 'Vacated').length;
+
+  const enrolledInMonthStudents = activeStudents.filter(s => s.feeStatus !== 'Not Enrolled');
+  const enrolledCount = enrolledInMonthStudents.length;
+  const notEnrolledCount = activeStudents.filter(s => s.feeStatus === 'Not Enrolled').length;
+
+  const paidCount = enrolledInMonthStudents.filter(s => s.feeStatus === 'Paid').length;
+  const pendingCount = enrolledInMonthStudents.filter(s => s.feeStatus === 'Pending').length;
+
+  const selectedMonthObj = MONTHS.find(m => m.value === selectedMonth);
+  const selectedMonthLabel = selectedMonthObj?.label || selectedMonth;
 
   const filtered = students.filter(s => {
     const isVacated = s.status === 'Vacated';
@@ -1304,7 +1312,11 @@ export default function Students() {
 
     const matchSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase()) || (s.room || '').toLowerCase().includes(searchTerm.toLowerCase());
     const matchCourse = courseFilter === 'all' || s.course.toLowerCase().includes(courseFilter.toLowerCase());
-    const matchFee = feeFilter === 'all' || s.feeStatus === feeFilter;
+    const matchFee = feeFilter === 'all'
+      ? true
+      : feeFilter === 'Enrolled'
+        ? s.feeStatus !== 'Not Enrolled'
+        : s.feeStatus === feeFilter;
     return matchSearch && matchCourse && matchFee;
   }).sort((a, b) => {
     if (a.feeStatus !== b.feeStatus) {
@@ -1325,7 +1337,7 @@ export default function Students() {
         <div>
           <h1 className="page-title" style={{ margin: '0 0 4px 0', fontSize: isMobile ? '1.35rem' : '1.6rem' }}>Resident Management</h1>
           <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.82rem' }}>
-            {activeCount} Active Residents · {vacatedCount} Vacated · Monthly fee ₹{monthlyFee.toLocaleString('en-IN')}
+            {activeCount} Active Residents · {enrolledCount} Enrolled in {selectedMonthLabel}{notEnrolledCount > 0 ? ` (${notEnrolledCount} joined later)` : ''} · {vacatedCount} Vacated · Monthly fee ₹{monthlyFee.toLocaleString('en-IN')}
           </p>
         </div>
         <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', width: isMobile ? '100%' : 'auto', justifyContent: isMobile ? 'space-between' : 'flex-end', flexWrap: 'wrap' }}>
@@ -1347,9 +1359,9 @@ export default function Students() {
       {isMobile ? (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.65rem', marginBottom: '1.25rem' }}>
           {[
-            { label: 'Active Residents', value: activeCount, color: 'var(--primary)', tab: 'active', filter: 'all', icon: Users, sub: 'Currently enrolled' },
+            { label: 'Active Residents', value: activeCount, color: 'var(--primary)', tab: 'active', filter: 'all', icon: Users, sub: `${enrolledCount} enrolled in ${selectedMonthLabel}` },
             { label: 'Pending Dues', value: pendingCount, color: 'var(--warning)', tab: 'active', filter: 'Pending', icon: Clock, sub: 'Needs follow-up' },
-            { label: 'Fee Paid', value: paidCount, color: 'var(--success)', tab: 'active', filter: 'Paid', icon: CheckCircle, sub: 'Cleared this month' },
+            { label: 'Fee Paid', value: paidCount, color: 'var(--success)', tab: 'active', filter: 'Paid', icon: CheckCircle, sub: `Cleared for ${selectedMonthLabel}` },
             { label: 'Former / Vacated', value: vacatedCount, color: '#ef4444', tab: 'vacated', filter: 'all', icon: Archive, sub: 'Left hostel' },
           ].map(({ label, value, color, tab, filter, icon: Icon, sub }) => (
             <div
@@ -1387,8 +1399,10 @@ export default function Students() {
         <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
           {[
             { label: 'Active Residents', value: activeCount, color: 'var(--primary)' },
+            { label: `Enrolled (${selectedMonthLabel})`, value: enrolledCount, color: '#38bdf8' },
             { label: 'Fee Paid', value: paidCount, color: 'var(--success)' },
             { label: 'Fee Pending', value: pendingCount, color: 'var(--warning)' },
+            ...(notEnrolledCount > 0 ? [{ label: 'Joined Later', value: notEnrolledCount, color: 'var(--text-muted)' }] : []),
             { label: 'Vacated / Left', value: vacatedCount, color: '#ef4444' },
           ].map(({ label, value, color }) => (
             <div key={label} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border-dim)', borderRadius: 12, padding: '8px 16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -1484,7 +1498,7 @@ export default function Students() {
               {COURSES.map(c => <option key={c} value={c.toLowerCase()}>{c}</option>)}
             </select>
 
-            {(['all', 'Paid', 'Pending'] as const).map(f => (
+            {(['all', 'Enrolled', 'Paid', 'Pending'] as const).map(f => (
               <button
                 key={f}
                 onClick={() => setFeeFilter(f)}
@@ -1503,7 +1517,7 @@ export default function Students() {
                   color: feeFilter === f ? 'var(--primary)' : 'var(--text-muted)'
                 }}
               >
-                {f === 'all' ? 'All Fees' : f === 'Paid' ? '✓ Paid Only' : '⚡ Due Only'}
+                {f === 'all' ? 'All Residents' : f === 'Enrolled' ? '✓ Enrolled Only' : f === 'Paid' ? '✓ Paid Only' : '⚡ Due Only'}
               </button>
             ))}
           </div>
@@ -1538,7 +1552,7 @@ export default function Students() {
                       <button className="student-name-btn" onClick={() => setViewingStudent(student)}>{student.name}</button>
                       
                       {/* Individual Reminder Trigger Button - FOR OVERDUE / ARREARS RESIDENTS */}
-                      {residentTab === 'active' && (student.feeStatus === 'Pending' || (student.pendingMonthsCount && student.pendingMonthsCount > 0)) && (
+                      {residentTab === 'active' && Boolean(student.feeStatus === 'Pending' || ((student.pendingMonthsCount ?? 0) > 0)) && (
                         <button
                           type="button"
                           className="reminder-tag-btn"
@@ -1641,7 +1655,7 @@ export default function Students() {
                       {/* ACTIONS FOR ACTIVE RESIDENTS */}
                       {residentTab === 'active' && (
                         <>
-                          {(student.feeStatus === 'Pending' || (student.pendingMonthsCount && student.pendingMonthsCount > 0)) && (
+                          {Boolean(student.feeStatus === 'Pending' || ((student.pendingMonthsCount ?? 0) > 0)) && (
                             <button 
                               className="icon-btn-small" 
                               title={`Send Email Fee Reminder to ${student.name}`}
@@ -1846,7 +1860,7 @@ export default function Students() {
                 </div>
 
                 {/* Due Banner with 1-Tap Remind (Shown whenever fees are overdue or have arrears) */}
-                {residentTab === 'active' && (student.feeStatus === 'Pending' || (student.pendingMonthsCount && student.pendingMonthsCount > 0)) && (
+                {residentTab === 'active' && Boolean(student.feeStatus === 'Pending' || ((student.pendingMonthsCount ?? 0) > 0)) && (
                   <div style={{
                     background: 'rgba(249,115,22,0.1)',
                     border: '1px solid rgba(249,115,22,0.25)',

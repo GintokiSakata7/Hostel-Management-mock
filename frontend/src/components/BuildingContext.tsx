@@ -36,14 +36,16 @@ export function BuildingProvider({ children }: { children: React.ReactNode }) {
         const data = await res.json();
         setBuildings(data);
 
-        // If no building stored in localStorage or invalid, default to first building (e.g. Building A)
+        // Validate that saved building exists in the returned list, or heal to the first building
         const saved = localStorage.getItem('selectedBuildingId');
-        if (!saved) {
+        const isValid = saved === 'all' || (data && data.some((b: Building) => b.id === saved));
+        if (!isValid) {
           if (data && data.length > 0) {
             setSelectedBuildingIdState(data[0].id);
             localStorage.setItem('selectedBuildingId', data[0].id);
           } else {
             setSelectedBuildingIdState('all');
+            localStorage.setItem('selectedBuildingId', 'all');
           }
         }
       }
@@ -59,7 +61,9 @@ export function BuildingProvider({ children }: { children: React.ReactNode }) {
   const activeBuilding = buildings.find(b => b.id === selectedBuildingId);
   const activeBuildingName = selectedBuildingId === 'all'
     ? 'All Buildings (Global View)'
-    : activeBuilding ? activeBuilding.name : 'Hostel Building';
+    : activeBuilding
+      ? activeBuilding.name
+      : (buildings.length > 0 ? buildings[0].name : 'Hostel Building');
 
   return (
     <BuildingContext.Provider
