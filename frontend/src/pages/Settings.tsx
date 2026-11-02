@@ -1513,18 +1513,15 @@ export default function SettingsPage() {
         </p>
       </div>
 
-      <div className="settings-nav-tabs">
+      <div className="app-nav-tabs">
         {TABS.map(({ id, label, icon: Icon }) => (
-          <button key={id} onClick={() => setActiveTab(id)} style={{
-            flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px',
-            padding: '9px 14px', borderRadius: 9, border: 'none', cursor: 'pointer', fontSize: '0.82rem', fontWeight: 600,
-            background: activeTab === id ? 'var(--primary)' : 'transparent',
-            color: activeTab === id ? '#fff' : 'var(--text-muted)',
-            transition: 'all 0.2s',
-            minWidth: 120,
-            whiteSpace: 'nowrap'
-          }}>
-            <Icon size={15} /> {label}
+          <button
+            key={id}
+            onClick={() => setActiveTab(id)}
+            className={`app-tab-btn ${activeTab === id ? 'active' : ''}`}
+          >
+            <Icon size={15} />
+            <span>{label}</span>
           </button>
         ))}
       </div>
