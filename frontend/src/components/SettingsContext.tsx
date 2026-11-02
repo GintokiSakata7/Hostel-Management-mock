@@ -12,6 +12,9 @@ export interface AppSettings {
   securityDeposit?: number;
   lateFinePerDay?: number;
   dueDateDay?: number;
+  feeEffectiveMonth?: string;
+  previousMonthlyFee?: number;
+  feeSchedule?: string;
 }
 
 interface SettingsContextType {

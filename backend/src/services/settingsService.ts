@@ -12,6 +12,9 @@ export interface AppSettingsData {
   upiId: string;
   upiName: string;
   monthlyFee: number;
+  feeEffectiveMonth?: string;
+  previousMonthlyFee?: number;
+  feeSchedule?: string;
   securityDeposit: number;
   lateFinePerDay: number;
   dueDateDay: number;
@@ -29,7 +32,10 @@ const DEFAULT_SETTINGS: AppSettingsData = {
   hostelAddress: '',
   upiId: '',
   upiName: 'VMR Hostel',
-  monthlyFee: 5500,
+  monthlyFee: 6000,
+  feeEffectiveMonth: '2026-11',
+  previousMonthlyFee: 5500,
+  feeSchedule: '[{"effectiveMonth":"2020-01","fee":5500},{"effectiveMonth":"2026-11","fee":6000}]',
   securityDeposit: 5000,
   lateFinePerDay: 50,
   dueDateDay: 10,
@@ -80,11 +86,14 @@ export async function initSettings(prisma: PrismaClient): Promise<AppSettingsDat
           upiId: fallback.upiId || null,
           upiName: fallback.upiName || DEFAULT_SETTINGS.upiName,
           monthlyFee: Number(fallback.monthlyFee) || DEFAULT_SETTINGS.monthlyFee,
+          feeEffectiveMonth: fallback.feeEffectiveMonth || DEFAULT_SETTINGS.feeEffectiveMonth,
+          previousMonthlyFee: fallback.previousMonthlyFee || DEFAULT_SETTINGS.previousMonthlyFee,
+          feeSchedule: fallback.feeSchedule || DEFAULT_SETTINGS.feeSchedule,
           securityDeposit: Number(fallback.securityDeposit) || DEFAULT_SETTINGS.securityDeposit,
           lateFinePerDay: Number(fallback.lateFinePerDay) || DEFAULT_SETTINGS.lateFinePerDay,
           dueDateDay: Number(fallback.dueDateDay) || DEFAULT_SETTINGS.dueDateDay,
           reminderTime: fallback.reminderTime || DEFAULT_SETTINGS.reminderTime
-        }
+        } as any
       });
       console.log('[SettingsService] Settings successfully seeded into PostgreSQL DB:', {
         monthlyFee: row.monthlyFee,
@@ -102,6 +111,9 @@ export async function initSettings(prisma: PrismaClient): Promise<AppSettingsDat
       upiId: row.upiId || '',
       upiName: row.upiName,
       monthlyFee: Number(row.monthlyFee),
+      feeEffectiveMonth: (row as any).feeEffectiveMonth || '2026-11',
+      previousMonthlyFee: (row as any).previousMonthlyFee !== null && (row as any).previousMonthlyFee !== undefined ? Number((row as any).previousMonthlyFee) : 5500,
+      feeSchedule: (row as any).feeSchedule || '[{"effectiveMonth":"2020-01","fee":5500},{"effectiveMonth":"2026-11","fee":6000}]',
       securityDeposit: Number(row.securityDeposit),
       lateFinePerDay: Number(row.lateFinePerDay),
       dueDateDay: Number(row.dueDateDay),
@@ -152,6 +164,39 @@ export async function saveSettings(prisma: PrismaClient, incoming: Partial<AppSe
     ? Number(incoming.dueDateDay)
     : Number(current.dueDateDay);
 
+  let feeEffectiveMonth = incoming.feeEffectiveMonth || current.feeEffectiveMonth || '2026-11';
+  let previousMonthlyFee = incoming.previousMonthlyFee !== undefined ? Number(incoming.previousMonthlyFee) : (current.previousMonthlyFee ?? 5500);
+  let feeScheduleStr = incoming.feeSchedule || current.feeSchedule;
+
+  // If monthlyFee changed, update effective month, previous fee, and append to fee schedule
+  if (incoming.monthlyFee !== undefined && Number(incoming.monthlyFee) !== Number(current.monthlyFee)) {
+    previousMonthlyFee = Number(current.monthlyFee);
+    feeEffectiveMonth = incoming.feeEffectiveMonth || '2026-11';
+
+    let schedule: Array<{ effectiveMonth: string; fee: number }> = [];
+    try {
+      if (feeScheduleStr) {
+        schedule = JSON.parse(feeScheduleStr);
+      }
+    } catch {}
+
+    if (!Array.isArray(schedule) || schedule.length === 0) {
+      schedule = [
+        { effectiveMonth: '2020-01', fee: previousMonthlyFee }
+      ];
+    }
+
+    const existingIdx = schedule.findIndex(s => s.effectiveMonth === feeEffectiveMonth);
+    if (existingIdx >= 0) {
+      schedule[existingIdx].fee = monthlyFee;
+    } else {
+      schedule.push({ effectiveMonth: feeEffectiveMonth, fee: monthlyFee });
+    }
+
+    schedule.sort((a, b) => a.effectiveMonth.localeCompare(b.effectiveMonth));
+    feeScheduleStr = JSON.stringify(schedule);
+  }
+
   const updatedData: any = {
     hostelName: incoming.hostelName !== undefined ? incoming.hostelName : current.hostelName,
     adminName: incoming.adminName !== undefined ? incoming.adminName : current.adminName,
@@ -161,6 +206,9 @@ export async function saveSettings(prisma: PrismaClient, incoming: Partial<AppSe
     upiId: incoming.upiId !== undefined ? incoming.upiId : current.upiId,
     upiName: incoming.upiName !== undefined ? incoming.upiName : current.upiName,
     monthlyFee,
+    feeEffectiveMonth,
+    previousMonthlyFee,
+    feeSchedule: feeScheduleStr,
     securityDeposit,
     lateFinePerDay,
     dueDateDay,
@@ -187,6 +235,9 @@ export async function saveSettings(prisma: PrismaClient, incoming: Partial<AppSe
     upiId: saved.upiId || '',
     upiName: saved.upiName,
     monthlyFee: Number(saved.monthlyFee),
+    feeEffectiveMonth: (saved as any).feeEffectiveMonth || feeEffectiveMonth,
+    previousMonthlyFee: (saved as any).previousMonthlyFee !== null && (saved as any).previousMonthlyFee !== undefined ? Number((saved as any).previousMonthlyFee) : previousMonthlyFee,
+    feeSchedule: (saved as any).feeSchedule || feeScheduleStr,
     securityDeposit: Number(saved.securityDeposit),
     lateFinePerDay: Number(saved.lateFinePerDay),
     dueDateDay: Number(saved.dueDateDay),
@@ -197,6 +248,8 @@ export async function saveSettings(prisma: PrismaClient, incoming: Partial<AppSe
 
   console.log('[SettingsService] Settings persisted to DB:', {
     monthlyFee: _settingsCache.monthlyFee,
+    feeEffectiveMonth: _settingsCache.feeEffectiveMonth,
+    previousMonthlyFee: _settingsCache.previousMonthlyFee,
     hostelName: _settingsCache.hostelName,
     reminderTime: _settingsCache.reminderTime
   });

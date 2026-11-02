@@ -23,20 +23,29 @@ function PaymentModal({ student, selectedMonth, onClose, onSuccess }: {
   const monthlyFee = settings?.monthlyFee || 5500;
 
   // Build pending months list: existing arrears first (FIFO), then selected month
-  const pendingMonths: { value: string; label: string; cycleLabel?: string }[] = [];
+  const pendingMonths: { value: string; label: string; cycleLabel?: string; amount?: number }[] = [];
 
   // Add oldest arrears first (if student has them)
   if (student.pendingMonths && student.pendingMonths.length > 0) {
     student.pendingMonths.forEach((p: any) => {
       if (!pendingMonths.some(m => m.value === p.month)) {
-        pendingMonths.push({ value: p.month, label: p.monthLabel || p.month, cycleLabel: p.cycleLabel });
+        pendingMonths.push({
+          value: p.month,
+          label: p.monthLabel || p.month,
+          cycleLabel: p.cycleLabel,
+          amount: p.amount !== undefined ? Number(p.amount) : undefined
+        });
       }
     });
   }
   // Also add selectedMonth if not already in list
   if (!pendingMonths.some(m => m.value === selectedMonth)) {
     const ml = MONTHS.find(m => m.value === selectedMonth)?.label || selectedMonth;
-    pendingMonths.push({ value: selectedMonth, label: ml });
+    pendingMonths.push({
+      value: selectedMonth,
+      label: ml,
+      amount: student.amount !== undefined ? Number(student.amount) : monthlyFee
+    });
   }
 
   // Default to oldest unpaid cycle (FIFO)
@@ -44,9 +53,15 @@ function PaymentModal({ student, selectedMonth, onClose, onSuccess }: {
   const [payMonth, setPayMonth] = useState(defaultMonth);
   const selectedEntry = pendingMonths.find(m => m.value === payMonth) || pendingMonths[0];
   const monthLabel = selectedEntry?.label || payMonth;
+  const cycleAmount = selectedEntry?.amount !== undefined ? selectedEntry.amount : monthlyFee;
+
+  const totalPending = student.totalPendingAmount !== undefined
+    ? Number(student.totalPendingAmount)
+    : (student.pendingMonthsCount ? Number(student.pendingMonthsCount) * monthlyFee : monthlyFee);
+  const initialAmount = totalPending > 0 ? totalPending : (Number(student.amount) || monthlyFee);
 
   const [form, setForm] = useState({
-    amount: monthlyFee,
+    amount: initialAmount,
     method: 'Cash',
     upiProvider: 'PhonePe',
     transactionRef: '',
@@ -55,8 +70,11 @@ function PaymentModal({ student, selectedMonth, onClose, onSuccess }: {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    setForm(p => ({ ...p, amount: monthlyFee }));
-  }, [monthlyFee]);
+    const freshPending = student.totalPendingAmount !== undefined
+      ? Number(student.totalPendingAmount)
+      : (student.pendingMonthsCount ? Number(student.pendingMonthsCount) * monthlyFee : monthlyFee);
+    setForm(p => ({ ...p, amount: freshPending > 0 ? freshPending : (Number(student.amount) || monthlyFee) }));
+  }, [student, monthlyFee]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -81,10 +99,14 @@ function PaymentModal({ student, selectedMonth, onClose, onSuccess }: {
         showToast(err.error, 'error');
       } else if (res.ok) {
         const data = await res.json().catch(() => ({}));
+        const remaining = data.totalRemainingDue !== undefined ? data.totalRemainingDue : null;
+        const balNote = remaining !== null && remaining > 0
+          ? ` Remaining outstanding balance: ₹${remaining.toLocaleString('en-IN')}.`
+          : ' All outstanding dues are settled!';
         if (data.emailStatus === 'FAILED') {
-          showToast(`Payment recorded for ${monthLabel}! (Notice: Email delivery failed: ${data.emailError || 'Service timeout'})`, 'warning');
+          showToast(`Payment of ₹${Number(form.amount).toLocaleString('en-IN')} recorded for ${monthLabel}!${balNote} (Notice: Email delivery failed: ${data.emailError || 'Service timeout'})`, 'warning');
         } else {
-          showToast(`Payment recorded for ${monthLabel}! Invoice & receipt emailed.`, 'success');
+          showToast(`Payment of ₹${Number(form.amount).toLocaleString('en-IN')} recorded for ${monthLabel}!${balNote} Invoice & receipt emailed.`, 'success');
         }
         onSuccess();
         onClose();
@@ -106,6 +128,44 @@ function PaymentModal({ student, selectedMonth, onClose, onSuccess }: {
           <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{student.course}{student.branch ? ` · ${student.branch}` : ''} · {student.room}</div>
         </div>
 
+        {/* Total Outstanding Balance strip */}
+        <div style={{
+          background: totalPending > 0 ? 'rgba(239,68,68,0.08)' : 'rgba(34,197,94,0.08)',
+          border: `1px solid ${totalPending > 0 ? 'rgba(239,68,68,0.25)' : 'rgba(34,197,94,0.25)'}`,
+          borderRadius: 10,
+          padding: '10px 14px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '8px'
+        }}>
+          <div>
+            <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>Total Outstanding Dues</div>
+            <div style={{ fontSize: '1.15rem', fontWeight: 800, color: totalPending > 0 ? '#f87171' : 'var(--success)' }}>
+              ₹{totalPending.toLocaleString('en-IN')}
+            </div>
+          </div>
+          {totalPending > 0 && (
+            <div style={{ display: 'flex', gap: '6px' }}>
+              <button
+                type="button"
+                onClick={() => setForm(f => ({ ...f, amount: totalPending }))}
+                style={{ fontSize: '0.72rem', padding: '5px 10px', borderRadius: 6, border: '1px solid rgba(249,115,22,0.4)', background: 'rgba(249,115,22,0.15)', color: 'var(--primary)', cursor: 'pointer', fontWeight: 700 }}>
+                Pay Full (₹{totalPending.toLocaleString('en-IN')})
+              </button>
+              {totalPending !== cycleAmount && (
+                <button
+                  type="button"
+                  onClick={() => setForm(f => ({ ...f, amount: cycleAmount }))}
+                  style={{ fontSize: '0.72rem', padding: '5px 10px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.05)', color: 'var(--text-muted)', cursor: 'pointer', fontWeight: 600 }}>
+                  Pay Cycle (₹{cycleAmount.toLocaleString('en-IN')})
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+
         {/* FIFO Cycle selector — shows arrears first */}
         <div className="form-group">
           <label>Billing Cycle to Settle</label>
@@ -114,12 +174,27 @@ function PaymentModal({ student, selectedMonth, onClose, onSuccess }: {
               ⚠️ Resident has {pendingMonths.length} cycle(s) pending. Oldest is auto-selected.
             </div>
           )}
-          <select className="custom-input" value={payMonth} onChange={e => setPayMonth(e.target.value)}>
-            {pendingMonths.map((m, i) => (
-              <option key={m.value} value={m.value}>
-                {i === 0 && pendingMonths.length > 1 ? '⚡ ' : ''}{m.label}{m.cycleLabel ? ` (${m.cycleLabel})` : ''}
-              </option>
-            ))}
+          <select
+            className="custom-input"
+            value={payMonth}
+            onChange={e => {
+              const newMonth = e.target.value;
+              setPayMonth(newMonth);
+              const newEntry = pendingMonths.find(m => m.value === newMonth);
+              const newCycleAmt = newEntry?.amount !== undefined ? newEntry.amount : monthlyFee;
+              if (form.amount === cycleAmount) {
+                setForm(f => ({ ...f, amount: newCycleAmt }));
+              }
+            }}
+          >
+            {pendingMonths.map((m, i) => {
+              const amt = m.amount !== undefined ? m.amount : monthlyFee;
+              return (
+                <option key={m.value} value={m.value}>
+                  {i === 0 && pendingMonths.length > 1 ? '⚡ ' : ''}{m.label}{m.cycleLabel ? ` (${m.cycleLabel})` : ''} · ₹{amt.toLocaleString('en-IN')}
+                </option>
+              );
+            })}
           </select>
         </div>
 

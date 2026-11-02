@@ -490,31 +490,50 @@ function QuickPayModal({ bed, selectedMonth, onClose, onSuccess }: { bed: any; s
   const monthlyFee = settings?.monthlyFee || 5500;
 
   // Build pending months list: existing arrears first (FIFO), then selected month
-  const pendingMonths: { value: string; label: string; cycleLabel?: string }[] = [];
+  const pendingMonths: { value: string; label: string; cycleLabel?: string; amount?: number }[] = [];
   const rawPending = bed.pendingMonths || bed.studentObj?.pendingMonths;
   if (rawPending && rawPending.length > 0) {
     rawPending.forEach((p: any) => {
       if (!pendingMonths.some(m => m.value === p.month)) {
-        pendingMonths.push({ value: p.month, label: p.monthLabel || p.month, cycleLabel: p.cycleLabel });
+        pendingMonths.push({
+          value: p.month,
+          label: p.monthLabel || p.month,
+          cycleLabel: p.cycleLabel,
+          amount: p.amount !== undefined ? Number(p.amount) : undefined
+        });
       }
     });
   }
   if (!pendingMonths.some(m => m.value === selectedMonth)) {
     const ml = MONTHS.find(m => m.value === selectedMonth)?.label || selectedMonth;
-    pendingMonths.push({ value: selectedMonth, label: ml, cycleLabel: bed.cycleLabel });
+    pendingMonths.push({
+      value: selectedMonth,
+      label: ml,
+      cycleLabel: bed.cycleLabel,
+      amount: bed.amountDue !== undefined ? Number(bed.amountDue) : monthlyFee
+    });
   }
 
   const defaultMonth = pendingMonths[0]?.value || selectedMonth;
   const [payMonth, setPayMonth] = useState(defaultMonth);
   const selectedEntry = pendingMonths.find(m => m.value === payMonth) || pendingMonths[0];
   const monthLabel = selectedEntry?.label || payMonth;
+  const cycleAmount = selectedEntry?.amount !== undefined ? selectedEntry.amount : monthlyFee;
 
-  const [form, setForm] = useState({ amount: monthlyFee, method: 'Cash', upiProvider: 'PhonePe', transactionRef: '', date: new Date().toISOString().split('T')[0] });
+  const totalPending = bed.totalPendingAmount !== undefined
+    ? Number(bed.totalPendingAmount)
+    : (bed.studentObj?.totalPendingAmount !== undefined ? Number(bed.studentObj.totalPendingAmount) : monthlyFee);
+  const initialAmount = totalPending > 0 ? totalPending : (Number(bed.amountDue || bed.studentObj?.amountDue) || monthlyFee);
+
+  const [form, setForm] = useState({ amount: initialAmount, method: 'Cash', upiProvider: 'PhonePe', transactionRef: '', date: new Date().toISOString().split('T')[0] });
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    setForm(p => ({ ...p, amount: monthlyFee }));
-  }, [monthlyFee]);
+    const freshPending = bed.totalPendingAmount !== undefined
+      ? Number(bed.totalPendingAmount)
+      : (bed.studentObj?.totalPendingAmount !== undefined ? Number(bed.studentObj.totalPendingAmount) : monthlyFee);
+    setForm(p => ({ ...p, amount: freshPending > 0 ? freshPending : (Number(bed.amountDue || bed.studentObj?.amountDue) || monthlyFee) }));
+  }, [bed, monthlyFee]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault(); setSaving(true);
@@ -528,10 +547,14 @@ function QuickPayModal({ bed, selectedMonth, onClose, onSuccess }: { bed: any; s
       if (res.status === 409) { const err = await res.json(); showToast(err.error, 'error'); }
       else if (res.ok) {
         const data = await res.json().catch(() => ({}));
+        const remaining = data.totalRemainingDue !== undefined ? data.totalRemainingDue : null;
+        const balNote = remaining !== null && remaining > 0
+          ? ` Remaining outstanding balance: ₹${remaining.toLocaleString('en-IN')}.`
+          : ' All outstanding dues are settled!';
         if (data.emailStatus === 'FAILED') {
-          showToast(`Payment recorded for ${bed.student}! (Notice: Email delivery failed: ${data.emailError || 'Service timeout'})`, 'warning');
+          showToast(`Payment of ₹${Number(form.amount).toLocaleString('en-IN')} recorded for ${bed.student}!${balNote} (Notice: Email delivery failed: ${data.emailError || 'Service timeout'})`, 'warning');
         } else {
-          showToast(`Payment recorded for ${bed.student}! Invoice & receipt emailed.`, 'success');
+          showToast(`Payment of ₹${Number(form.amount).toLocaleString('en-IN')} recorded for ${bed.student}!${balNote} Invoice & receipt emailed.`, 'success');
         }
         onSuccess();
         onClose();
@@ -548,6 +571,44 @@ function QuickPayModal({ bed, selectedMonth, onClose, onSuccess }: { bed: any; s
           <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Bed {bed.bedIndex} · Room {bed.room || ''}</div>
         </div>
 
+        {/* Total Outstanding Balance strip */}
+        <div style={{
+          background: totalPending > 0 ? 'rgba(239,68,68,0.08)' : 'rgba(34,197,94,0.08)',
+          border: `1px solid ${totalPending > 0 ? 'rgba(239,68,68,0.25)' : 'rgba(34,197,94,0.25)'}`,
+          borderRadius: 10,
+          padding: '10px 14px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '8px'
+        }}>
+          <div>
+            <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>Total Outstanding Dues</div>
+            <div style={{ fontSize: '1.15rem', fontWeight: 800, color: totalPending > 0 ? '#f87171' : 'var(--success)' }}>
+              ₹{totalPending.toLocaleString('en-IN')}
+            </div>
+          </div>
+          {totalPending > 0 && (
+            <div style={{ display: 'flex', gap: '6px' }}>
+              <button
+                type="button"
+                onClick={() => setForm(f => ({ ...f, amount: totalPending }))}
+                style={{ fontSize: '0.72rem', padding: '5px 10px', borderRadius: 6, border: '1px solid rgba(249,115,22,0.4)', background: 'rgba(249,115,22,0.15)', color: 'var(--primary)', cursor: 'pointer', fontWeight: 700 }}>
+                Pay Full (₹{totalPending.toLocaleString('en-IN')})
+              </button>
+              {totalPending !== cycleAmount && (
+                <button
+                  type="button"
+                  onClick={() => setForm(f => ({ ...f, amount: cycleAmount }))}
+                  style={{ fontSize: '0.72rem', padding: '5px 10px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.05)', color: 'var(--text-muted)', cursor: 'pointer', fontWeight: 600 }}>
+                  Pay Cycle (₹{cycleAmount.toLocaleString('en-IN')})
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+
         {/* FIFO Cycle selector */}
         <div className="form-group">
           <label>Billing Cycle to Settle</label>
@@ -556,12 +617,27 @@ function QuickPayModal({ bed, selectedMonth, onClose, onSuccess }: { bed: any; s
               ⚠️ Resident has {pendingMonths.length} cycle(s) pending. Oldest is auto-selected.
             </div>
           )}
-          <select className="custom-input" value={payMonth} onChange={e => setPayMonth(e.target.value)}>
-            {pendingMonths.map((m, i) => (
-              <option key={m.value} value={m.value}>
-                {i === 0 && pendingMonths.length > 1 ? '⚡ ' : ''}{m.label}{m.cycleLabel ? ` (${m.cycleLabel})` : ''}
-              </option>
-            ))}
+          <select
+            className="custom-input"
+            value={payMonth}
+            onChange={e => {
+              const newMonth = e.target.value;
+              setPayMonth(newMonth);
+              const newEntry = pendingMonths.find(m => m.value === newMonth);
+              const newCycleAmt = newEntry?.amount !== undefined ? newEntry.amount : monthlyFee;
+              if (form.amount === cycleAmount) {
+                setForm(f => ({ ...f, amount: newCycleAmt }));
+              }
+            }}
+          >
+            {pendingMonths.map((m, i) => {
+              const amt = m.amount !== undefined ? m.amount : monthlyFee;
+              return (
+                <option key={m.value} value={m.value}>
+                  {i === 0 && pendingMonths.length > 1 ? '⚡ ' : ''}{m.label}{m.cycleLabel ? ` (${m.cycleLabel})` : ''} · ₹{amt.toLocaleString('en-IN')}
+                </option>
+              );
+            })}
           </select>
         </div>
 
