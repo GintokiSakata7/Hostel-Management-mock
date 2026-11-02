@@ -1,4 +1,5 @@
 import { Student, Fee } from '@prisma/client';
+import { readSettings } from './settingsService';
 
 export interface StudentWithFeesAndBeds extends Student {
   beds?: any[];
@@ -113,8 +114,9 @@ export function getStudentMonthFeeStatus(
   student: StudentWithFeesAndBeds,
   monthStr: string,  // "2026-10"
   referenceDate: Date = new Date(),
-  standardMonthlyFee: number = 5500
+  standardMonthlyFee?: number
 ): MonthFeeStatus {
+  const fee = standardMonthlyFee !== undefined && standardMonthlyFee !== null ? standardMonthlyFee : (readSettings().monthlyFee || 5500);
   const joinDate = student.dateOfJoining ? new Date(student.dateOfJoining) : new Date();
   const joinDay = joinDate.getDate() || 1;
   const joinYear = joinDate.getFullYear();
@@ -155,7 +157,7 @@ export function getStudentMonthFeeStatus(
   const feeRecord = fees.find(f => f.month === monthStr && f.status === 'Completed');
   if (feeRecord) {
     // Even if paid for this month, compute arrears from other months
-    const arrears = _computeArrears(student, standardMonthlyFee, referenceDate, monthStr);
+    const arrears = _computeArrears(student, fee, referenceDate, monthStr);
     return {
       status: 'Paid',
       cycleDueDay: joinDay,
@@ -182,9 +184,9 @@ export function getStudentMonthFeeStatus(
 
   if (isFutureMonth || (isCurrentMonth && cycleDueDateNotYetReached)) {
     // Check if there are arrears from prior months even though THIS month is upcoming
-    const arrears = _computeArrears(student, standardMonthlyFee, referenceDate, null);
+    const arrears = _computeArrears(student, fee, referenceDate, null);
     const feeRec = fees.find(f => f.month === monthStr);
-    const amountDue = feeRec?.amount || standardMonthlyFee;
+    const amountDue = feeRec?.amount || fee;
     return {
       status: 'Upcoming',
       cycleDueDay: joinDay,
@@ -201,8 +203,8 @@ export function getStudentMonthFeeStatus(
 
   // --- Status: Pending ---
   const feeRec = fees.find(f => f.month === monthStr);
-  const amountDue = feeRec?.amount || standardMonthlyFee;
-  const arrears = _computeArrears(student, standardMonthlyFee, referenceDate, null);
+  const amountDue = feeRec?.amount || fee;
+  const arrears = _computeArrears(student, fee, referenceDate, null);
   return {
     status: 'Pending',
     cycleDueDay: joinDay,
@@ -297,9 +299,10 @@ function _computeArrears(
  */
 export function calculateStudentDueStatus(
   student: StudentWithFeesAndBeds,
-  standardMonthlyFee: number = 5500,
+  standardMonthlyFee?: number,
   referenceDate: Date = new Date()
 ): StudentDueStatus {
+  const fee = standardMonthlyFee !== undefined && standardMonthlyFee !== null ? standardMonthlyFee : (readSettings().monthlyFee || 5500);
   const joinDate = student.dateOfJoining ? new Date(student.dateOfJoining) : new Date();
   const joinDay = joinDate.getDate() || 1;
   const joinYear = joinDate.getFullYear();
@@ -361,7 +364,7 @@ export function calculateStudentDueStatus(
     } else {
       // Find if an explicit pending fee record exists with a specific amount
       const feeRec = fees.find(f => f.month === mStr);
-      const amount = feeRec?.amount || standardMonthlyFee;
+      const amount = feeRec?.amount || fee;
       pendingMonths.push({
         month: mStr,
         monthLabel: formatMonthLabel(mStr),

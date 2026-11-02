@@ -512,6 +512,10 @@ function QuickPayModal({ bed, selectedMonth, onClose, onSuccess }: { bed: any; s
   const [form, setForm] = useState({ amount: monthlyFee, method: 'Cash', upiProvider: 'PhonePe', transactionRef: '', date: new Date().toISOString().split('T')[0] });
   const [saving, setSaving] = useState(false);
 
+  useEffect(() => {
+    setForm(p => ({ ...p, amount: monthlyFee }));
+  }, [monthlyFee]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault(); setSaving(true);
     try {

@@ -70,6 +70,10 @@ function PaymentModal({ student, selectedMonth, onClose, onSuccess }: { student:
   const [form, setForm] = useState({ amount: monthlyFee, method: 'Cash', upiProvider: 'PhonePe', transactionRef: '', date: new Date().toISOString().split('T')[0] });
   const [saving, setSaving] = useState(false);
 
+  useEffect(() => {
+    setForm(p => ({ ...p, amount: monthlyFee }));
+  }, [monthlyFee]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault(); setSaving(true);
     try {
@@ -2096,7 +2100,7 @@ export default function Students() {
             <div style={{ background: 'rgba(249,115,22,0.08)', border: '1px solid rgba(249,115,22,0.2)', borderRadius: 12, padding: '14px 16px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ fontWeight: 700, fontSize: '1.05rem', color: 'var(--primary)' }}>👤 {reminderResultModal.studentName}</div>
-                <div style={{ fontWeight: 800, color: 'var(--warning)', fontSize: '1.1rem' }}>₹{Number(reminderResultModal.totalAmount || 5500).toLocaleString('en-IN')}</div>
+                <div style={{ fontWeight: 800, color: 'var(--warning)', fontSize: '1.1rem' }}>₹{Number(reminderResultModal.totalAmount || monthlyFee).toLocaleString('en-IN')}</div>
               </div>
               <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: 6, display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                 <span>🏡 {reminderResultModal.roomName}</span>

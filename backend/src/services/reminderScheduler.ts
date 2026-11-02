@@ -1,36 +1,13 @@
 import cron from 'node-cron';
-import fs from 'fs';
-import path from 'path';
 import { PrismaClient } from '@prisma/client';
 import { calculateStudentDueStatus, formatMonthLabel, toMonthString } from './billingHelper';
 import { sendFeeReminderEmail, sendEmail } from './emailService';
+import { readSettings, saveSettings } from './settingsService';
 
 const prisma = new PrismaClient();
-const settingsPath = path.join(__dirname, '../../settings.json');
 
 let activeCronTask: any = null;
 let currentScheduledTime = '19:00'; // Default 7 PM IST
-
-// Helper: read settings file
-function readSettingsFile(): any {
-  try {
-    if (fs.existsSync(settingsPath)) {
-      return JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
-    }
-  } catch (err) {
-    console.error('Failed to read settings.json:', err);
-  }
-  return {};
-}
-
-// Helper: write settings file
-function writeSettingsFile(data: any) {
-  try {
-    fs.writeFileSync(settingsPath, JSON.stringify(data, null, 2), 'utf-8');
-  } catch (err) {
-    console.error('Failed to write settings.json:', err);
-  }
-}
 
 /**
  * Core function to query all active students, audit all unpaid/backlog cycles, and dispatch reminders
@@ -45,7 +22,7 @@ export async function executeFeeReminderDispatch(): Promise<{
 }> {
   const currentMonthStr = toMonthString(new Date());
   const currentMonthName = formatMonthLabel(currentMonthStr);
-  const settings = readSettingsFile();
+  const settings = readSettings();
   const hostelName = settings.hostelName || 'VMR Hostel';
   const standardFee = settings.monthlyFee || 5500;
 
@@ -196,7 +173,7 @@ export async function executeSingleStudentReminder(studentId: string): Promise<{
     return { success: false, message: 'Student not found' };
   }
 
-  const settings = readSettingsFile();
+  const settings = readSettings();
   const hostelName = settings.hostelName || 'VMR Hostel';
   const standardFee = settings.monthlyFee || 5500;
 
@@ -251,7 +228,7 @@ export async function executeSingleStudentReminder(studentId: string): Promise<{
  * Get current reminder schedule status & settings
  */
 export function getReminderScheduleSettings() {
-  const settings = readSettingsFile();
+  const settings = readSettings();
   const time = settings.reminderTime || currentScheduledTime;
   const [h, m] = time.split(':');
   const cronExpr = `${Number(m)} ${Number(h)} * * *`;
@@ -266,7 +243,7 @@ export function getReminderScheduleSettings() {
 /**
  * Update and reschedule the daily fee reminder time (e.g. "19:00", "00:00", "12:00")
  */
-export function updateReminderScheduleTime(timeStr: string) {
+export async function updateReminderScheduleTime(timeStr: string) {
   // Validate format HH:MM
   const match = timeStr.match(/^([0-1]?[0-9]|2[0-3]):([0-5][0-9])$/);
   if (!match) {
@@ -298,10 +275,8 @@ export function updateReminderScheduleTime(timeStr: string) {
 
   currentScheduledTime = timeStr;
 
-  // Save to settings.json
-  const settings = readSettingsFile();
-  settings.reminderTime = timeStr;
-  writeSettingsFile(settings);
+  // Save to DB via settingsService
+  await saveSettings(prisma, { reminderTime: timeStr });
 
   console.log(`[Fee Reminder Scheduler]: Re-scheduled daily fee reminders for ${timeStr} IST (Cron: '${cronExpr}' in ${timezone})`);
 
@@ -311,8 +286,8 @@ export function updateReminderScheduleTime(timeStr: string) {
 /**
  * Initialize background node-cron schedule on app startup
  */
-export function initReminderScheduler() {
-  const settings = readSettingsFile();
+export async function initReminderScheduler() {
+  const settings = readSettings();
   const initialTime = settings.reminderTime || '19:00';
-  updateReminderScheduleTime(initialTime);
+  await updateReminderScheduleTime(initialTime);
 }

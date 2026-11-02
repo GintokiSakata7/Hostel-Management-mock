@@ -54,6 +54,10 @@ function PaymentModal({ student, selectedMonth, onClose, onSuccess }: {
   });
   const [saving, setSaving] = useState(false);
 
+  useEffect(() => {
+    setForm(p => ({ ...p, amount: monthlyFee }));
+  }, [monthlyFee]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
@@ -609,7 +613,7 @@ export default function Fees() {
                 <div key={r.studentId} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-dim)', borderRadius: 10, padding: '12px 14px', fontSize: '0.82rem' }}>
                   <div style={{ fontWeight: 700, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span style={{ fontSize: '0.9rem' }}>👤 {r.studentName} {r.roomName ? `· ${r.roomName}` : ''}</span>
-                    <span style={{ color: 'var(--warning)', fontWeight: 800 }}>₹{Number(r.totalAmount || 5500).toLocaleString('en-IN')}</span>
+                    <span style={{ color: 'var(--warning)', fontWeight: 800 }}>₹{Number(r.totalAmount || monthlyFee).toLocaleString('en-IN')}</span>
                   </div>
                   
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: 4, color: 'var(--text-muted)', fontSize: '0.75rem' }}>

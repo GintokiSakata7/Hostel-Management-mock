@@ -16,6 +16,7 @@ import { calculateStudentDueStatus, getStudentMonthFeeStatus, getOrdinal, format
 import { generateFeeReceiptPDFBuffer } from './services/pdfService';
 import { sendPaymentReceiptEmail, sendEmail } from './services/emailService';
 import { createFinanceRouter } from './routes/financeRoutes';
+import { initSettings, readSettings, saveSettings } from './services/settingsService';
 
 const app = express();
 app.use(cors());
@@ -87,33 +88,9 @@ const monthLabel = (m?: string | null) => {
   return date.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
 };
 
-// ─── SETTINGS (in-memory cache — avoids fs.readFileSync on every request) ─────
-const SETTINGS_FILE = path.join(__dirname, '../../settings.json');
-const DEFAULT_SETTINGS = {
-  hostelName: 'VMR Hostel',
-  adminName: 'Admin',
-  adminPassword: 'admin123',
-  hostelPhone: '',
-  hostelEmail: '',
-  hostelAddress: '',
-  upiId: '',
-  upiName: 'VMR Hostel',
-  monthlyFee: 5500,
-  securityDeposit: 5000,
-  lateFinePerDay: 50,
-  dueDateDay: 10,
-};
-let _settingsCache: any = null;
-const readSettings = () => {
-  if (_settingsCache) return _settingsCache;
-  try { _settingsCache = { ...DEFAULT_SETTINGS, ...JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf-8')) }; }
-  catch { _settingsCache = { ...DEFAULT_SETTINGS }; }
-  return _settingsCache;
-};
-const writeSettings = (s: any) => {
-  fs.writeFileSync(SETTINGS_FILE, JSON.stringify(s, null, 2));
-  _settingsCache = s; // bust cache on write
-};
+// ─── SETTINGS (PostgreSQL DB backed with in-memory caching) ────────────────────
+// Initial background load from DB
+initSettings(prisma).catch(e => console.error('[Startup] Failed to load settings from DB:', e));
 
 app.get('/api/settings', (req, res) => {
   const settings = readSettings();
@@ -123,15 +100,18 @@ app.get('/api/settings', (req, res) => {
   res.json({ ...safe, hasAdminPassword: Boolean(settings.adminPassword) });
 });
 
-app.put('/api/settings', (req, res) => {
-  // If request contains adminPassword, do not overwrite unless via dedicated change-password endpoint
-  const body = { ...req.body };
-  delete body.adminPassword;
-  const updated = { ...readSettings(), ...body };
-  writeSettings(updated);
-  const safe = { ...updated };
-  delete safe.adminPassword;
-  res.json(safe);
+app.put('/api/settings', async (req, res) => {
+  try {
+    // If request contains adminPassword, do not overwrite unless via dedicated change-password endpoint
+    const body = { ...req.body };
+    delete body.adminPassword;
+    const updated = await saveSettings(prisma, body);
+    const safe = { ...updated };
+    delete safe.adminPassword;
+    res.json(safe);
+  } catch (err: any) {
+    res.status(500).json({ error: 'Failed to save settings: ' + err.message });
+  }
 });
 
 // Admin Password Verification
@@ -146,7 +126,7 @@ app.post('/api/admin/verify-password', (req, res) => {
 });
 
 // Admin Password Change
-app.post('/api/admin/change-password', (req, res) => {
+app.post('/api/admin/change-password', async (req, res) => {
   const { currentPassword, newPassword } = req.body;
   const settings = readSettings();
   const currentPass = settings.adminPassword || 'admin123';
@@ -158,10 +138,13 @@ app.post('/api/admin/change-password', (req, res) => {
     return res.status(400).json({ success: false, error: 'New password must be at least 4 characters' });
   }
 
-  const updated = { ...settings, adminPassword: newPassword.trim() };
-  writeSettings(updated);
-  console.log('[Admin Auth]: Admin password was updated successfully.');
-  return res.json({ success: true, message: 'Admin password updated successfully!' });
+  try {
+    await saveSettings(prisma, { adminPassword: newPassword.trim() });
+    console.log('[Admin Auth]: Admin password was updated successfully in DB.');
+    return res.json({ success: true, message: 'Admin password updated successfully!' });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: 'Failed to update admin password: ' + err.message });
+  }
 });
 
 
@@ -1060,6 +1043,11 @@ app.post('/api/beds/transfer', async (req, res) => {
 app.post('/api/fees/pay', async (req, res) => {
   const { studentId, amount, method, upiProvider, transactionRef, date, month } = req.body;
   const m = month || currentMonth();
+  const settings = readSettings();
+  const standardFee = settings.monthlyFee || 5500;
+  const finalAmount = (amount !== undefined && amount !== null && !isNaN(Number(amount)) && Number(amount) > 0)
+    ? Number(amount)
+    : standardFee;
   try {
     // Check duplicate
     const existing = await prisma.fee.findFirst({ where: { studentId, month: m } });
@@ -1090,7 +1078,7 @@ app.post('/api/fees/pay', async (req, res) => {
       fee = await prisma.fee.update({
         where: { id: existing.id },
         data: {
-          amount: Number(amount),
+          amount: finalAmount,
           method,
           upiProvider: upiProvider || null,
           transactionRef: transactionRef || null,
@@ -1104,7 +1092,7 @@ app.post('/api/fees/pay', async (req, res) => {
         data: {
           studentId,
           month: m,
-          amount: Number(amount),
+          amount: finalAmount,
           method,
           upiProvider: upiProvider || null,
           transactionRef: transactionRef || null,
@@ -1993,13 +1981,13 @@ app.get('/api/reminders/settings', (req, res) => {
   }
 });
 
-app.post('/api/reminders/settings', (req, res) => {
+app.post('/api/reminders/settings', async (req, res) => {
   try {
     const { reminderTime } = req.body;
     if (!reminderTime) {
       return res.status(400).json({ success: false, error: 'reminderTime (HH:MM) is required' });
     }
-    const newSettings = updateReminderScheduleTime(reminderTime);
+    const newSettings = await updateReminderScheduleTime(reminderTime);
     res.json({ success: true, settings: newSettings });
   } catch (err: any) {
     res.status(400).json({ success: false, error: err.message });
@@ -2225,8 +2213,12 @@ app.get('/api/notifications', async (req, res) => {
 });
 
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`API Server running on port ${PORT}`);
-  // Start background daily 19:00 IST cron scheduler
-  initReminderScheduler();
+  try {
+    await initSettings(prisma);
+    await initReminderScheduler();
+  } catch (e: any) {
+    console.error('Error during startup background tasks:', e);
+  }
 });
