@@ -1478,7 +1478,7 @@ function TransferBedModal({
               className="custom-input"
               value={filterFloor}
               onChange={e => setFilterFloor(e.target.value)}
-              style={{ width: '100%', padding: '8px 10px', borderRadius: 8, fontSize: '0.82rem', background: 'rgba(0,0,0,0.4)', color: '#fff' }}
+              style={{ width: '100%', padding: '8px 10px', borderRadius: 8, fontSize: '0.82rem' }}
             >
               <option value="all">All Floors</option>
               {availableFloors.map(f => (
@@ -1492,7 +1492,7 @@ function TransferBedModal({
               className="custom-input"
               value={filterStatus}
               onChange={e => setFilterStatus(e.target.value)}
-              style={{ width: '100%', padding: '8px 10px', borderRadius: 8, fontSize: '0.82rem', background: 'rgba(0,0,0,0.4)', color: '#fff' }}
+              style={{ width: '100%', padding: '8px 10px', borderRadius: 8, fontSize: '0.82rem' }}
             >
               <option value="all">All Beds</option>
               <option value="vacant">Vacant Beds Only</option>
@@ -1508,7 +1508,7 @@ function TransferBedModal({
             className="custom-input"
             value={selectedTargetBedId}
             onChange={e => setSelectedTargetBedId(e.target.value)}
-            style={{ width: '100%', padding: '10px 12px', borderRadius: 10, background: 'rgba(0,0,0,0.4)', color: '#fff', fontSize: '0.88rem' }}
+            style={{ width: '100%', padding: '10px 12px', borderRadius: 10, fontSize: '0.88rem' }}
           >
             <option value="">-- Choose Target Bed --</option>
             {availableFloors
@@ -1737,38 +1737,13 @@ export default function Rooms() {
           <h1 className="page-title" style={{ margin: 0, fontSize: isMobile ? '1.2rem' : '1.4rem' }}>Hostel Virtual Workspace</h1>
           
           {/* Segmented Floor Tabs */}
-          <div style={{
-            display: 'flex',
-            background: 'rgba(255,255,255,0.05)',
-            borderRadius: 14,
-            padding: 4,
-            border: '1px solid rgba(255,255,255,0.08)',
-            overflowX: 'auto',
-            maxWidth: isMobile ? '100%' : 'none',
-            WebkitOverflowScrolling: 'touch',
-            scrollbarWidth: 'none',
-            gap: 4
-          }}>
+          <div className="rooms-floor-pills-bar" style={{ maxWidth: isMobile ? '100%' : 'none' }}>
             <button
               onClick={() => setSelectedFloor(null)}
-              style={{
-                padding: '5px 12px', borderRadius: 10, border: 'none',
-                background: selectedFloor === null ? 'var(--primary)' : 'transparent',
-                color: selectedFloor === null ? '#fff' : 'var(--text-muted)',
-                fontWeight: 700, fontSize: '0.78rem', cursor: 'pointer', transition: 'all 0.2s',
-                whiteSpace: 'nowrap', flexShrink: 0,
-                boxShadow: selectedFloor === null ? '0 2px 8px rgba(249,115,22,0.35)' : 'none',
-                display: 'flex', alignItems: 'center', gap: '6px'
-              }}
+              className={`floor-pill-btn ${selectedFloor === null ? 'active' : ''}`}
             >
               <span>All Floors</span>
-              <span style={{
-                fontSize: '0.66rem',
-                padding: '1px 5px',
-                borderRadius: 6,
-                background: selectedFloor === null ? 'rgba(0,0,0,0.25)' : 'rgba(255,255,255,0.08)',
-                color: selectedFloor === null ? '#fff' : 'var(--text-muted)'
-              }}>
+              <span className={`floor-count-pill ${selectedFloor === null ? 'active' : ''}`}>
                 {floorStats['all']?.rooms || 0}
               </span>
             </button>
@@ -1779,24 +1754,10 @@ export default function Rooms() {
                 <button
                   key={f}
                   onClick={() => setSelectedFloor(f)}
-                  style={{
-                    padding: '5px 12px', borderRadius: 10, border: 'none',
-                    background: isSelected ? 'var(--primary)' : 'transparent',
-                    color: isSelected ? '#fff' : 'var(--text-muted)',
-                    fontWeight: 700, fontSize: '0.78rem', cursor: 'pointer', transition: 'all 0.2s',
-                    whiteSpace: 'nowrap', flexShrink: 0,
-                    boxShadow: isSelected ? '0 2px 8px rgba(249,115,22,0.35)' : 'none',
-                    display: 'flex', alignItems: 'center', gap: '6px'
-                  }}
+                  className={`floor-pill-btn ${isSelected ? 'active' : ''}`}
                 >
                   <span>{formatFloorName(f)}</span>
-                  <span style={{
-                    fontSize: '0.66rem',
-                    padding: '1px 5px',
-                    borderRadius: 6,
-                    background: isSelected ? 'rgba(0,0,0,0.25)' : 'rgba(255,255,255,0.08)',
-                    color: isSelected ? '#fff' : 'var(--text-muted)'
-                  }}>
+                  <span className={`floor-count-pill ${isSelected ? 'active' : ''}`}>
                     {fStat?.rooms || 0}
                   </span>
                 </button>

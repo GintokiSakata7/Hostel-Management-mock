@@ -187,7 +187,7 @@ function RoomReport() {
                   <div style={{ fontSize: '0.75rem', color: 'var(--success)' }}>{r.available} Available</div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px' }}>
-                  <div style={{ flex: 1, height: 4, background: 'rgba(255,255,255,0.08)', borderRadius: 4 }}>
+                  <div style={{ flex: 1, height: 4, background: 'rgba(128,128,128,0.18)', borderRadius: 4 }}>
                     <div style={{ height: '100%', width: `${r.occupancyPct}%`, background: r.occupancyPct === 100 ? 'var(--danger)' : r.occupancyPct > 50 ? 'var(--warning)' : 'var(--success)', borderRadius: 4 }} />
                   </div>
                   <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', minWidth: 35 }}>{r.occupancyPct}%</span>
@@ -213,7 +213,7 @@ function RoomReport() {
                     <td data-label="Available" style={{ color: r.available > 0 ? 'var(--success)' : 'var(--text-muted)' }}>{r.available}</td>
                     <td data-label="Occupancy">
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <div style={{ flex: 1, height: 5, background: 'rgba(255,255,255,0.08)', borderRadius: 4 }}>
+                        <div style={{ flex: 1, height: 5, background: 'rgba(128,128,128,0.18)', borderRadius: 4 }}>
                           <div style={{ height: '100%', width: `${r.occupancyPct}%`, background: r.occupancyPct === 100 ? 'var(--danger)' : r.occupancyPct > 50 ? 'var(--warning)' : 'var(--success)', borderRadius: 4 }} />
                         </div>
                         <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', minWidth: 35 }}>{r.occupancyPct}%</span>
@@ -269,7 +269,7 @@ function FeeReport({ pendingOnly = false }: { pendingOnly?: boolean }) {
   return (
     <div>
       <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.25rem', flexWrap: 'wrap', alignItems: 'center' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-dim)', borderRadius: 8, padding: '6px 12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(128,128,128,0.06)', border: '1px solid var(--border-dim)', borderRadius: 8, padding: '6px 12px' }}>
           <Calendar size={13} color="var(--primary)" />
           <select style={{ background: 'transparent', border: 'none', color: 'var(--text-main)', fontSize: '0.82rem' }} value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)}>
             {MONTHS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
@@ -458,14 +458,15 @@ export default function Reports() {
       </div>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: '4px', marginBottom: '1.5rem', background: 'rgba(0,0,0,0.2)', borderRadius: 14, padding: '4px', overflowX: 'auto' }}>
+      <div className="app-nav-tabs">
         {TABS.map(({ id, label, icon: Icon }) => (
-          <button key={id} onClick={() => setActiveTab(id)}
-            style={{ flex: 1, minWidth: 120, padding: '10px 14px', borderRadius: 10, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontSize: '0.82rem', fontWeight: 600, transition: 'all 0.2s',
-              background: activeTab === id ? 'var(--glass-bg)' : 'transparent',
-              color: activeTab === id ? 'var(--primary)' : 'var(--text-muted)',
-              boxShadow: activeTab === id ? '0 2px 8px rgba(0,0,0,0.15)' : 'none' }}>
-            <Icon size={14} />{label}
+          <button
+            key={id}
+            onClick={() => setActiveTab(id)}
+            className={`app-tab-btn ${activeTab === id ? 'active' : ''}`}
+          >
+            <Icon size={15} />
+            <span>{label}</span>
           </button>
         ))}
       </div>

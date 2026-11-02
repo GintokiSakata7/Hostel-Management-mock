@@ -195,7 +195,9 @@ body.light-theme {
   border-radius: 18px;
 }
 .light-theme .glass-panel {
-  background: rgba(255, 255, 255, 0.5);
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
 }
 
 /* Typography */
@@ -3332,19 +3334,177 @@ select option[value=""],
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
+/* ===================== SEGMENTED NAVIGATION TABS ===================== */
+.app-nav-tabs,
 .settings-nav-tabs {
   display: flex;
-  gap: 4px;
+  gap: 6px;
   margin-bottom: 1.5rem;
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(255, 255, 255, 0.035);
   border: 1px solid var(--border-dim);
-  border-radius: 12px;
-  padding: 4px;
+  border-radius: 14px;
+  padding: 5px;
   flex-shrink: 0;
   overflow-x: auto;
+  scrollbar-width: none;
 }
+
+.light-theme .app-nav-tabs,
 .light-theme .settings-nav-tabs {
-  background: #e2e8f0;
+  background: #f1f5f9;
+  border-color: rgba(0, 0, 0, 0.08);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.app-tab-btn {
+  flex: 1;
+  min-width: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 9px 16px;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  background: transparent;
+  color: var(--text-muted);
+}
+
+.app-tab-btn:hover:not(.active) {
+  color: var(--text-main);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.light-theme .app-tab-btn:hover:not(.active) {
+  color: var(--text-main);
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.app-tab-btn.active {
+  background: var(--primary) !important;
+  color: #ffffff !important;
+  font-weight: 700;
+  box-shadow: 0 2px 10px rgba(249, 115, 22, 0.35);
+}
+
+.light-theme .app-tab-btn.active {
+  background: var(--primary) !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 8px rgba(234, 88, 12, 0.3);
+}
+
+/* ===================== ROOMS FLOOR PILLS ===================== */
+.rooms-floor-pills-bar {
+  display: flex;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 14px;
+  padding: 4px;
+  border: 1px solid var(--border-dim);
+  overflow-x: auto;
+  scrollbar-width: none;
+  gap: 4px;
+}
+.light-theme .rooms-floor-pills-bar {
+  background: #f1f5f9;
+  border-color: rgba(0, 0, 0, 0.08);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.floor-pill-btn {
+  padding: 6px 14px;
+  border-radius: 10px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-weight: 700;
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.floor-pill-btn:hover:not(.active) {
+  color: var(--text-main);
+  background: rgba(255, 255, 255, 0.04);
+}
+.light-theme .floor-pill-btn:hover:not(.active) {
+  color: var(--text-main);
+  background: rgba(0, 0, 0, 0.04);
+}
+.floor-pill-btn.active {
+  background: var(--primary);
+  color: #ffffff !important;
+  box-shadow: 0 2px 8px rgba(249, 115, 22, 0.35);
+}
+.light-theme .floor-pill-btn.active {
+  box-shadow: 0 2px 8px rgba(234, 88, 12, 0.3);
+}
+
+.floor-count-pill {
+  font-size: 0.66rem;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: rgba(128, 128, 128, 0.15);
+  color: var(--text-muted);
+  font-weight: 700;
+}
+.floor-count-pill.active {
+  background: rgba(255, 255, 255, 0.25);
+  color: #ffffff !important;
+}
+
+/* ===================== FEE ROWS & TRANSACTIONS ===================== */
+.fee-row-item {
+  background: rgba(255, 255, 255, 0.025);
+  border-radius: 12px;
+  transition: all 0.2s;
+}
+.light-theme .fee-row-item {
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.09) !important;
+}
+.light-theme .fee-row-item:hover {
+  background: #f8fafc;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+}
+
+/* ===================== COMPLAINTS & KANBAN ===================== */
+.complaint-col-surface {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 16px;
+  padding: 0.875rem;
+  border: 1px dashed var(--border-dim);
+  overflow-y: auto;
+}
+.light-theme .complaint-col-surface {
+  background: #f8fafc;
+  border-color: rgba(0, 0, 0, 0.09);
+}
+.light-theme .complaint-card {
+  background: #ffffff !important;
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+/* ===================== STUDENT DETAIL BOXES ===================== */
+.student-detail-box {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-dim);
+  border-radius: 10px;
+}
+.light-theme .student-detail-box {
+  background: #f8fafc;
   border-color: rgba(0, 0, 0, 0.08);
 }
+
 

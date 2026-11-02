@@ -493,17 +493,7 @@ function StudentDetailCard({ student, selectedMonth, onClose, onRefresh, isMobil
           })()}
 
           {/* Navigation Tabs Bar */}
-          <div style={{
-            display: 'flex',
-            background: 'rgba(255,255,255,0.04)',
-            padding: '4px',
-            borderRadius: 12,
-            border: '1px solid var(--border-dim)',
-            marginBottom: '1.25rem',
-            gap: '4px',
-            overflowX: 'auto',
-            WebkitOverflowScrolling: 'touch'
-          }}>
+          <div className="app-nav-tabs" style={{ marginBottom: '1.25rem' }}>
             {[
               { id: 'overview', label: 'Overview', icon: User },
               { id: 'docs', label: isMobile ? 'Docs' : 'Documents & Family', icon: Shield },
@@ -516,23 +506,8 @@ function StudentDetailCard({ student, selectedMonth, onClose, onRefresh, isMobil
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id as any)}
-                  style={{
-                    flex: isMobile ? '0 0 auto' : 1,
-                    whiteSpace: 'nowrap',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '6px',
-                    padding: '8px 12px',
-                    borderRadius: 9,
-                    border: 'none',
-                    background: isActive ? 'var(--primary)' : 'transparent',
-                    color: isActive ? '#fff' : 'var(--text-muted)',
-                    fontWeight: isActive ? 700 : 500,
-                    fontSize: '0.78rem',
-                    cursor: 'pointer',
-                    transition: 'all 0.15s ease'
-                  }}
+                  className={`app-tab-btn ${isActive ? 'active' : ''}`}
+                  style={{ flex: isMobile ? '0 0 auto' : 1 }}
                 >
                   <Icon size={14} />
                   <span>{tab.label}</span>
@@ -542,7 +517,7 @@ function StudentDetailCard({ student, selectedMonth, onClose, onRefresh, isMobil
                     </span>
                   )}
                   {tab.count !== undefined && tab.count > 0 && (
-                    <span style={{ background: isActive ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.1)', color: '#fff', fontSize: '0.65rem', padding: '1px 6px', borderRadius: 10 }}>
+                    <span style={{ background: isActive ? 'rgba(255,255,255,0.25)' : 'rgba(128,128,128,0.18)', color: isActive ? '#fff' : 'var(--text-muted)', fontSize: '0.65rem', padding: '1px 6px', borderRadius: 10 }}>
                       {tab.count}
                     </span>
                   )}
@@ -609,7 +584,7 @@ function StudentDetailCard({ student, selectedMonth, onClose, onRefresh, isMobil
                     </button>
                   </div>
                 ) : (
-                  <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', fontStyle: 'italic', padding: '10px 0', textAlign: 'center', background: 'rgba(0,0,0,0.2)', borderRadius: 10 }}>
+                  <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', fontStyle: 'italic', padding: '10px 0', textAlign: 'center', background: 'rgba(128,128,128,0.06)', borderRadius: 10 }}>
                     No Aadhaar document uploaded for this student yet.
                   </div>
                 )}
@@ -622,7 +597,7 @@ function StudentDetailCard({ student, selectedMonth, onClose, onRefresh, isMobil
                   <span>Parent Contact Information</span>
                 </div>
                 <div className="responsive-grid-2" style={{ gap: '0.75rem' }}>
-                  <div style={{ background: 'rgba(0,0,0,0.2)', padding: '10px 12px', borderRadius: 10 }}>
+                  <div className="student-detail-box" style={{ padding: '10px 12px' }}>
                     <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Parent Phone (Parent No)</div>
                     <div style={{ fontWeight: 700, fontSize: '0.88rem', color: 'var(--text-main)', marginTop: 2, display: 'flex', alignItems: 'center', gap: '6px' }}>
                       {student.parentPhone ? (
@@ -632,7 +607,7 @@ function StudentDetailCard({ student, selectedMonth, onClose, onRefresh, isMobil
                       ) : '—'}
                     </div>
                   </div>
-                  <div style={{ background: 'rgba(0,0,0,0.2)', padding: '10px 12px', borderRadius: 10 }}>
+                  <div className="student-detail-box" style={{ padding: '10px 12px' }}>
                     <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Student Phone (No)</div>
                     <div style={{ fontWeight: 700, fontSize: '0.88rem', color: 'var(--text-main)', marginTop: 2 }}>
                       {student.phone ? (
@@ -667,7 +642,7 @@ function StudentDetailCard({ student, selectedMonth, onClose, onRefresh, isMobil
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontSize: '0.88rem', fontWeight: 600, background: 'rgba(0,0,0,0.2)', padding: '12px', borderRadius: 12 }}>
+                <label className="student-detail-box" style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontSize: '0.88rem', fontWeight: 600, padding: '12px' }}>
                   <input 
                     type="checkbox" 
                     checked={noticeForm.isOnNotice} 
@@ -740,14 +715,14 @@ function StudentDetailCard({ student, selectedMonth, onClose, onRefresh, isMobil
           {activeTab === 'history' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {(student.fees || []).length === 0 ? (
-                <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem', padding: '2rem', background: 'rgba(0,0,0,0.2)', borderRadius: 14 }}>
+                <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem', padding: '2rem', background: 'rgba(128,128,128,0.06)', borderRadius: 14 }}>
                   No payment records found for this student yet.
                 </div>
               ) : (
                 (student.fees || []).map((f: any) => (
                   <div key={f.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 14px', background: 'rgba(255,255,255,0.03)', borderRadius: 12, border: '1px solid rgba(34,197,94,0.2)' }}>
                     <div>
-                      <div style={{ fontWeight: 700, fontSize: '0.9rem', color: '#fff' }}>{f.monthLabel}</div>
+                      <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-main)' }}>{f.monthLabel}</div>
                       <div style={{ color: 'var(--text-muted)', fontSize: '0.74rem', marginTop: 2 }}>{f.date} · {f.method}{f.upiProvider ? ` (${f.upiProvider})` : ''}</div>
                     </div>
                     <div style={{ textAlign: 'right', display: 'flex', alignItems: 'center', gap: '12px' }}>

@@ -784,11 +784,10 @@ export default function Fees() {
             ) : filtered.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>No students found.</div>
             ) : filtered.map(s => (
-              <div key={s.studentId} style={{
-                display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'stretch' : 'center', gap: '12px', padding: '12px 14px',
-                background: 'rgba(0,0,0,0.15)', borderRadius: 12,
-                border: `1px solid ${s.feeStatus === 'Paid' ? 'rgba(34,197,94,0.2)' : 'rgba(234,179,8,0.15)'}`,
-                transition: 'all 0.2s', animation: 'slideInUp 0.3s ease-out'
+              <div key={s.studentId} className="fee-row-item" style={{
+                flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'stretch' : 'center',
+                border: `1px solid ${s.feeStatus === 'Paid' ? 'rgba(34,197,94,0.25)' : 'rgba(234,179,8,0.2)'}`,
+                animation: 'slideInUp 0.3s ease-out'
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: 0 }}>
                   {/* Avatar */}
@@ -989,11 +988,9 @@ export default function Fees() {
                   {serialSearch ? `No receipt found for "${serialSearch}"` : 'No transactions found.'}
                 </div>
               ) : monthTx.map(tx => (
-                <div key={tx.id} style={{
-                  display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 14px',
-                  background: 'rgba(0,0,0,0.15)', borderRadius: 12,
+                <div key={tx.id} className="fee-row-item" style={{
                   border: serialSearch && tx.receiptNo?.toLowerCase().includes(serialSearch.toLowerCase()) ? '1px solid rgba(249,115,22,0.5)' : '1px solid rgba(34,197,94,0.2)',
-                  transition: 'all 0.2s', animation: 'slideInUp 0.3s ease-out'
+                  animation: 'slideInUp 0.3s ease-out'
                 }}>
                   {/* Avatar */}
                   <div style={{ width: 38, height: 38, borderRadius: 10, background: 'linear-gradient(135deg, var(--primary), var(--accent))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: '#fff', flexShrink: 0 }}>

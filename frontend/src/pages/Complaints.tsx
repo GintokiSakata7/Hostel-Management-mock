@@ -108,7 +108,7 @@ export default function Complaints() {
 
         <div style={{ display: 'flex', gap: '6px', marginBottom: '10px', flexWrap: 'wrap' }}>
           <span className="room-badge" style={{ fontSize: '0.72rem', display: 'flex', alignItems: 'center', gap: '4px' }}><Home size={12} /> {complaint.room}</span>
-          <span style={{ background: 'rgba(255,255,255,0.06)', borderRadius: 6, padding: '2px 8px', fontSize: '0.72rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <span style={{ background: 'rgba(128,128,128,0.1)', borderRadius: 6, padding: '2px 8px', fontSize: '0.72rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
             <User size={12} /> {complaint.student}
           </span>
         </div>
@@ -133,9 +133,9 @@ export default function Complaints() {
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1rem' }}>
         <span className={`status-dot dot-${dot}`} />
         <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>{title}</h3>
-        <span style={{ background: 'rgba(255,255,255,0.08)', padding: '1px 8px', borderRadius: 20, fontSize: '0.72rem', fontWeight: 600 }}>{items.length}</span>
+        <span style={{ background: 'rgba(128,128,128,0.15)', color: 'var(--text-muted)', padding: '1px 8px', borderRadius: 20, fontSize: '0.72rem', fontWeight: 700 }}>{items.length}</span>
       </div>
-      <div style={{ flex: 1, background: 'rgba(0,0,0,0.15)', borderRadius: 16, padding: '0.875rem', border: '1px dashed var(--border-dim)', overflowY: 'auto' }}>
+      <div className="complaint-col-surface">
         {items.length === 0
           ? <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.8rem', padding: '2rem 0' }}>No complaints</div>
           : items.map(c => <ComplaintCard key={c.id} complaint={c} />)}
