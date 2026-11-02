@@ -43,16 +43,43 @@ function PaymentModal({ student, selectedMonth, onClose, onSuccess }: { student:
   const { showToast } = useToast();
   const { settings } = useSettings();
   const monthlyFee = settings?.monthlyFee || 5500;
+
+  // Build pending months list: existing arrears first (FIFO), then selected month
+  const pendingMonths: { value: string; label: string; cycleLabel?: string }[] = [];
+
+  // Add oldest arrears first (if student has them)
+  if (student.pendingMonths && student.pendingMonths.length > 0) {
+    student.pendingMonths.forEach((p: any) => {
+      if (!pendingMonths.some(m => m.value === p.month)) {
+        pendingMonths.push({ value: p.month, label: p.monthLabel || p.month, cycleLabel: p.cycleLabel });
+      }
+    });
+  }
+  // Also add selectedMonth if not already in list
+  if (!pendingMonths.some(m => m.value === selectedMonth)) {
+    const ml = MONTHS.find(m => m.value === selectedMonth)?.label || selectedMonth;
+    pendingMonths.push({ value: selectedMonth, label: ml });
+  }
+
+  // Default to oldest unpaid cycle (FIFO)
+  const defaultMonth = pendingMonths[0]?.value || selectedMonth;
+  const [payMonth, setPayMonth] = useState(defaultMonth);
+  const selectedEntry = pendingMonths.find(m => m.value === payMonth) || pendingMonths[0];
+  const monthLabel = selectedEntry?.label || payMonth;
+
   const [form, setForm] = useState({ amount: monthlyFee, method: 'Cash', upiProvider: 'PhonePe', transactionRef: '', date: new Date().toISOString().split('T')[0] });
   const [saving, setSaving] = useState(false);
-  const monthLabel = MONTHS.find(m => m.value === selectedMonth)?.label || selectedMonth;
+
+  useEffect(() => {
+    setForm(p => ({ ...p, amount: monthlyFee }));
+  }, [monthlyFee]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault(); setSaving(true);
     try {
       const res = await fetch('/api/fees/pay', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ studentId: student.dbId, month: selectedMonth, amount: form.amount, method: form.method, upiProvider: form.method === 'UPI' ? form.upiProvider : null, transactionRef: form.method === 'UPI' ? form.transactionRef : null, date: form.date })
+        body: JSON.stringify({ studentId: student.dbId, month: payMonth, amount: form.amount, method: form.method, upiProvider: form.method === 'UPI' ? form.upiProvider : null, transactionRef: form.method === 'UPI' ? form.transactionRef : null, date: form.date })
       });
       if (res.status === 409) { const e = await res.json(); showToast(e.error, 'error'); }
       else if (res.ok) {
@@ -74,8 +101,26 @@ function PaymentModal({ student, selectedMonth, onClose, onSuccess }: { student:
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
         <div style={{ background: 'rgba(249,115,22,0.08)', border: '1px solid rgba(249,115,22,0.2)', borderRadius: 10, padding: '10px 14px' }}>
           <div style={{ fontWeight: 700 }}>{student.name}</div>
-          <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{student.room} · Month: <strong style={{ color: 'var(--primary)' }}>{monthLabel}</strong></div>
+          <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{student.room}</div>
         </div>
+
+        {/* FIFO Cycle selector — shows arrears first */}
+        <div className="form-group">
+          <label>Billing Cycle to Settle</label>
+          {pendingMonths.length > 1 && (
+            <div style={{ background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 8, padding: '7px 10px', fontSize: '0.76rem', color: '#f87171', marginBottom: 6 }}>
+              ⚠️ Resident has {pendingMonths.length} cycle(s) pending. Oldest is auto-selected.
+            </div>
+          )}
+          <select className="custom-input" value={payMonth} onChange={e => setPayMonth(e.target.value)}>
+            {pendingMonths.map((m, i) => (
+              <option key={m.value} value={m.value}>
+                {i === 0 && pendingMonths.length > 1 ? '⚡ ' : ''}{m.label}{m.cycleLabel ? ` (${m.cycleLabel})` : ''}
+              </option>
+            ))}
+          </select>
+        </div>
+
         <div className="form-group"><label>Amount (₹)</label>
           <input type="number" required className="custom-input" value={form.amount} onChange={e => setForm({ ...form, amount: Number(e.target.value) })} /></div>
         <div className="form-group"><label>Payment Method</label>
@@ -215,64 +260,162 @@ function StudentDetailCard({ student, selectedMonth, onClose, onRefresh, isMobil
           </div>
 
           {/* Monthly Fee Banner Widget */}
-          <div style={{ 
-            borderRadius: 16, 
-            padding: '1.1rem 1.25rem', 
-            background: isPaidThisMonth 
-              ? 'linear-gradient(135deg, rgba(34,197,94,0.15) 0%, rgba(16,185,129,0.05) 100%)' 
-              : 'linear-gradient(135deg, rgba(249,115,22,0.18) 0%, rgba(234,179,8,0.08) 100%)', 
-            border: `1px solid ${isPaidThisMonth ? 'rgba(34,197,94,0.35)' : 'rgba(249,115,22,0.4)'}`, 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'space-between', 
-            marginBottom: '1.25rem',
-            boxShadow: isPaidThisMonth ? '0 4px 20px rgba(34,197,94,0.1)' : '0 4px 20px rgba(249,115,22,0.15)'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          {(() => {
+            const isNotEnrolled = student.feeStatus === 'Not Enrolled' || student.isBeforeJoining;
+            const isUpcoming = student.feeStatus === 'Upcoming';
+
+            if (isNotEnrolled) {
+              return (
+                <div style={{
+                  borderRadius: 16,
+                  padding: '1.1rem 1.25rem',
+                  background: 'rgba(255,255,255,0.03)',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  marginBottom: '1.25rem'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{
+                      width: 44,
+                      height: 44,
+                      borderRadius: 12,
+                      background: 'rgba(255,255,255,0.05)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'var(--text-muted)'
+                    }}>
+                      <Calendar size={22} />
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--text-main)', letterSpacing: '0.01em' }}>
+                        Not Enrolled in {monthLabel}
+                      </div>
+                      <div style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>
+                        Admitted on {student.dateOfJoiningFormatted || student.joiningMonthLabel || 'a later date'}
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', background: 'rgba(255,255,255,0.06)', padding: '4px 10px', borderRadius: 8 }}>
+                      No dues for this month
+                    </span>
+                  </div>
+                </div>
+              );
+            }
+
+            if (isUpcoming) {
+              return (
+                <div style={{
+                  borderRadius: 16,
+                  padding: '1.1rem 1.25rem',
+                  background: 'linear-gradient(135deg, rgba(56,189,248,0.15) 0%, rgba(59,130,246,0.05) 100%)',
+                  border: '1px solid rgba(56,189,248,0.3)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  marginBottom: '1.25rem',
+                  boxShadow: '0 4px 20px rgba(56,189,248,0.1)'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{
+                      width: 44,
+                      height: 44,
+                      borderRadius: 12,
+                      background: 'rgba(56,189,248,0.2)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: '#38bdf8'
+                    }}>
+                      <Clock size={22} />
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 800, fontSize: '0.95rem', color: '#38bdf8', letterSpacing: '0.01em' }}>
+                        🗓️ Current Cycle (Upcoming)
+                      </div>
+                      <div style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>
+                        Due on {student.nextDueDate || `${student.dueDayLabel || '10th'} of month`}
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                    <div style={{ textAlign: 'right', marginRight: 4 }}>
+                      <div style={{ fontWeight: 800, fontSize: '1.25rem', color: 'var(--text-main)' }}>₹{monthlyFee.toLocaleString()}</div>
+                      <div style={{ fontSize: '0.7rem', color: '#38bdf8' }}>Due {student.dueDayLabel || '10th'}</div>
+                    </div>
+                    <button className="primary-btn" style={{ padding: '7px 16px', fontSize: '0.82rem', gap: '6px' }} onClick={() => setShowPayment(true)}>
+                      <IndianRupee size={14} /> Pay Early
+                    </button>
+                  </div>
+                </div>
+              );
+            }
+
+            return (
               <div style={{ 
-                width: 44, 
-                height: 44, 
-                borderRadius: 12, 
-                background: isPaidThisMonth ? 'rgba(34,197,94,0.2)' : 'rgba(249,115,22,0.2)', 
+                borderRadius: 16, 
+                padding: '1.1rem 1.25rem', 
+                background: isPaidThisMonth 
+                  ? 'linear-gradient(135deg, rgba(34,197,94,0.15) 0%, rgba(16,185,129,0.05) 100%)' 
+                  : 'linear-gradient(135deg, rgba(249,115,22,0.18) 0%, rgba(234,179,8,0.08) 100%)', 
+                border: `1px solid ${isPaidThisMonth ? 'rgba(34,197,94,0.35)' : 'rgba(249,115,22,0.4)'}`, 
                 display: 'flex', 
                 alignItems: 'center', 
-                justifyContent: 'center',
-                color: isPaidThisMonth ? '#4ade80' : '#fb923c' 
+                justifyContent: 'space-between', 
+                marginBottom: '1.25rem',
+                boxShadow: isPaidThisMonth ? '0 4px 20px rgba(34,197,94,0.1)' : '0 4px 20px rgba(249,115,22,0.15)'
               }}>
-                <IndianRupee size={22} />
-              </div>
-              <div>
-                <div style={{ fontWeight: 800, fontSize: '0.95rem', color: isPaidThisMonth ? '#4ade80' : '#fb923c', letterSpacing: '0.01em' }}>
-                  {isPaidThisMonth ? '✓ Fee Paid' : '⚡ Fee Pending'}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{ 
+                    width: 44, 
+                    height: 44, 
+                    borderRadius: 12, 
+                    background: isPaidThisMonth ? 'rgba(34,197,94,0.2)' : 'rgba(249,115,22,0.2)', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center',
+                    color: isPaidThisMonth ? '#4ade80' : '#fb923c' 
+                  }}>
+                    <IndianRupee size={22} />
+                  </div>
+                  <div>
+                    <div style={{ fontWeight: 800, fontSize: '0.95rem', color: isPaidThisMonth ? '#4ade80' : '#fb923c', letterSpacing: '0.01em' }}>
+                      {isPaidThisMonth ? '✓ Fee Paid' : '⚡ Fee Pending'}
+                    </div>
+                    <div style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>For {monthLabel}</div>
+                  </div>
                 </div>
-                <div style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>For {monthLabel}</div>
-              </div>
-            </div>
 
-            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-              <div style={{ textAlign: 'right', marginRight: 4 }}>
-                <div style={{ fontWeight: 800, fontSize: '1.25rem', color: 'var(--text-main)' }}>₹{monthlyFee.toLocaleString()}</div>
-                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Due 10th</div>
-              </div>
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                  <div style={{ textAlign: 'right', marginRight: 4 }}>
+                    <div style={{ fontWeight: 800, fontSize: '1.25rem', color: 'var(--text-main)' }}>₹{(student.totalPendingAmount || monthlyFee).toLocaleString()}</div>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Due {student.dueDayLabel || '10th'}</div>
+                  </div>
 
-              {isPaidThisMonth ? (
-                <button className="primary-btn" title="Print Receipt" onClick={() => setShowReceipt(true)} style={{ background: 'rgba(34,197,94,0.2)', color: '#4ade80', border: '1px solid rgba(34,197,94,0.4)', padding: '7px 12px', fontSize: '0.82rem', gap: '6px' }}>
-                  <Printer size={15} /> Receipt
-                </button>
-              ) : (
-                <div style={{ display: 'flex', gap: '6px' }}>
-                  {onSendReminder && (
-                    <button className="icon-btn-small" title="Send Fee Reminder (Voice & Text)" onClick={() => onSendReminder(student)} style={{ background: 'rgba(249,115,22,0.2)', color: 'var(--primary)', border: '1px solid rgba(249,115,22,0.4)', width: 36, height: 36 }}>
-                      <Send size={15} />
+                  {isPaidThisMonth ? (
+                    <button className="primary-btn" title="Print Receipt" onClick={() => setShowReceipt(true)} style={{ background: 'rgba(34,197,94,0.2)', color: '#4ade80', border: '1px solid rgba(34,197,94,0.4)', padding: '7px 12px', fontSize: '0.82rem', gap: '6px' }}>
+                      <Printer size={15} /> Receipt
                     </button>
+                  ) : (
+                    <div style={{ display: 'flex', gap: '6px' }}>
+                      {onSendReminder && (
+                        <button className="icon-btn-small" title="Send Fee Reminder (Voice & Text)" onClick={() => onSendReminder(student)} style={{ background: 'rgba(249,115,22,0.2)', color: 'var(--primary)', border: '1px solid rgba(249,115,22,0.4)', width: 36, height: 36 }}>
+                          <Send size={15} />
+                        </button>
+                      )}
+                      <button className="primary-btn" style={{ padding: '7px 16px', fontSize: '0.82rem', gap: '6px' }} onClick={() => setShowPayment(true)}>
+                        <IndianRupee size={14} /> Pay Now
+                      </button>
+                    </div>
                   )}
-                  <button className="primary-btn" style={{ padding: '7px 16px', fontSize: '0.82rem', gap: '6px' }} onClick={() => setShowPayment(true)}>
-                    <IndianRupee size={14} /> Pay Now
-                  </button>
                 </div>
-              )}
-            </div>
-          </div>
+              </div>
+            );
+          })()}
 
           {/* Navigation Tabs Bar */}
           <div style={{
@@ -570,7 +713,15 @@ const F = ({ label, col, hint, error, children }: { label: string; col?: boolean
 
 function AdmissionForm({ student, onClose, onSave, isMobile, onPreviewDoc }: { student: any; onClose: () => void; onSave: () => void; isMobile: boolean; onPreviewDoc: (url: string) => void }) {
   const { showToast } = useToast();
-  const [form, setForm] = useState(student ? { ...EMPTY_FORM, ...student } : { ...EMPTY_FORM, dateOfJoining: new Date().toISOString().split('T')[0] });
+  const [form, setForm] = useState(
+    student
+      ? {
+          ...EMPTY_FORM,
+          ...student,
+          dateOfJoining: student.dateOfJoining ? student.dateOfJoining.split('T')[0] : new Date().toISOString().split('T')[0]
+        }
+      : { ...EMPTY_FORM, dateOfJoining: new Date().toISOString().split('T')[0] }
+  );
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [saving, setSaving] = useState(false);
   const [uploadingAadhar, setUploadingAadhar] = useState(false);
@@ -596,6 +747,9 @@ function AdmissionForm({ student, onClose, onSave, isMobile, onPreviewDoc }: { s
         return '';
       case 'course':
         if (!v) return 'Academic course is required';
+        return '';
+      case 'dateOfJoining':
+        if (!v) return 'Date of joining is required';
         return '';
       default:
         return '';
@@ -659,7 +813,7 @@ function AdmissionForm({ student, onClose, onSave, isMobile, onPreviewDoc }: { s
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const requiredKeys = ['name', 'phone', 'parentPhone', 'email', 'course'];
+    const requiredKeys = ['name', 'phone', 'parentPhone', 'email', 'course', 'dateOfJoining'];
     const newTouched: Record<string, boolean> = {};
     let hasError = false;
 
@@ -858,6 +1012,17 @@ function AdmissionForm({ student, onClose, onSave, isMobile, onPreviewDoc }: { s
                 ))}
               </select>
             </F>
+
+            <F label="Date of Joining *" error={getFieldError('dateOfJoining')} hint="Anchors billing (e.g. 10th-10th)">
+              <input
+                required
+                type="date"
+                className={`custom-input ${getFieldError('dateOfJoining') ? 'input-error' : ''}`}
+                value={form.dateOfJoining}
+                onChange={e => f('dateOfJoining', e.target.value)}
+                onBlur={() => handleFieldBlur('dateOfJoining')}
+              />
+            </F>
           </div>
 
           {/* Aadhaar Card Photo Upload */}
@@ -999,7 +1164,7 @@ export default function Students() {
 
   const [searchTerm, setSearchTerm] = useState('');
   const [courseFilter, setCourseFilter] = useState('all');
-  const [feeFilter, setFeeFilter] = useState<'all' | 'Paid' | 'Pending'>('all');
+  const [feeFilter, setFeeFilter] = useState<'all' | 'Paid' | 'Pending' | 'Enrolled'>('all');
 
   const [showForm, setShowForm] = useState(false);
   const [editingStudent, setEditingStudent] = useState<any>(null);
@@ -1037,7 +1202,7 @@ export default function Students() {
       const res = await fetch(`/api/reminders/student/${studentId}`, { method: 'POST' });
       const data = await res.json();
       if (res.ok && data.success) {
-        showToast(`🎙️ Voice & Text reminder sent to ${student.name}!`, 'success');
+        showToast(`✉️ Fee reminder invoice emailed to ${student.name}!`, 'success');
         setReminderResultModal(data.result);
       } else {
         showToast(data.message || data.error || 'Failed to send reminder', 'error');
@@ -1130,11 +1295,19 @@ export default function Students() {
     });
   };
 
-  const activeCount = students.filter(s => s.status !== 'Vacated').length;
-  const vacatedCount = students.filter(s => s.status === 'Vacated').length;
   const activeStudents = students.filter(s => s.status !== 'Vacated');
-  const paidCount = activeStudents.filter(s => s.feeStatus === 'Paid').length;
-  const pendingCount = activeStudents.filter(s => s.feeStatus === 'Pending').length;
+  const activeCount = activeStudents.length;
+  const vacatedCount = students.filter(s => s.status === 'Vacated').length;
+
+  const enrolledInMonthStudents = activeStudents.filter(s => s.feeStatus !== 'Not Enrolled');
+  const enrolledCount = enrolledInMonthStudents.length;
+  const notEnrolledCount = activeStudents.filter(s => s.feeStatus === 'Not Enrolled').length;
+
+  const paidCount = enrolledInMonthStudents.filter(s => s.feeStatus === 'Paid').length;
+  const pendingCount = enrolledInMonthStudents.filter(s => s.feeStatus === 'Pending').length;
+
+  const selectedMonthObj = MONTHS.find(m => m.value === selectedMonth);
+  const selectedMonthLabel = selectedMonthObj?.label || selectedMonth;
 
   const filtered = students.filter(s => {
     const isVacated = s.status === 'Vacated';
@@ -1143,7 +1316,11 @@ export default function Students() {
 
     const matchSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase()) || (s.room || '').toLowerCase().includes(searchTerm.toLowerCase());
     const matchCourse = courseFilter === 'all' || s.course.toLowerCase().includes(courseFilter.toLowerCase());
-    const matchFee = feeFilter === 'all' || s.feeStatus === feeFilter;
+    const matchFee = feeFilter === 'all'
+      ? true
+      : feeFilter === 'Enrolled'
+        ? s.feeStatus !== 'Not Enrolled'
+        : s.feeStatus === feeFilter;
     return matchSearch && matchCourse && matchFee;
   }).sort((a, b) => {
     if (a.feeStatus !== b.feeStatus) {
@@ -1164,7 +1341,7 @@ export default function Students() {
         <div>
           <h1 className="page-title" style={{ margin: '0 0 4px 0', fontSize: isMobile ? '1.35rem' : '1.6rem' }}>Resident Management</h1>
           <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.82rem' }}>
-            {activeCount} Active Residents · {vacatedCount} Vacated · Monthly fee ₹{monthlyFee.toLocaleString('en-IN')}
+            {activeCount} Active Residents · {enrolledCount} Enrolled in {selectedMonthLabel}{notEnrolledCount > 0 ? ` (${notEnrolledCount} joined later)` : ''} · {vacatedCount} Vacated · Monthly fee ₹{monthlyFee.toLocaleString('en-IN')}
           </p>
         </div>
         <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', width: isMobile ? '100%' : 'auto', justifyContent: isMobile ? 'space-between' : 'flex-end', flexWrap: 'wrap' }}>
@@ -1186,9 +1363,9 @@ export default function Students() {
       {isMobile ? (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.65rem', marginBottom: '1.25rem' }}>
           {[
-            { label: 'Active Residents', value: activeCount, color: 'var(--primary)', tab: 'active', filter: 'all', icon: Users, sub: 'Currently enrolled' },
+            { label: 'Active Residents', value: activeCount, color: 'var(--primary)', tab: 'active', filter: 'all', icon: Users, sub: `${enrolledCount} enrolled in ${selectedMonthLabel}` },
             { label: 'Pending Dues', value: pendingCount, color: 'var(--warning)', tab: 'active', filter: 'Pending', icon: Clock, sub: 'Needs follow-up' },
-            { label: 'Fee Paid', value: paidCount, color: 'var(--success)', tab: 'active', filter: 'Paid', icon: CheckCircle, sub: 'Cleared this month' },
+            { label: 'Fee Paid', value: paidCount, color: 'var(--success)', tab: 'active', filter: 'Paid', icon: CheckCircle, sub: `Cleared for ${selectedMonthLabel}` },
             { label: 'Former / Vacated', value: vacatedCount, color: '#ef4444', tab: 'vacated', filter: 'all', icon: Archive, sub: 'Left hostel' },
           ].map(({ label, value, color, tab, filter, icon: Icon, sub }) => (
             <div
@@ -1226,8 +1403,10 @@ export default function Students() {
         <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
           {[
             { label: 'Active Residents', value: activeCount, color: 'var(--primary)' },
+            { label: `Enrolled (${selectedMonthLabel})`, value: enrolledCount, color: '#38bdf8' },
             { label: 'Fee Paid', value: paidCount, color: 'var(--success)' },
             { label: 'Fee Pending', value: pendingCount, color: 'var(--warning)' },
+            ...(notEnrolledCount > 0 ? [{ label: 'Joined Later', value: notEnrolledCount, color: 'var(--text-muted)' }] : []),
             { label: 'Vacated / Left', value: vacatedCount, color: '#ef4444' },
           ].map(({ label, value, color }) => (
             <div key={label} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border-dim)', borderRadius: 12, padding: '8px 16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -1323,7 +1502,7 @@ export default function Students() {
               {COURSES.map(c => <option key={c} value={c.toLowerCase()}>{c}</option>)}
             </select>
 
-            {(['all', 'Paid', 'Pending'] as const).map(f => (
+            {(['all', 'Enrolled', 'Paid', 'Pending'] as const).map(f => (
               <button
                 key={f}
                 onClick={() => setFeeFilter(f)}
@@ -1342,7 +1521,7 @@ export default function Students() {
                   color: feeFilter === f ? 'var(--primary)' : 'var(--text-muted)'
                 }}
               >
-                {f === 'all' ? 'All Fees' : f === 'Paid' ? '✓ Paid Only' : '⚡ Due Only'}
+                {f === 'all' ? 'All Residents' : f === 'Enrolled' ? '✓ Enrolled Only' : f === 'Paid' ? '✓ Paid Only' : '⚡ Due Only'}
               </button>
             ))}
           </div>
@@ -1376,12 +1555,12 @@ export default function Students() {
                       )}
                       <button className="student-name-btn" onClick={() => setViewingStudent(student)}>{student.name}</button>
                       
-                      {/* Individual Reminder Trigger Button - ONLY FOR PENDING / DUE STUDENTS */}
-                      {residentTab === 'active' && student.feeStatus === 'Pending' && (
+                      {/* Individual Reminder Trigger Button - FOR OVERDUE / ARREARS RESIDENTS */}
+                      {residentTab === 'active' && Boolean(student.feeStatus === 'Pending' || ((student.pendingMonthsCount ?? 0) > 0)) && (
                         <button
                           type="button"
                           className="reminder-tag-btn"
-                          title={`Send Personal Voice & Text Fee Reminder to ${student.name}`}
+                          title={`Send Personal Fee Reminder to ${student.name}`}
                           disabled={sendingReminderId === student.dbId}
                           onClick={(e) => {
                             e.stopPropagation();
@@ -1454,9 +1633,16 @@ export default function Students() {
                     )}
                   </td>
                   <td data-label="Fee Status">
-                    <span className={student.feeStatus === 'Paid' ? 'status-badge badge-paid' : student.feeStatus === 'Pending' ? 'status-badge badge-pending' : 'status-badge'}>
-                      {student.feeStatus}
-                    </span>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                      <span className={student.feeStatus === 'Paid' ? 'status-badge badge-paid' : student.feeStatus === 'Pending' ? 'status-badge badge-pending' : 'status-badge'}>
+                        {student.feeStatus === 'Upcoming' ? `Due ${student.dueDayLabel || '10th'}` : student.feeStatus === 'Not Enrolled' ? `Joined ${student.joiningMonthLabel || 'Later'}` : student.feeStatus}
+                      </span>
+                      {student.pendingMonthsCount > 0 && student.feeStatus !== 'Pending' && (
+                        <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#f87171', background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.25)', padding: '2px 6px', borderRadius: 4, width: 'fit-content' }}>
+                          ⚡ {student.pendingMonthsCount} Mos Overdue
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td data-label="Actions">
                     <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
@@ -1473,10 +1659,10 @@ export default function Students() {
                       {/* ACTIONS FOR ACTIVE RESIDENTS */}
                       {residentTab === 'active' && (
                         <>
-                          {student.feeStatus === 'Pending' && (
+                          {Boolean(student.feeStatus === 'Pending' || ((student.pendingMonthsCount ?? 0) > 0)) && (
                             <button 
                               className="icon-btn-small" 
-                              title={`Send Voice & Text Reminder to ${student.name}`}
+                              title={`Send Email Fee Reminder to ${student.name}`}
                               disabled={sendingReminderId === student.dbId}
                               onClick={() => handleSendIndividualReminder(student)}
                               style={{ color: 'var(--primary)' }}
@@ -1599,9 +1785,44 @@ export default function Students() {
                         {student.name}
                       </div>
                       {residentTab === 'active' ? (
-                        <span className={student.feeStatus === 'Paid' ? 'status-badge badge-paid' : 'status-badge badge-pending'} style={{ fontSize: '0.68rem', padding: '3px 8px', flexShrink: 0 }}>
-                          {student.feeStatus === 'Paid' ? '✓ Paid' : `⚡ Due`}
-                        </span>
+                        student.feeStatus === 'Paid' ? (
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
+                            <span className="status-badge badge-paid" style={{ fontSize: '0.68rem', padding: '3px 8px', flexShrink: 0 }}>
+                              ✓ Paid
+                            </span>
+                            {student.pendingMonthsCount > 0 && (
+                              <span style={{ fontSize: '0.65rem', padding: '2px 6px', borderRadius: 6, background: 'rgba(239,68,68,0.15)', color: '#f87171', fontWeight: 700 }}>
+                                ⚡ {student.pendingMonthsCount} Mos Overdue
+                              </span>
+                            )}
+                          </div>
+                        ) : student.feeStatus === 'Not Enrolled' ? (
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
+                            <span style={{ fontSize: '0.68rem', padding: '3px 8px', borderRadius: 8, background: 'rgba(255,255,255,0.06)', color: 'var(--text-muted)', border: '1px solid rgba(255,255,255,0.1)', fontWeight: 600, flexShrink: 0 }}>
+                              Joined {student.joiningMonthLabel || 'Later'}
+                            </span>
+                            {student.pendingMonthsCount > 0 && (
+                              <span style={{ fontSize: '0.65rem', padding: '2px 6px', borderRadius: 6, background: 'rgba(239,68,68,0.15)', color: '#f87171', fontWeight: 700 }}>
+                                ⚡ {student.pendingMonthsCount} Mos Overdue
+                              </span>
+                            )}
+                          </div>
+                        ) : student.feeStatus === 'Upcoming' ? (
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
+                            <span style={{ fontSize: '0.68rem', padding: '3px 8px', borderRadius: 8, background: 'rgba(56,189,248,0.12)', color: '#38bdf8', border: '1px solid rgba(56,189,248,0.25)', fontWeight: 700, flexShrink: 0 }}>
+                              🗓️ Due {student.dueDayLabel || '10th'}
+                            </span>
+                            {student.pendingMonthsCount > 0 && (
+                              <span style={{ fontSize: '0.65rem', padding: '2px 6px', borderRadius: 6, background: 'rgba(239,68,68,0.15)', color: '#f87171', fontWeight: 700 }}>
+                                ⚡ {student.pendingMonthsCount} Mos Overdue
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="status-badge badge-pending" style={{ fontSize: '0.68rem', padding: '3px 8px', flexShrink: 0 }}>
+                            ⚡ Due
+                          </span>
+                        )
                       ) : (
                         <span style={{ fontSize: '0.68rem', padding: '3px 8px', borderRadius: 8, background: 'rgba(239,68,68,0.15)', color: '#ef4444', fontWeight: 700, flexShrink: 0 }}>
                           Vacated
@@ -1642,8 +1863,8 @@ export default function Students() {
                   </div>
                 </div>
 
-                {/* Due Banner with 1-Tap Remind */}
-                {residentTab === 'active' && student.feeStatus === 'Pending' && (
+                {/* Due Banner with 1-Tap Remind (Shown whenever fees are overdue or have arrears) */}
+                {residentTab === 'active' && Boolean(student.feeStatus === 'Pending' || ((student.pendingMonthsCount ?? 0) > 0)) && (
                   <div style={{
                     background: 'rgba(249,115,22,0.1)',
                     border: '1px solid rgba(249,115,22,0.25)',
@@ -1656,6 +1877,11 @@ export default function Students() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.78rem', color: 'var(--primary)' }}>
                       <IndianRupee size={14} />
                       <span>Due: <strong>₹{(student.totalPendingAmount || monthlyFee).toLocaleString('en-IN')}</strong></span>
+                      {student.pendingMonthsCount > 1 && (
+                        <span style={{ fontSize: '0.7rem', color: '#f87171', fontWeight: 700 }}>
+                          ({student.pendingMonthsCount} mos)
+                        </span>
+                      )}
                     </div>
                     <button
                       type="button"
@@ -1681,6 +1907,41 @@ export default function Students() {
                       {sendingReminderId === student.dbId ? <Clock size={11} className="animate-spin" /> : <Send size={11} />}
                       <span>{sendingReminderId === student.dbId ? 'Sending…' : 'Remind'}</span>
                     </button>
+                  </div>
+                )}
+
+                {/* Info strip when student was not enrolled in selected month */}
+                {residentTab === 'active' && student.feeStatus === 'Not Enrolled' && (
+                  <div style={{
+                    background: 'rgba(255,255,255,0.02)',
+                    border: '1px solid rgba(255,255,255,0.06)',
+                    borderRadius: 10,
+                    padding: '6px 10px',
+                    fontSize: '0.72rem',
+                    color: 'var(--text-muted)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6
+                  }}>
+                    <span>ℹ️ Not enrolled in {MONTHS.find(m => m.value === selectedMonth)?.label || selectedMonth} · Joined {student.dateOfJoiningFormatted || student.joiningMonthLabel}</span>
+                  </div>
+                )}
+
+                {/* Info strip when student's fee cycle is current / upcoming */}
+                {residentTab === 'active' && student.feeStatus === 'Upcoming' && (
+                  <div style={{
+                    background: 'rgba(56,189,248,0.06)',
+                    border: '1px solid rgba(56,189,248,0.2)',
+                    borderRadius: 10,
+                    padding: '6px 10px',
+                    fontSize: '0.72rem',
+                    color: '#38bdf8',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
+                  }}>
+                    <span>🗓️ Next Cycle Due: <strong>{student.nextDueDate || student.dueDayLabel}</strong></span>
+                    <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>Cycle {student.dueDayLabel || '10th'} to {student.dueDayLabel || '10th'}</span>
                   </div>
                 )}
 
@@ -1839,7 +2100,7 @@ export default function Students() {
             <div style={{ background: 'rgba(249,115,22,0.08)', border: '1px solid rgba(249,115,22,0.2)', borderRadius: 12, padding: '14px 16px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ fontWeight: 700, fontSize: '1.05rem', color: 'var(--primary)' }}>👤 {reminderResultModal.studentName}</div>
-                <div style={{ fontWeight: 800, color: 'var(--warning)', fontSize: '1.1rem' }}>₹{Number(reminderResultModal.totalAmount || 5500).toLocaleString('en-IN')}</div>
+                <div style={{ fontWeight: 800, color: 'var(--warning)', fontSize: '1.1rem' }}>₹{Number(reminderResultModal.totalAmount || monthlyFee).toLocaleString('en-IN')}</div>
               </div>
               <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: 6, display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                 <span>🏡 {reminderResultModal.roomName}</span>
@@ -1854,13 +2115,13 @@ export default function Students() {
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               <div style={{ padding: '10px 14px', borderRadius: 8, background: 'rgba(56,189,248,0.08)', border: '1px solid rgba(56,189,248,0.25)', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.82rem', color: '#38bdf8' }}>
-                <Send size={15} /> <strong>Telegram Text:</strong> {reminderResultModal.telegramStatus}
-              </div>
-              <div style={{ padding: '10px 14px', borderRadius: 8, background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.25)', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.82rem', color: '#fbbf24' }}>
-                <PhoneCall size={15} /> <strong>Voice Note Audio:</strong> {reminderResultModal.telegramVoiceStatus}
-              </div>
-              <div style={{ padding: '10px 14px', borderRadius: 8, background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.25)', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.82rem', color: '#4ade80' }}>
-                <MessageSquare size={15} /> <strong>WhatsApp:</strong> {reminderResultModal.whatsappStatus}
+                <Mail size={15} /> <strong>Fee Invoice & Reminder Emailed:</strong>{' '}
+                <span style={{ color: reminderResultModal.emailStatus === 'FAILED' ? '#ef4444' : '#4ade80', fontWeight: 700 }}>
+                  {reminderResultModal.emailStatus || 'SENT'}
+                </span>
+                {reminderResultModal.emailRecipient && (
+                  <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>({reminderResultModal.emailRecipient})</span>
+                )}
               </div>
             </div>
 

@@ -257,7 +257,7 @@ function FeeReport({ pendingOnly = false }: { pendingOnly?: boolean }) {
     const subtitle = `Month: ${MONTHS.find(m => m.value === selectedMonth)?.label}`;
     const hostelName = settings?.hostelName || 'VMR Hostel';
     if (pendingOnly) {
-      printTable(title, ['Student', 'Course', 'Room', 'Bed', 'Pending Amount'], filtered.map(s => [s.name, s.course, s.room, s.bedNumber, `₹${monthlyFee}`]), subtitle, hostelName);
+      printTable(title, ['Student', 'Course', 'Room', 'Bed', 'Pending Amount'], filtered.map(s => [s.name, s.course, s.room, s.bedNumber, `₹${s.amount || monthlyFee}`]), subtitle, hostelName);
     } else {
       printTable(title, ['Student', 'Course', 'Room', 'Bed', 'Amount', 'Status', 'Date', 'Mode', 'Ref ID'],
         filtered.map(s => [s.name, s.course, s.room, s.bedNumber, `₹${s.amount}`, s.feeStatus, s.paymentDate, s.method, s.transactionRef]), subtitle, hostelName);

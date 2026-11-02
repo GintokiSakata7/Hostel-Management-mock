@@ -177,3 +177,22 @@ model Expense {
   @@index([buildingId])
 }
 
+model Setting {
+  id              String   @id @default("default")
+  hostelName      String   @default("VMR Hostel")
+  adminName       String   @default("Admin")
+  adminPassword   String   @default("admin123")
+  hostelPhone     String?
+  hostelEmail     String?
+  hostelAddress   String?
+  upiId           String?
+  upiName         String   @default("VMR Hostel")
+  monthlyFee      Float    @default(5500)
+  securityDeposit Float    @default(5000)
+  lateFinePerDay  Float    @default(50)
+  dueDateDay      Int      @default(10)
+  reminderTime    String   @default("19:00")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+

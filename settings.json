@@ -1,13 +1,15 @@
 {
   "hostelName": "VMR Hostel",
-  "adminName": "",
+  "adminName": "Admin",
+  "adminPassword": "admin123",
   "hostelPhone": "",
   "hostelEmail": "",
   "hostelAddress": "",
   "upiId": "",
   "upiName": "VMR Hostel",
-  "monthlyFee": 5500,
+  "monthlyFee": 6000,
   "securityDeposit": 5000,
   "lateFinePerDay": 50,
-  "dueDateDay": 10
+  "dueDateDay": 10,
+  "reminderTime": "19:00"
 }
