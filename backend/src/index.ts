@@ -12,7 +12,7 @@ import { PrismaClient } from '@prisma/client';
 import fs from 'fs';
 import path from 'path';
 import { initReminderScheduler, executeFeeReminderDispatch, executeSingleStudentReminder, getReminderScheduleSettings, updateReminderScheduleTime } from './services/reminderScheduler';
-import { calculateStudentDueStatus, getStudentMonthFeeStatus, computeStudentBillingLedger, getOrdinal, formatMonthLabel, getCycleForMonth, toMonthString } from './services/billingHelper';
+import { calculateStudentDueStatus, getStudentMonthFeeStatus, computeStudentBillingLedger, getMonthlyFeeForMonth, getOrdinal, formatMonthLabel, getCycleForMonth, toMonthString } from './services/billingHelper';
 import { generateFeeReceiptPDFBuffer } from './services/pdfService';
 import { sendPaymentReceiptEmail, sendEmail } from './services/emailService';
 import { createFinanceRouter } from './routes/financeRoutes';
@@ -1049,10 +1049,10 @@ app.post('/api/fees/pay', async (req, res) => {
   const { studentId, amount, method, upiProvider, transactionRef, date, month } = req.body;
   const m = month || currentMonth();
   const settings = readSettings();
-  const standardFee = settings.monthlyFee || 5500;
+  const standardFeeForMonth = getMonthlyFeeForMonth(m, settings);
   const finalAmount = (amount !== undefined && amount !== null && !isNaN(Number(amount)) && Number(amount) > 0)
     ? Number(amount)
-    : standardFee;
+    : standardFeeForMonth;
   try {
     // Check student and calculate ledger before payment
     const studentBefore = await prisma.student.findUnique({
@@ -1063,7 +1063,7 @@ app.post('/api/fees/pay', async (req, res) => {
       return res.status(404).json({ error: 'Student not found' });
     }
 
-    const ledgerBefore = computeStudentBillingLedger(studentBefore, standardFee, new Date());
+    const ledgerBefore = computeStudentBillingLedger(studentBefore, undefined, new Date());
     const existing = await prisma.fee.findFirst({ where: { studentId, month: m } });
 
     // Block payment only if the student has NO outstanding dues at all AND month m was already completed
@@ -1126,7 +1126,7 @@ app.post('/api/fees/pay', async (req, res) => {
     });
     let updatedLedger = ledgerBefore;
     if (updatedForStatus) {
-      updatedLedger = computeStudentBillingLedger(updatedForStatus, standardFee, new Date());
+      updatedLedger = computeStudentBillingLedger(updatedForStatus, undefined, new Date());
       await prisma.student.update({
         where: { id: studentId },
         data: { feeStatus: updatedLedger.totalRemainingDue === 0 ? 'Paid' : 'Pending' }
@@ -1658,7 +1658,7 @@ app.get('/api/fees/monthly-status', async (req, res) => {
       feeStatus: monthStatus.status,
       cycleLabel: monthStatus.cycleLabel,
       hasArrears: dueStatus.pendingMonthsCount > 0,
-      amount: feeRecord?.amount || (isBeforeJoining ? 0 : (monthStatus.amountDue || monthlyFee)),
+      amount: feeRecord?.amount || (isBeforeJoining ? 0 : (monthStatus.amountDue || getMonthlyFeeForMonth(m, settings))),
       paymentDate: feeRecord && feeRecord.status === 'Completed' ? feeRecord.date.toISOString().split('T')[0] : null,
       method: feeRecord?.method || null,
       upiProvider: feeRecord?.upiProvider || null,

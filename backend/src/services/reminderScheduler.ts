@@ -69,7 +69,7 @@ export async function executeFeeReminderDispatch(): Promise<{
   for (let i = 0; i < pendingStatuses.length; i++) {
     const s = pendingStatuses[i];
     const studentTarget = s.phone || undefined;
-    const monthsList = s.pendingMonths.map(p => p.monthLabel);
+    const monthsList = s.pendingMonths.map(p => `${p.monthLabel} (₹${p.amount.toLocaleString('en-IN')})`);
 
     // Send Email Reminder (use student's registered email if present, or fallback test address)
     let emailStatus = 'SKIPPED';
@@ -195,7 +195,7 @@ export async function executeSingleStudentReminder(studentId: string): Promise<{
   }
 
   const studentTarget = dueStatus.phone || undefined;
-  const monthsList = dueStatus.pendingMonths.map(p => p.monthLabel);
+  const monthsList = dueStatus.pendingMonths.map(p => `${p.monthLabel} (₹${p.amount.toLocaleString('en-IN')})`);
   const totalAmt = dueStatus.totalPendingAmount;
 
   const emailTo = dueStatus.email || student.email || process.env.EMAIL_FALLBACK_RECIPIENT || 'rishivardhan165@gmail.com';

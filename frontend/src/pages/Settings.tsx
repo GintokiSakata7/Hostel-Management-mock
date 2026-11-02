@@ -4,17 +4,20 @@ import {
   Save, Plus, Trash2, RefreshCw, Download,
   Layers3, FileText,
   User, MapPin, Calendar,
-  ChevronDown, ChevronRight, Home, Clock, Check, X
+  ChevronDown, ChevronRight, Home, Clock, Check, X,
+  Info, AlertCircle, CalendarCheck
 } from 'lucide-react';
+import Modal from '../components/Modal';
 import { useToast } from '../components/ToastContext';
 import { useSettings } from '../components/SettingsContext';
 import { useBuilding } from '../components/BuildingContext';
 
 const API = '';
 
-const MONTHS = Array.from({ length: 12 }, (_, i) => {
+const MONTHS = Array.from({ length: 24 }, (_, i) => {
   const d = new Date();
-  d.setMonth(d.getMonth() - 6 + i);
+  d.setDate(1);
+  d.setMonth(d.getMonth() - 12 + i);
   const y = d.getFullYear(), m = String(d.getMonth() + 1).padStart(2, '0');
   return { value: `${y}-${m}`, label: d.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' }) };
 });
@@ -103,11 +106,15 @@ function FeeTab({ settings, onSave }: { settings: any; onSave: (s: any) => void 
   const isMobile = useIsMobile();
   const [form, setForm] = useState(settings);
   const [saving, setSaving] = useState(false);
-  const [bulkMonth, setBulkMonth] = useState(MONTHS[6]?.value || '');
+  const [bulkMonth, setBulkMonth] = useState(MONTHS[12]?.value || '2026-11');
   const [bulkAmount, setBulkAmount] = useState('');
   const [bulkLoading, setBulkLoading] = useState(false);
   const [reminderTime, setReminderTime] = useState('19:00');
   const [savingSchedule, setSavingSchedule] = useState(false);
+
+  // Fee Effective Schedule States
+  const [showEffectiveModal, setShowEffectiveModal] = useState(false);
+  const [pendingEffectiveMonth, setPendingEffectiveMonth] = useState(settings?.feeEffectiveMonth || '2026-11');
 
   useEffect(() => {
     fetch(`${API}/api/reminders/settings`)
@@ -141,8 +148,44 @@ function FeeTab({ settings, onSave }: { settings: any; onSave: (s: any) => void 
     }
   };
 
-  useEffect(() => setForm(settings), [settings]);
+  useEffect(() => {
+    setForm(settings);
+    if (settings?.feeEffectiveMonth) {
+      setPendingEffectiveMonth(settings.feeEffectiveMonth);
+    }
+  }, [settings]);
+
   const f = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
+
+  const executeSave = async (dataToSave: any) => {
+    setSaving(true);
+    try {
+      await onSave(dataToSave);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleInitiateSave = () => {
+    const originalFee = Number(settings?.monthlyFee || 0);
+    const newFee = Number(form.monthlyFee || 0);
+    // If the monthly fee amount was modified, prompt for the effective starting month
+    if (originalFee > 0 && newFee > 0 && originalFee !== newFee) {
+      setShowEffectiveModal(true);
+    } else {
+      executeSave(form);
+    }
+  };
+
+  const handleConfirmEffectiveFee = async () => {
+    setShowEffectiveModal(false);
+    const updated = {
+      ...form,
+      feeEffectiveMonth: pendingEffectiveMonth
+    };
+    setForm(updated);
+    await executeSave(updated);
+  };
 
   const handleBulkApply = async () => {
     const label = MONTHS.find(m => m.value === bulkMonth)?.label || bulkMonth;
@@ -161,20 +204,51 @@ function FeeTab({ settings, onSave }: { settings: any; onSave: (s: any) => void 
     setBulkLoading(false);
   };
 
+  const effectiveLabel = MONTHS.find(m => m.value === (form.feeEffectiveMonth || pendingEffectiveMonth))?.label || (form.feeEffectiveMonth || 'November 2026');
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-      <SectionCard title="Monthly Fee Structure" icon={IndianRupee}>
+      <SectionCard title="Monthly Fee Structure & Historical Policy" icon={IndianRupee}>
         <div className="settings-grid">
           <SettingField label="Monthly Fee (₹)" icon={IndianRupee}>
-            <input className="custom-input" type="number" value={form.monthlyFee || ''} onChange={e => f('monthlyFee', Number(e.target.value))} placeholder="5500" />
+            <input className="custom-input" type="number" value={form.monthlyFee || ''} onChange={e => f('monthlyFee', Number(e.target.value))} placeholder="6000" />
           </SettingField>
           <SettingField label="Security Deposit (₹)" icon={IndianRupee}>
             <input className="custom-input" type="number" value={form.securityDeposit || ''} onChange={e => f('securityDeposit', Number(e.target.value))} placeholder="5000" />
           </SettingField>
+          <SettingField label="Fee Effective From Month" icon={Calendar}>
+            <select
+              className="custom-input custom-select"
+              value={form.feeEffectiveMonth || pendingEffectiveMonth}
+              onChange={e => {
+                f('feeEffectiveMonth', e.target.value);
+                setPendingEffectiveMonth(e.target.value);
+              }}
+            >
+              {MONTHS.map(m => (
+                <option key={m.value} value={m.value}>{m.label}</option>
+              ))}
+            </select>
+          </SettingField>
+          <SettingField label="Prior Historical Fee (₹)" icon={Clock}>
+            <input className="custom-input" type="number" value={form.previousMonthlyFee || 5500} readOnly disabled style={{ opacity: 0.75, cursor: 'not-allowed' }} />
+          </SettingField>
         </div>
+
+        {/* Historical Billing Preservation Notice */}
+        <div style={{ marginTop: '1.25rem', padding: '1rem', background: 'rgba(59,130,246,0.08)', borderRadius: 12, border: '1px solid rgba(59,130,246,0.25)', fontSize: '0.82rem', lineHeight: 1.6, color: '#bfdbfe' }}>
+          <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px', color: '#60a5fa' }}>
+            <Info size={15} /> Effective-Date Fee Policy Active
+          </div>
+          <div>
+            Billing cycles prior to <strong>{effectiveLabel}</strong> are locked at <strong>₹{(form.previousMonthlyFee || 5500).toLocaleString('en-IN')}/mo</strong>. Cycles starting from <strong>{effectiveLabel}</strong> onwards use <strong>₹{Number(form.monthlyFee || 6000).toLocaleString('en-IN')}/mo</strong>.
+            For residents with dues spanning both periods, total outstanding dues are accurately compounded (e.g. ₹5,500 + ₹6,000 = ₹11,500) across all dashboards and invoices.
+          </div>
+        </div>
+
         <div style={{ marginTop: '1.25rem', padding: '1rem', background: 'rgba(249,115,22,0.06)', borderRadius: 12, border: '1px solid rgba(249,115,22,0.15)' }}>
           <div style={{ fontWeight: 700, marginBottom: '0.75rem', color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem' }}>
-            <IndianRupee size={14} /> Fee Preview
+            <IndianRupee size={14} /> Fee Preview (Starting {effectiveLabel})
           </div>
           <div className="responsive-grid-3" style={{ gap: '0.75rem', fontSize: '0.82rem' }}>
             {[
@@ -270,10 +344,77 @@ function FeeTab({ settings, onSave }: { settings: any; onSave: (s: any) => void 
 
       <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
         <button className="primary-btn" style={{ minWidth: 140, justifyContent: 'center' }}
-          onClick={async () => { setSaving(true); await onSave(form); setSaving(false); }} disabled={saving}>
+          onClick={handleInitiateSave} disabled={saving}>
           <Save size={16} /> {saving ? 'Saving…' : 'Save Changes'}
         </button>
       </div>
+
+      {/* Confirmation Modal: Select Effective Month for Fee Change */}
+      {showEffectiveModal && (
+        <Modal isOpen onClose={() => setShowEffectiveModal(false)} title="Update Fee: Select Effective Month">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            <div style={{ background: 'rgba(249,115,22,0.08)', border: '1px solid rgba(249,115,22,0.25)', borderRadius: 12, padding: '1rem' }}>
+              <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 6 }}>Fee Change Detected</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '1.2rem', fontWeight: 800 }}>
+                <span style={{ color: 'var(--text-muted)', textDecoration: 'line-through' }}>₹{(settings?.monthlyFee || 5500).toLocaleString('en-IN')}</span>
+                <span style={{ color: 'var(--primary)' }}>➔ ₹{Number(form.monthlyFee).toLocaleString('en-IN')} / month</span>
+              </div>
+            </div>
+
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label style={{ fontWeight: 700, fontSize: '0.9rem', marginBottom: 6, display: 'block' }}>
+                From which month should this new rate take effect?
+              </label>
+              <select
+                className="custom-input custom-select"
+                value={pendingEffectiveMonth}
+                onChange={e => setPendingEffectiveMonth(e.target.value)}
+                style={{ fontSize: '0.95rem', padding: '10px 12px' }}
+              >
+                {MONTHS.map(m => (
+                  <option key={m.value} value={m.value}>{m.label}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Breakdown of Historical Rules */}
+            <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-dim)', borderRadius: 10, padding: '0.85rem 1rem', fontSize: '0.82rem', lineHeight: 1.6 }}>
+              <div style={{ fontWeight: 700, marginBottom: 6, color: '#fff' }}>How Dues & Arrears Will Be Calculated:</div>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 6 }}>
+                <span style={{ color: 'var(--warning)', fontWeight: 700 }}>• Previous Months:</span>
+                <span>Cycles before <strong>{MONTHS.find(m => m.value === pendingEffectiveMonth)?.label || pendingEffectiveMonth}</strong> remain at <strong>₹{(settings?.monthlyFee || 5500).toLocaleString('en-IN')}</strong>.</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 6 }}>
+                <span style={{ color: 'var(--success)', fontWeight: 700 }}>• Effective From:</span>
+                <span>Cycles starting <strong>{MONTHS.find(m => m.value === pendingEffectiveMonth)?.label || pendingEffectiveMonth}</strong> onwards are charged at <strong>₹{Number(form.monthlyFee).toLocaleString('en-IN')}</strong>.</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                <span style={{ color: 'var(--primary)', fontWeight: 700 }}>• 2-Month Due Example:</span>
+                <span>A student with 1 old month + 1 new month overdue will show exactly <strong>₹{(settings?.monthlyFee || 5500).toLocaleString('en-IN')} + ₹{Number(form.monthlyFee).toLocaleString('en-IN')} = ₹{((settings?.monthlyFee || 5500) + Number(form.monthlyFee)).toLocaleString('en-IN')}</strong> due.</span>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '0.5rem' }}>
+              <button
+                type="button"
+                className="ghost-btn"
+                onClick={() => setShowEffectiveModal(false)}
+                style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid var(--border-dim)', background: 'transparent', cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="primary-btn"
+                onClick={handleConfirmEffectiveFee}
+                style={{ padding: '8px 20px', borderRadius: 8, cursor: 'pointer', fontWeight: 700 }}
+              >
+                <Save size={15} /> Confirm & Apply Fee Schedule
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }

@@ -23,20 +23,29 @@ function PaymentModal({ student, selectedMonth, onClose, onSuccess }: {
   const monthlyFee = settings?.monthlyFee || 5500;
 
   // Build pending months list: existing arrears first (FIFO), then selected month
-  const pendingMonths: { value: string; label: string; cycleLabel?: string }[] = [];
+  const pendingMonths: { value: string; label: string; cycleLabel?: string; amount?: number }[] = [];
 
   // Add oldest arrears first (if student has them)
   if (student.pendingMonths && student.pendingMonths.length > 0) {
     student.pendingMonths.forEach((p: any) => {
       if (!pendingMonths.some(m => m.value === p.month)) {
-        pendingMonths.push({ value: p.month, label: p.monthLabel || p.month, cycleLabel: p.cycleLabel });
+        pendingMonths.push({
+          value: p.month,
+          label: p.monthLabel || p.month,
+          cycleLabel: p.cycleLabel,
+          amount: p.amount !== undefined ? Number(p.amount) : undefined
+        });
       }
     });
   }
   // Also add selectedMonth if not already in list
   if (!pendingMonths.some(m => m.value === selectedMonth)) {
     const ml = MONTHS.find(m => m.value === selectedMonth)?.label || selectedMonth;
-    pendingMonths.push({ value: selectedMonth, label: ml });
+    pendingMonths.push({
+      value: selectedMonth,
+      label: ml,
+      amount: student.amount !== undefined ? Number(student.amount) : monthlyFee
+    });
   }
 
   // Default to oldest unpaid cycle (FIFO)
@@ -44,6 +53,7 @@ function PaymentModal({ student, selectedMonth, onClose, onSuccess }: {
   const [payMonth, setPayMonth] = useState(defaultMonth);
   const selectedEntry = pendingMonths.find(m => m.value === payMonth) || pendingMonths[0];
   const monthLabel = selectedEntry?.label || payMonth;
+  const cycleAmount = selectedEntry?.amount !== undefined ? selectedEntry.amount : monthlyFee;
 
   const totalPending = student.totalPendingAmount !== undefined
     ? Number(student.totalPendingAmount)
@@ -144,12 +154,12 @@ function PaymentModal({ student, selectedMonth, onClose, onSuccess }: {
                 style={{ fontSize: '0.72rem', padding: '5px 10px', borderRadius: 6, border: '1px solid rgba(249,115,22,0.4)', background: 'rgba(249,115,22,0.15)', color: 'var(--primary)', cursor: 'pointer', fontWeight: 700 }}>
                 Pay Full (₹{totalPending.toLocaleString('en-IN')})
               </button>
-              {totalPending !== monthlyFee && (
+              {totalPending !== cycleAmount && (
                 <button
                   type="button"
-                  onClick={() => setForm(f => ({ ...f, amount: monthlyFee }))}
+                  onClick={() => setForm(f => ({ ...f, amount: cycleAmount }))}
                   style={{ fontSize: '0.72rem', padding: '5px 10px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.05)', color: 'var(--text-muted)', cursor: 'pointer', fontWeight: 600 }}>
-                  1 Cycle (₹{monthlyFee.toLocaleString('en-IN')})
+                  Pay Cycle (₹{cycleAmount.toLocaleString('en-IN')})
                 </button>
               )}
             </div>
@@ -164,12 +174,27 @@ function PaymentModal({ student, selectedMonth, onClose, onSuccess }: {
               ⚠️ Resident has {pendingMonths.length} cycle(s) pending. Oldest is auto-selected.
             </div>
           )}
-          <select className="custom-input" value={payMonth} onChange={e => setPayMonth(e.target.value)}>
-            {pendingMonths.map((m, i) => (
-              <option key={m.value} value={m.value}>
-                {i === 0 && pendingMonths.length > 1 ? '⚡ ' : ''}{m.label}{m.cycleLabel ? ` (${m.cycleLabel})` : ''}
-              </option>
-            ))}
+          <select
+            className="custom-input"
+            value={payMonth}
+            onChange={e => {
+              const newMonth = e.target.value;
+              setPayMonth(newMonth);
+              const newEntry = pendingMonths.find(m => m.value === newMonth);
+              const newCycleAmt = newEntry?.amount !== undefined ? newEntry.amount : monthlyFee;
+              if (form.amount === cycleAmount) {
+                setForm(f => ({ ...f, amount: newCycleAmt }));
+              }
+            }}
+          >
+            {pendingMonths.map((m, i) => {
+              const amt = m.amount !== undefined ? m.amount : monthlyFee;
+              return (
+                <option key={m.value} value={m.value}>
+                  {i === 0 && pendingMonths.length > 1 ? '⚡ ' : ''}{m.label}{m.cycleLabel ? ` (${m.cycleLabel})` : ''} · ₹{amt.toLocaleString('en-IN')}
+                </option>
+              );
+            })}
           </select>
         </div>
 

@@ -98,6 +98,44 @@ export function getCycleForMonth(joinDay: number, monthStr: string): { cycleStar
 }
 
 /**
+ * Resolves the expected monthly fee for a given month ("YYYY-MM").
+ * Supports effective-date fee schedules, e.g. 5500 prior to 2026-11, and 6000 from 2026-11 onwards.
+ */
+export function getMonthlyFeeForMonth(monthStr: string, settings?: any): number {
+  const currentSettings = settings || readSettings();
+  const defaultFee = currentSettings.monthlyFee || 5500;
+
+  if (currentSettings.feeSchedule) {
+    try {
+      const schedule: Array<{ effectiveMonth: string; fee: number }> =
+        typeof currentSettings.feeSchedule === 'string'
+          ? JSON.parse(currentSettings.feeSchedule)
+          : currentSettings.feeSchedule;
+
+      if (Array.isArray(schedule) && schedule.length > 0) {
+        // Sort descending by effectiveMonth
+        const sorted = [...schedule].sort((a, b) => b.effectiveMonth.localeCompare(a.effectiveMonth));
+        for (const item of sorted) {
+          if (monthStr >= item.effectiveMonth) {
+            return Number(item.fee);
+          }
+        }
+        return Number(sorted[sorted.length - 1].fee);
+      }
+    } catch (e) {}
+  }
+
+  if (currentSettings.feeEffectiveMonth) {
+    if (monthStr < currentSettings.feeEffectiveMonth) {
+      return currentSettings.previousMonthlyFee || 5500;
+    }
+    return currentSettings.monthlyFee || 6000;
+  }
+
+  return defaultFee;
+}
+
+/**
  * UNIVERSAL SINGLE SOURCE OF TRUTH for fee status of one student for one month.
  *
  * This function is the canonical implementation used by ALL backend endpoints:
@@ -145,7 +183,8 @@ export function computeStudentBillingLedger(
   standardMonthlyFee?: number,
   referenceDate: Date = new Date()
 ): StudentBillingLedger {
-  const fee = standardMonthlyFee !== undefined && standardMonthlyFee !== null ? standardMonthlyFee : (readSettings().monthlyFee || 5500);
+  const settings = readSettings();
+  const fee = standardMonthlyFee !== undefined && standardMonthlyFee !== null ? standardMonthlyFee : (settings.monthlyFee || 5500);
   const joinDate = student.dateOfJoining ? new Date(student.dateOfJoining) : new Date();
   const joinDay = joinDate.getDate() || 1;
   const joinYear = joinDate.getFullYear();
@@ -185,6 +224,10 @@ export function computeStudentBillingLedger(
     const mStr = `${currY}-${String(currM + 1).padStart(2, '0')}`;
     const { cycleStart, cycleEnd, cycleDueDate, cycleLabel } = getCycleForMonth(joinDay, mStr);
     const isDue = cycleDueDate <= refDateStart;
+    const cycleFee = standardMonthlyFee !== undefined && standardMonthlyFee !== settings.monthlyFee
+      ? standardMonthlyFee
+      : getMonthlyFeeForMonth(mStr, settings);
+
     if (isDue) {
       dueCycles.push({
         month: mStr,
@@ -194,9 +237,9 @@ export function computeStudentBillingLedger(
         cycleEnd,
         cycleDueDate,
         isDue: true,
-        expectedAmount: fee,
+        expectedAmount: cycleFee,
         paidAmount: 0,
-        remainingDue: fee,
+        remainingDue: cycleFee,
         status: 'Pending'
       });
     }
@@ -290,7 +333,9 @@ export function getStudentMonthFeeStatus(
     };
   }
 
-  const ledger = computeStudentBillingLedger(student, fee, referenceDate);
+  const settings = readSettings();
+  const cycleExpectedFee = getMonthlyFeeForMonth(monthStr, settings);
+  const ledger = computeStudentBillingLedger(student, standardMonthlyFee, referenceDate);
   const oldestUnpaid = ledger.pendingCycles[0]?.month || null;
 
   // Check if monthStr is one of the due cycles
@@ -326,7 +371,7 @@ export function getStudentMonthFeeStatus(
   }
 
   // Upcoming cycle (future month or current month before due date)
-  const upcomingRemaining = Math.max(0, fee - ledger.advanceCredit);
+  const upcomingRemaining = Math.max(0, cycleExpectedFee - ledger.advanceCredit);
   return {
     status: upcomingRemaining === 0 ? 'Paid' : 'Upcoming',
     cycleDueDay: joinDay,
