@@ -103,8 +103,21 @@ export function getCycleForMonth(joinDay: number, monthStr: string): { cycleStar
  */
 export function getMonthlyFeeForMonth(monthStr: string, settings?: any): number {
   const currentSettings = settings || readSettings();
-  const defaultFee = currentSettings.monthlyFee || 5500;
+  const defaultFee = Number(currentSettings.monthlyFee) || 6999;
+  const previousFee = currentSettings.previousMonthlyFee !== undefined && currentSettings.previousMonthlyFee !== null
+    ? Number(currentSettings.previousMonthlyFee)
+    : 6000;
+  const effectiveMonth = currentSettings.feeEffectiveMonth || '2026-11';
 
+  // Effective Month policy: Prior to effective month uses previousMonthlyFee, from effective month onwards uses monthlyFee
+  if (effectiveMonth) {
+    if (monthStr < effectiveMonth) {
+      return previousFee;
+    }
+    return defaultFee;
+  }
+
+  // Fallback to feeSchedule if explicit multiple historical tiers are present without feeEffectiveMonth
   if (currentSettings.feeSchedule) {
     try {
       const schedule: Array<{ effectiveMonth: string; fee: number }> =
@@ -113,7 +126,6 @@ export function getMonthlyFeeForMonth(monthStr: string, settings?: any): number 
           : currentSettings.feeSchedule;
 
       if (Array.isArray(schedule) && schedule.length > 0) {
-        // Sort descending by effectiveMonth
         const sorted = [...schedule].sort((a, b) => b.effectiveMonth.localeCompare(a.effectiveMonth));
         for (const item of sorted) {
           if (monthStr >= item.effectiveMonth) {
@@ -123,13 +135,6 @@ export function getMonthlyFeeForMonth(monthStr: string, settings?: any): number 
         return Number(sorted[sorted.length - 1].fee);
       }
     } catch (e) {}
-  }
-
-  if (currentSettings.feeEffectiveMonth) {
-    if (monthStr < currentSettings.feeEffectiveMonth) {
-      return currentSettings.previousMonthlyFee || 5500;
-    }
-    return currentSettings.monthlyFee || 6000;
   }
 
   return defaultFee;

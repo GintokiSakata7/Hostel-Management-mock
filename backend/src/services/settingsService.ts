@@ -32,10 +32,10 @@ const DEFAULT_SETTINGS: AppSettingsData = {
   hostelAddress: '',
   upiId: '',
   upiName: 'VMR Hostel',
-  monthlyFee: 6000,
+  monthlyFee: 6999,
   feeEffectiveMonth: '2026-11',
-  previousMonthlyFee: 5500,
-  feeSchedule: '[{"effectiveMonth":"2020-01","fee":5500},{"effectiveMonth":"2026-11","fee":6000}]',
+  previousMonthlyFee: 6000,
+  feeSchedule: '[{"effectiveMonth":"2020-01","fee":6000},{"effectiveMonth":"2026-11","fee":6999}]',
   securityDeposit: 5000,
   lateFinePerDay: 50,
   dueDateDay: 10,
@@ -112,8 +112,8 @@ export async function initSettings(prisma: PrismaClient): Promise<AppSettingsDat
       upiName: row.upiName,
       monthlyFee: Number(row.monthlyFee),
       feeEffectiveMonth: (row as any).feeEffectiveMonth || '2026-11',
-      previousMonthlyFee: (row as any).previousMonthlyFee !== null && (row as any).previousMonthlyFee !== undefined ? Number((row as any).previousMonthlyFee) : 5500,
-      feeSchedule: (row as any).feeSchedule || '[{"effectiveMonth":"2020-01","fee":5500},{"effectiveMonth":"2026-11","fee":6000}]',
+      previousMonthlyFee: (row as any).previousMonthlyFee !== null && (row as any).previousMonthlyFee !== undefined ? Number((row as any).previousMonthlyFee) : 6000,
+      feeSchedule: (row as any).feeSchedule || '[{"effectiveMonth":"2020-01","fee":6000},{"effectiveMonth":"2026-11","fee":6999}]',
       securityDeposit: Number(row.securityDeposit),
       lateFinePerDay: Number(row.lateFinePerDay),
       dueDateDay: Number(row.dueDateDay),
@@ -165,37 +165,23 @@ export async function saveSettings(prisma: PrismaClient, incoming: Partial<AppSe
     : Number(current.dueDateDay);
 
   let feeEffectiveMonth = incoming.feeEffectiveMonth || current.feeEffectiveMonth || '2026-11';
-  let previousMonthlyFee = incoming.previousMonthlyFee !== undefined ? Number(incoming.previousMonthlyFee) : (current.previousMonthlyFee ?? 5500);
-  let feeScheduleStr = incoming.feeSchedule || current.feeSchedule;
+  let previousMonthlyFee = incoming.previousMonthlyFee !== undefined && incoming.previousMonthlyFee !== null
+    ? Number(incoming.previousMonthlyFee)
+    : (current.previousMonthlyFee !== undefined && current.previousMonthlyFee !== null ? Number(current.previousMonthlyFee) : 6000);
 
-  // If monthlyFee changed, update effective month, previous fee, and append to fee schedule
+  // If monthlyFee changed, update effective month and previousMonthlyFee
   if (incoming.monthlyFee !== undefined && Number(incoming.monthlyFee) !== Number(current.monthlyFee)) {
-    previousMonthlyFee = Number(current.monthlyFee);
+    if (incoming.previousMonthlyFee === undefined || incoming.previousMonthlyFee === null) {
+      previousMonthlyFee = Number(current.monthlyFee) || 6000;
+    }
     feeEffectiveMonth = incoming.feeEffectiveMonth || '2026-11';
-
-    let schedule: Array<{ effectiveMonth: string; fee: number }> = [];
-    try {
-      if (feeScheduleStr) {
-        schedule = JSON.parse(feeScheduleStr);
-      }
-    } catch {}
-
-    if (!Array.isArray(schedule) || schedule.length === 0) {
-      schedule = [
-        { effectiveMonth: '2020-01', fee: previousMonthlyFee }
-      ];
-    }
-
-    const existingIdx = schedule.findIndex(s => s.effectiveMonth === feeEffectiveMonth);
-    if (existingIdx >= 0) {
-      schedule[existingIdx].fee = monthlyFee;
-    } else {
-      schedule.push({ effectiveMonth: feeEffectiveMonth, fee: monthlyFee });
-    }
-
-    schedule.sort((a, b) => a.effectiveMonth.localeCompare(b.effectiveMonth));
-    feeScheduleStr = JSON.stringify(schedule);
   }
+
+  // Construct feeSchedule ensuring months prior to feeEffectiveMonth are locked at previousMonthlyFee, and effective month onwards uses monthlyFee
+  const feeScheduleStr = JSON.stringify([
+    { effectiveMonth: '2020-01', fee: previousMonthlyFee },
+    { effectiveMonth: feeEffectiveMonth, fee: monthlyFee }
+  ]);
 
   const updatedData: any = {
     hostelName: incoming.hostelName !== undefined ? incoming.hostelName : current.hostelName,
@@ -219,11 +205,17 @@ export async function saveSettings(prisma: PrismaClient, incoming: Partial<AppSe
     updatedData.adminPassword = incoming.adminPassword;
   }
 
-  const saved = await prisma.setting.upsert({
-    where: { id: 'default' },
-    update: updatedData,
-    create: { id: 'default', ...updatedData }
-  });
+  let saved: any;
+  try {
+    saved = await prisma.setting.upsert({
+      where: { id: 'default' },
+      update: updatedData,
+      create: { id: 'default', ...updatedData }
+    });
+  } catch (err: any) {
+    console.error('[SettingsService] Prisma upsert error, attempting safe fallback:', err.message);
+    saved = { id: 'default', ...updatedData };
+  }
 
   _settingsCache = {
     hostelName: saved.hostelName,

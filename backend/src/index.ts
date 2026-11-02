@@ -1699,7 +1699,7 @@ app.get('/api/reports/fees', async (req, res) => {
       }
     : {};
   const settings = readSettings();
-  const monthlyFee = settings.monthlyFee || 5500;
+  const monthlyFee = getMonthlyFeeForMonth(m, settings);
   const now = new Date();
 
   const students = await prisma.student.findMany({
@@ -2253,3 +2253,4 @@ app.listen(PORT, async () => {
     console.error('Error during startup background tasks:', e);
   }
 });
+
