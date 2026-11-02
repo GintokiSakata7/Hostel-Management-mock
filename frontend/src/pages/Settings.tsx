@@ -181,8 +181,11 @@ function FeeTab({ settings, onSave }: { settings: any; onSave: (s: any) => void 
 
   const handleConfirmEffectiveFee = async () => {
     setShowEffectiveModal(false);
+    const originalFee = Number(settings?.monthlyFee || 0);
+    const priorFee = originalFee > 0 ? originalFee : (Number(form.previousMonthlyFee) || 6000);
     const updated = {
       ...form,
+      previousMonthlyFee: priorFee,
       feeEffectiveMonth: pendingEffectiveMonth
     };
     setForm(updated);
@@ -233,18 +236,24 @@ function FeeTab({ settings, onSave }: { settings: any; onSave: (s: any) => void 
             </select>
           </SettingField>
           <SettingField label="Prior Historical Fee (₹)" icon={Clock}>
-            <input className="custom-input" type="number" value={form.previousMonthlyFee || 5500} readOnly disabled style={{ opacity: 0.75, cursor: 'not-allowed' }} />
+            <input
+              className="custom-input"
+              type="number"
+              value={form.previousMonthlyFee ?? 6000}
+              onChange={e => f('previousMonthlyFee', Number(e.target.value))}
+              placeholder="6000"
+            />
           </SettingField>
         </div>
 
         {/* Historical Billing Preservation Notice */}
-        <div style={{ marginTop: '1.25rem', padding: '1rem', background: 'rgba(59,130,246,0.08)', borderRadius: 12, border: '1px solid rgba(59,130,246,0.25)', fontSize: '0.82rem', lineHeight: 1.6, color: '#bfdbfe' }}>
-          <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px', color: '#60a5fa' }}>
+        <div className="info-callout-banner">
+          <div className="callout-title">
             <Info size={15} /> Effective-Date Fee Policy Active
           </div>
           <div>
-            Billing cycles prior to <strong>{effectiveLabel}</strong> are locked at <strong>₹{(form.previousMonthlyFee || 5500).toLocaleString('en-IN')}/mo</strong>. Cycles starting from <strong>{effectiveLabel}</strong> onwards use <strong>₹{Number(form.monthlyFee || 6000).toLocaleString('en-IN')}/mo</strong>.
-            For residents with dues spanning both periods, total outstanding dues are accurately compounded (e.g. ₹5,500 + ₹6,000 = ₹11,500) across all dashboards and invoices.
+            Billing cycles prior to <strong>{effectiveLabel}</strong> are locked at <strong>₹{Number(form.previousMonthlyFee ?? 6000).toLocaleString('en-IN')}/mo</strong>. Cycles starting from <strong>{effectiveLabel}</strong> onwards use <strong>₹{Number(form.monthlyFee || 6999).toLocaleString('en-IN')}/mo</strong>.
+            For residents with dues spanning both periods, total outstanding dues are accurately compounded (e.g. ₹{Number(form.previousMonthlyFee ?? 6000).toLocaleString('en-IN')} + ₹{Number(form.monthlyFee || 6999).toLocaleString('en-IN')} = ₹{(Number(form.previousMonthlyFee ?? 6000) + Number(form.monthlyFee || 6999)).toLocaleString('en-IN')}) across all dashboards and invoices.
           </div>
         </div>
 
@@ -258,7 +267,7 @@ function FeeTab({ settings, onSave }: { settings: any; onSave: (s: any) => void 
               { label: '3-Month Advance', value: `₹${(Number(form.monthlyFee || 0) * 3).toLocaleString()}` },
               { label: 'Annual Total', value: `₹${(Number(form.monthlyFee || 0) * 12).toLocaleString()}` },
             ].map(({ label, value }) => (
-              <div key={label} style={{ textAlign: 'center', background: 'rgba(255,255,255,0.04)', borderRadius: 8, padding: '0.75rem' }}>
+              <div key={label} className="preview-fee-card">
                 <div style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>{label}</div>
                 <div style={{ fontWeight: 800, fontSize: '1.05rem', color: 'var(--primary)', marginTop: 4 }}>{value}</div>
               </div>
@@ -358,7 +367,7 @@ function FeeTab({ settings, onSave }: { settings: any; onSave: (s: any) => void 
             <div style={{ background: 'rgba(249,115,22,0.08)', border: '1px solid rgba(249,115,22,0.25)', borderRadius: 12, padding: '1rem' }}>
               <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 6 }}>Fee Change Detected</div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '1.2rem', fontWeight: 800 }}>
-                <span style={{ color: 'var(--text-muted)', textDecoration: 'line-through' }}>₹{(settings?.monthlyFee || 5500).toLocaleString('en-IN')}</span>
+                <span style={{ color: 'var(--text-muted)', textDecoration: 'line-through' }}>₹{(settings?.monthlyFee || 6000).toLocaleString('en-IN')}</span>
                 <span style={{ color: 'var(--primary)' }}>➔ ₹{Number(form.monthlyFee).toLocaleString('en-IN')} / month</span>
               </div>
             </div>
@@ -384,7 +393,7 @@ function FeeTab({ settings, onSave }: { settings: any; onSave: (s: any) => void 
               <div style={{ fontWeight: 700, marginBottom: 6, color: '#fff' }}>How Dues & Arrears Will Be Calculated:</div>
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 6 }}>
                 <span style={{ color: 'var(--warning)', fontWeight: 700 }}>• Previous Months:</span>
-                <span>Cycles before <strong>{MONTHS.find(m => m.value === pendingEffectiveMonth)?.label || pendingEffectiveMonth}</strong> remain at <strong>₹{(settings?.monthlyFee || 5500).toLocaleString('en-IN')}</strong>.</span>
+                <span>Cycles before <strong>{MONTHS.find(m => m.value === pendingEffectiveMonth)?.label || pendingEffectiveMonth}</strong> remain at <strong>₹{(settings?.monthlyFee || 6000).toLocaleString('en-IN')}</strong>.</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 6 }}>
                 <span style={{ color: 'var(--success)', fontWeight: 700 }}>• Effective From:</span>
@@ -392,7 +401,7 @@ function FeeTab({ settings, onSave }: { settings: any; onSave: (s: any) => void 
               </div>
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
                 <span style={{ color: 'var(--primary)', fontWeight: 700 }}>• 2-Month Due Example:</span>
-                <span>A student with 1 old month + 1 new month overdue will show exactly <strong>₹{(settings?.monthlyFee || 5500).toLocaleString('en-IN')} + ₹{Number(form.monthlyFee).toLocaleString('en-IN')} = ₹{((settings?.monthlyFee || 5500) + Number(form.monthlyFee)).toLocaleString('en-IN')}</strong> due.</span>
+                <span>A student with 1 old month + 1 new month overdue will show exactly <strong>₹{(settings?.monthlyFee || 6000).toLocaleString('en-IN')} + ₹{Number(form.monthlyFee).toLocaleString('en-IN')} = ₹{((settings?.monthlyFee || 6000) + Number(form.monthlyFee)).toLocaleString('en-IN')}</strong> due.</span>
               </div>
             </div>
 
