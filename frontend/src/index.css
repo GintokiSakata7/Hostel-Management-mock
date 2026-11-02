@@ -3181,3 +3181,170 @@ select option[value=""],
     transform: translateY(0);
   }
 }
+
+/* ===================== FLOOR PLAN RESPONSIVE & THEME STYLES ===================== */
+.floor-card {
+  border: 1px solid var(--border-light);
+  border-radius: 16px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.025);
+  transition: all 0.2s ease;
+}
+.light-theme .floor-card {
+  background: #ffffff;
+  border-color: rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
+}
+
+.floor-header {
+  padding: 0.95rem 1.15rem;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: background 0.2s ease;
+  user-select: none;
+}
+.floor-header:hover {
+  background: rgba(249, 115, 22, 0.06);
+}
+.light-theme .floor-header:hover {
+  background: rgba(234, 88, 12, 0.04);
+}
+
+.room-card-item {
+  border: 1px solid var(--border-dim);
+  border-radius: 14px;
+  padding: 0.85rem;
+  background: rgba(255, 255, 255, 0.025);
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+.room-card-item:hover {
+  border-color: rgba(249, 115, 22, 0.4);
+  transform: translateY(-1px);
+}
+.light-theme .room-card-item {
+  background: #f8fafc;
+  border-color: rgba(0, 0, 0, 0.09);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+}
+.light-theme .room-card-item:hover {
+  border-color: var(--primary);
+  background: #ffffff;
+  box-shadow: 0 4px 14px rgba(234, 88, 12, 0.08);
+}
+
+.bed-chip-vacant {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(34, 197, 94, 0.14);
+  border: 1px solid rgba(34, 197, 94, 0.35);
+  font-size: 0.65rem;
+  font-weight: 800;
+  color: #22c55e;
+}
+.light-theme .bed-chip-vacant {
+  background: #dcfce7;
+  border-color: #86efac;
+  color: #15803d;
+}
+
+.bed-chip-occupied {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(249, 115, 22, 0.18);
+  border: 1px solid rgba(249, 115, 22, 0.4);
+  font-size: 0.65rem;
+  font-weight: 800;
+  color: #f97316;
+}
+.light-theme .bed-chip-occupied {
+  background: #ffedd5;
+  border-color: #fdba74;
+  color: #c2410c;
+}
+
+.legend-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.03);
+  padding: 5px 12px;
+  border-radius: 20px;
+  border: 1px solid var(--border-dim);
+  font-size: 0.73rem;
+  color: var(--text-muted);
+}
+.light-theme .legend-chip {
+  background: #ffffff;
+  border-color: rgba(0, 0, 0, 0.08);
+  color: #4a5568;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.building-sidebar-card {
+  padding: 0.75rem 0.875rem;
+  border-radius: 14px;
+  cursor: pointer;
+  border: 1px solid var(--border-dim);
+  background: rgba(255, 255, 255, 0.02);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.light-theme .building-sidebar-card {
+  background: #ffffff;
+  border-color: rgba(0, 0, 0, 0.08);
+}
+.building-sidebar-card.active {
+  border-color: var(--primary);
+  background: linear-gradient(135deg, rgba(249, 115, 22, 0.15), rgba(249, 115, 22, 0.05));
+  box-shadow: 0 4px 14px rgba(249, 115, 22, 0.15);
+}
+.light-theme .building-sidebar-card.active {
+  background: #fff7ed;
+  border-color: var(--primary);
+}
+
+.floorplan-header-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.85rem;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid var(--border-light);
+  border-radius: 14px;
+  padding: 0.875rem 1.15rem;
+}
+.light-theme .floorplan-header-card {
+  background: #ffffff;
+  border-color: rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.settings-nav-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 1.5rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-dim);
+  border-radius: 12px;
+  padding: 4px;
+  flex-shrink: 0;
+  overflow-x: auto;
+}
+.light-theme .settings-nav-tabs {
+  background: #e2e8f0;
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
