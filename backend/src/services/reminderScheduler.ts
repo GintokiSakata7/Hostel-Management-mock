@@ -75,7 +75,15 @@ export async function executeFeeReminderDispatch(): Promise<{
     let emailStatus = 'SKIPPED';
     const emailTo = s.email || (i === 0 ? (process.env.EMAIL_FALLBACK_RECIPIENT || 'rishivardhan165@gmail.com') : undefined);
     if (emailTo) {
-      const emailRes = await sendFeeReminderEmail(emailTo, s.studentName, s.totalPendingAmount, s.nextDueDate || s.dueDayLabel);
+      const emailRes = await sendFeeReminderEmail(
+        emailTo,
+        s.studentName,
+        s.totalPendingAmount,
+        s.nextDueDate || s.dueDayLabel,
+        s.pendingMonthsCount,
+        monthsList,
+        hostelName
+      );
       emailStatus = emailRes.success ? 'SENT' : 'FAILED';
     }
 
@@ -191,7 +199,15 @@ export async function executeSingleStudentReminder(studentId: string): Promise<{
   const totalAmt = dueStatus.totalPendingAmount;
 
   const emailTo = dueStatus.email || student.email || process.env.EMAIL_FALLBACK_RECIPIENT || 'rishivardhan165@gmail.com';
-  const emailRes = await sendFeeReminderEmail(emailTo, dueStatus.studentName, totalAmt, dueStatus.nextDueDate || dueStatus.dueDayLabel);
+  const emailRes = await sendFeeReminderEmail(
+    emailTo,
+    dueStatus.studentName,
+    totalAmt,
+    dueStatus.nextDueDate || dueStatus.dueDayLabel,
+    dueStatus.pendingMonthsCount,
+    monthsList,
+    hostelName
+  );
 
   const result: any = {
     studentId: dueStatus.studentId,

@@ -509,12 +509,20 @@ function QuickPayModal({ bed, selectedMonth, onClose, onSuccess }: { bed: any; s
   const selectedEntry = pendingMonths.find(m => m.value === payMonth) || pendingMonths[0];
   const monthLabel = selectedEntry?.label || payMonth;
 
-  const [form, setForm] = useState({ amount: monthlyFee, method: 'Cash', upiProvider: 'PhonePe', transactionRef: '', date: new Date().toISOString().split('T')[0] });
+  const totalPending = bed.totalPendingAmount !== undefined
+    ? Number(bed.totalPendingAmount)
+    : (bed.studentObj?.totalPendingAmount !== undefined ? Number(bed.studentObj.totalPendingAmount) : monthlyFee);
+  const initialAmount = totalPending > 0 ? totalPending : (Number(bed.amountDue || bed.studentObj?.amountDue) || monthlyFee);
+
+  const [form, setForm] = useState({ amount: initialAmount, method: 'Cash', upiProvider: 'PhonePe', transactionRef: '', date: new Date().toISOString().split('T')[0] });
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    setForm(p => ({ ...p, amount: monthlyFee }));
-  }, [monthlyFee]);
+    const freshPending = bed.totalPendingAmount !== undefined
+      ? Number(bed.totalPendingAmount)
+      : (bed.studentObj?.totalPendingAmount !== undefined ? Number(bed.studentObj.totalPendingAmount) : monthlyFee);
+    setForm(p => ({ ...p, amount: freshPending > 0 ? freshPending : (Number(bed.amountDue || bed.studentObj?.amountDue) || monthlyFee) }));
+  }, [bed, monthlyFee]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault(); setSaving(true);
@@ -528,10 +536,14 @@ function QuickPayModal({ bed, selectedMonth, onClose, onSuccess }: { bed: any; s
       if (res.status === 409) { const err = await res.json(); showToast(err.error, 'error'); }
       else if (res.ok) {
         const data = await res.json().catch(() => ({}));
+        const remaining = data.totalRemainingDue !== undefined ? data.totalRemainingDue : null;
+        const balNote = remaining !== null && remaining > 0
+          ? ` Remaining outstanding balance: ₹${remaining.toLocaleString('en-IN')}.`
+          : ' All outstanding dues are settled!';
         if (data.emailStatus === 'FAILED') {
-          showToast(`Payment recorded for ${bed.student}! (Notice: Email delivery failed: ${data.emailError || 'Service timeout'})`, 'warning');
+          showToast(`Payment of ₹${Number(form.amount).toLocaleString('en-IN')} recorded for ${bed.student}!${balNote} (Notice: Email delivery failed: ${data.emailError || 'Service timeout'})`, 'warning');
         } else {
-          showToast(`Payment recorded for ${bed.student}! Invoice & receipt emailed.`, 'success');
+          showToast(`Payment of ₹${Number(form.amount).toLocaleString('en-IN')} recorded for ${bed.student}!${balNote} Invoice & receipt emailed.`, 'success');
         }
         onSuccess();
         onClose();
@@ -546,6 +558,44 @@ function QuickPayModal({ bed, selectedMonth, onClose, onSuccess }: { bed: any; s
         <div style={{ background: 'rgba(249,115,22,0.08)', border: '1px solid rgba(249,115,22,0.2)', borderRadius: 10, padding: '10px 14px' }}>
           <div style={{ fontWeight: 700 }}>{bed.student}</div>
           <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Bed {bed.bedIndex} · Room {bed.room || ''}</div>
+        </div>
+
+        {/* Total Outstanding Balance strip */}
+        <div style={{
+          background: totalPending > 0 ? 'rgba(239,68,68,0.08)' : 'rgba(34,197,94,0.08)',
+          border: `1px solid ${totalPending > 0 ? 'rgba(239,68,68,0.25)' : 'rgba(34,197,94,0.25)'}`,
+          borderRadius: 10,
+          padding: '10px 14px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '8px'
+        }}>
+          <div>
+            <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>Total Outstanding Dues</div>
+            <div style={{ fontSize: '1.15rem', fontWeight: 800, color: totalPending > 0 ? '#f87171' : 'var(--success)' }}>
+              ₹{totalPending.toLocaleString('en-IN')}
+            </div>
+          </div>
+          {totalPending > 0 && (
+            <div style={{ display: 'flex', gap: '6px' }}>
+              <button
+                type="button"
+                onClick={() => setForm(f => ({ ...f, amount: totalPending }))}
+                style={{ fontSize: '0.72rem', padding: '5px 10px', borderRadius: 6, border: '1px solid rgba(249,115,22,0.4)', background: 'rgba(249,115,22,0.15)', color: 'var(--primary)', cursor: 'pointer', fontWeight: 700 }}>
+                Pay Full (₹{totalPending.toLocaleString('en-IN')})
+              </button>
+              {totalPending !== monthlyFee && (
+                <button
+                  type="button"
+                  onClick={() => setForm(f => ({ ...f, amount: monthlyFee }))}
+                  style={{ fontSize: '0.72rem', padding: '5px 10px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.05)', color: 'var(--text-muted)', cursor: 'pointer', fontWeight: 600 }}>
+                  1 Cycle (₹{monthlyFee.toLocaleString('en-IN')})
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         {/* FIFO Cycle selector */}

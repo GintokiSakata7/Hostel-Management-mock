@@ -6,6 +6,7 @@ export interface FeeReceiptData {
   monthLabel: string;
   cycleLabel?: string;
   amount: number;
+  remainingBalance?: number;
   method: string;
   upiProvider?: string | null;
   transactionRef?: string | null;
@@ -169,51 +170,68 @@ export function generateFeeReceiptPDFBuffer(data: FeeReceiptData): Promise<Buffe
         .fillColor(secondaryColor)
         .text(`₹${data.amount.toLocaleString('en-IN')}`, 440, 408, { align: 'right', width: 100 });
 
+      const hasBalance = data.remainingBalance !== undefined && data.remainingBalance > 0;
+      if (hasBalance) {
+        doc.rect(40, 432, 515, 24).fillAndStroke('#fff7ed', '#fed7aa');
+        doc
+          .fillColor('#ea580c')
+          .fontSize(10)
+          .font('Helvetica-Bold')
+          .text('Remaining Balance Outstanding:', 55, 439)
+          .text(`₹${Number(data.remainingBalance).toLocaleString('en-IN')}`, 440, 439, { align: 'right', width: 100 });
+      }
+
+      const modeY = hasBalance ? 470 : 445;
+      const boxY = hasBalance ? 485 : 460;
+
       // Payment Details Section
       doc
         .fillColor(primaryColor)
         .fontSize(11)
         .font('Helvetica-Bold')
-        .text('PAYMENT MODE & TRANSACTION REFERENCE', 40, 445);
+        .text('PAYMENT MODE & TRANSACTION REFERENCE', 40, modeY);
 
-      doc.rect(40, 460, 515, 55).fillAndStroke('#ffffff', borderColor);
+      doc.rect(40, boxY, 515, 50).fillAndStroke('#ffffff', borderColor);
 
       const methodStr = data.upiProvider ? `${data.method} (${data.upiProvider})` : data.method;
 
       doc
         .fillColor(darkText)
         .fontSize(10)
-        .font('Helvetica-Bold').text('Payment Method:', 55, 472)
-        .font('Helvetica').text(methodStr, 160, 472);
+        .font('Helvetica-Bold').text('Payment Method:', 55, boxY + 12)
+        .font('Helvetica').text(methodStr, 160, boxY + 12);
 
       doc
-        .font('Helvetica-Bold').text('Transaction Ref / ID:', 55, 492)
-        .font('Helvetica').text(data.transactionRef || 'N/A (Cash Received)', 160, 492);
+        .font('Helvetica-Bold').text('Transaction Ref / ID:', 55, boxY + 30)
+        .font('Helvetica').text(data.transactionRef || 'N/A (Cash Received)', 160, boxY + 30);
+
+      const footerY = hasBalance ? 550 : 535;
+      const sigY = hasBalance ? 580 : 570;
 
       // Terms & Authorized Signatures
       doc
         .fillColor('#6b7280')
         .fontSize(8)
         .font('Helvetica')
-        .text('This is a computer-generated digital payment receipt issued by Hostel Management Office.', 40, 535)
-        .text('For queries regarding this receipt, please present receipt number to the hostel administration.', 40, 547);
+        .text('This is a computer-generated digital payment receipt issued by Hostel Management Office.', 40, footerY)
+        .text('For queries regarding this receipt, please present receipt number to the hostel administration.', 40, footerY + 12);
 
       // Signature Box
       doc
         .strokeColor(borderColor)
         .lineWidth(1)
-        .moveTo(380, 570)
-        .lineTo(540, 570)
+        .moveTo(380, sigY)
+        .lineTo(540, sigY)
         .stroke();
 
       doc
         .fillColor(darkText)
         .fontSize(9)
         .font('Helvetica-Bold')
-        .text('Authorized Signatory', 380, 575, { width: 160, align: 'center' })
+        .text('Authorized Signatory', 380, sigY + 5, { width: 160, align: 'center' })
         .fontSize(8)
         .font('Helvetica')
-        .text(hostelTitle, 380, 587, { width: 160, align: 'center' });
+        .text(hostelTitle, 380, sigY + 17, { width: 160, align: 'center' });
 
       // Green Success Badge Top Right
       doc.rect(460, 48, 80, 24).fill(secondaryColor);

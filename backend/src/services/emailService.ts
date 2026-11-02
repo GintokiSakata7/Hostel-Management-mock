@@ -174,18 +174,86 @@ export async function sendEmail(
 }
 
 /**
- * Send fee reminder email
+ * Send fee reminder email with clear breakdown of amount and pending months
  */
 export async function sendFeeReminderEmail(
   to: string,
   studentName: string,
   amountDue: number,
-  dueDate: string
+  dueDate: string,
+  pendingMonthsCount?: number,
+  pendingMonthsList?: string[],
+  hostelName?: string
 ): Promise<{ success: boolean; error?: string }> {
-  const subject = `Fee Reminder - ${studentName}`;
-  const text = `Dear ${studentName},\n\nThis is a gentle reminder that your fee of ₹${amountDue} is due by ${dueDate}. Please clear your dues at the earliest.\n\nThank you!`;
-  
-  return sendEmail(to, subject, text);
+  const hostel = hostelName || 'VMR Hostel';
+  const amountFormatted = `₹${Number(amountDue).toLocaleString('en-IN')}`;
+  const count = pendingMonthsCount || (pendingMonthsList ? pendingMonthsList.length : 1);
+  const monthsStr = pendingMonthsList && pendingMonthsList.length > 0
+    ? pendingMonthsList.join(', ')
+    : '';
+
+  const subject = `Fee Payment Reminder: ${amountFormatted} Outstanding - ${studentName} (${count} Month${count > 1 ? 's' : ''})`;
+  const text = `
+Dear ${studentName},
+
+This is an automated payment reminder from ${hostel}.
+
+OUTSTANDING FEE DETAILS:
+- Total Remaining Balance Due: ${amountFormatted}
+- Overdue Duration: ${count} Month(s)${monthsStr ? ` (${monthsStr})` : ''}
+- Due Date: ${dueDate}
+
+Please clear your pending dues at the earliest. If you have already paid or have any questions, please contact the hostel office.
+
+Regards,
+Management, ${hostel}
+  `.trim();
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Fee Payment Reminder</title>
+</head>
+<body style="margin: 0; padding: 24px; background-color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b;">
+  <div style="max-width: 540px; margin: 0 auto; background: #ffffff; border-radius: 12px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+    <div style="background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%); padding: 24px; text-align: center; color: #ffffff;">
+      <div style="font-size: 12px; font-weight: 700; color: #f97316; letter-spacing: 1.5px; text-transform: uppercase;">${hostel.toUpperCase()}</div>
+      <h2 style="margin: 6px 0 0; font-size: 20px;">Fee Payment Reminder</h2>
+    </div>
+    <div style="padding: 24px;">
+      <p style="margin-top: 0; font-size: 15px;">Dear <strong>${studentName}</strong>,</p>
+      <p style="font-size: 14px; line-height: 1.6; color: #475569;">
+        This is a friendly reminder that you have an outstanding hostel fee balance. Please find your fee summary below:
+      </p>
+
+      <div style="background-color: #fff7ed; border: 1px solid #fed7aa; border-radius: 10px; padding: 18px; margin: 20px 0;">
+        <div style="margin-bottom: 10px;">
+          <span style="font-size: 13px; color: #9a3412;">Total Outstanding Balance:</span><br/>
+          <span style="font-size: 24px; font-weight: 800; color: #ea580c;">${amountFormatted}</span>
+        </div>
+        <div style="font-size: 13px; color: #7c2d12; margin-bottom: 6px;">
+          <strong>Overdue Period:</strong> ${count} Month(s)${monthsStr ? ` (${monthsStr})` : ''}
+        </div>
+        <div style="font-size: 13px; color: #7c2d12;">
+          <strong>Due Date:</strong> ${dueDate}
+        </div>
+      </div>
+
+      <p style="font-size: 13px; color: #64748b; line-height: 1.5;">
+        Please make the payment through the hostel office or official UPI channel. If you have already paid recently, please disregard this notice.
+      </p>
+    </div>
+    <div style="background: #f8fafc; padding: 16px; border-top: 1px solid #e2e8f0; text-align: center; font-size: 12px; color: #94a3b8;">
+      Hostel Administration · ${hostel}
+    </div>
+  </div>
+</body>
+</html>
+  `.trim();
+
+  return sendEmail(to, subject, text, html);
 }
 
 export interface PaymentReceiptEmailPayload {
@@ -194,6 +262,7 @@ export interface PaymentReceiptEmailPayload {
   fileName: string;
   pdfBuffer: Buffer;
   amount?: number;
+  remainingBalance?: number;
   monthLabel?: string;
   paymentDate?: string;
   receiptNo?: string;
@@ -336,8 +405,8 @@ export function generatePaymentReceiptHtml(data: PaymentReceiptEmailPayload): st
             <td style="padding: 12px 16px; text-align: right; font-weight: 800; color: #15803d; font-size: 16px;">${amountStr}</td>
           </tr>
           <tr style="background-color: #f0fdf4; font-size: 12px;">
-            <td colspan="2" style="padding: 8px 16px; text-align: right; color: #166534; font-weight: 700;">Remaining Balance for this cycle:</td>
-            <td style="padding: 8px 16px; text-align: right; font-weight: 700; color: #166534;">₹0.00 (Fully Settled)</td>
+            <td colspan="2" style="padding: 8px 16px; text-align: right; color: #166534; font-weight: 700;">Remaining Balance Outstanding:</td>
+            <td style="padding: 8px 16px; text-align: right; font-weight: 700; color: #166534;">${data.remainingBalance !== undefined && data.remainingBalance > 0 ? `₹${Number(data.remainingBalance).toLocaleString('en-IN')}` : '₹0.00 (Fully Settled)'}</td>
           </tr>
         </tbody>
       </table>
@@ -430,7 +499,7 @@ PAYMENT DETAILS:
 - Billing Cycle: ${monthLabel}
 - Amount Paid: ${amountFormatted || 'As per receipt'}
 - Payment Mode: ${payload.method || 'Cash'}${payload.upiProvider ? ` (${payload.upiProvider})` : ''}
-${payload.transactionRef ? `- Transaction Ref / ID: ${payload.transactionRef}\n` : ''}- Remaining Balance: ₹0.00 (Fully Settled)
+${payload.transactionRef ? `- Transaction Ref / ID: ${payload.transactionRef}\n` : ''}- Remaining Balance: ${payload.remainingBalance !== undefined && payload.remainingBalance > 0 ? `₹${Number(payload.remainingBalance).toLocaleString('en-IN')}` : '₹0.00 (Fully Settled)'}
 
 An official signed PDF receipt (${fileName}) is attached to this email for your records.
 

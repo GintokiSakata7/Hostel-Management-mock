@@ -45,8 +45,13 @@ function PaymentModal({ student, selectedMonth, onClose, onSuccess }: {
   const selectedEntry = pendingMonths.find(m => m.value === payMonth) || pendingMonths[0];
   const monthLabel = selectedEntry?.label || payMonth;
 
+  const totalPending = student.totalPendingAmount !== undefined
+    ? Number(student.totalPendingAmount)
+    : (student.pendingMonthsCount ? Number(student.pendingMonthsCount) * monthlyFee : monthlyFee);
+  const initialAmount = totalPending > 0 ? totalPending : (Number(student.amount) || monthlyFee);
+
   const [form, setForm] = useState({
-    amount: monthlyFee,
+    amount: initialAmount,
     method: 'Cash',
     upiProvider: 'PhonePe',
     transactionRef: '',
@@ -55,8 +60,11 @@ function PaymentModal({ student, selectedMonth, onClose, onSuccess }: {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    setForm(p => ({ ...p, amount: monthlyFee }));
-  }, [monthlyFee]);
+    const freshPending = student.totalPendingAmount !== undefined
+      ? Number(student.totalPendingAmount)
+      : (student.pendingMonthsCount ? Number(student.pendingMonthsCount) * monthlyFee : monthlyFee);
+    setForm(p => ({ ...p, amount: freshPending > 0 ? freshPending : (Number(student.amount) || monthlyFee) }));
+  }, [student, monthlyFee]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -81,10 +89,14 @@ function PaymentModal({ student, selectedMonth, onClose, onSuccess }: {
         showToast(err.error, 'error');
       } else if (res.ok) {
         const data = await res.json().catch(() => ({}));
+        const remaining = data.totalRemainingDue !== undefined ? data.totalRemainingDue : null;
+        const balNote = remaining !== null && remaining > 0
+          ? ` Remaining outstanding balance: ₹${remaining.toLocaleString('en-IN')}.`
+          : ' All outstanding dues are settled!';
         if (data.emailStatus === 'FAILED') {
-          showToast(`Payment recorded for ${monthLabel}! (Notice: Email delivery failed: ${data.emailError || 'Service timeout'})`, 'warning');
+          showToast(`Payment of ₹${Number(form.amount).toLocaleString('en-IN')} recorded for ${monthLabel}!${balNote} (Notice: Email delivery failed: ${data.emailError || 'Service timeout'})`, 'warning');
         } else {
-          showToast(`Payment recorded for ${monthLabel}! Invoice & receipt emailed.`, 'success');
+          showToast(`Payment of ₹${Number(form.amount).toLocaleString('en-IN')} recorded for ${monthLabel}!${balNote} Invoice & receipt emailed.`, 'success');
         }
         onSuccess();
         onClose();
@@ -104,6 +116,44 @@ function PaymentModal({ student, selectedMonth, onClose, onSuccess }: {
         <div style={{ background: 'rgba(249,115,22,0.08)', border: '1px solid rgba(249,115,22,0.2)', borderRadius: 12, padding: '12px 16px' }}>
           <div style={{ fontWeight: 700, fontSize: '1rem' }}>{student.name}</div>
           <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{student.course}{student.branch ? ` · ${student.branch}` : ''} · {student.room}</div>
+        </div>
+
+        {/* Total Outstanding Balance strip */}
+        <div style={{
+          background: totalPending > 0 ? 'rgba(239,68,68,0.08)' : 'rgba(34,197,94,0.08)',
+          border: `1px solid ${totalPending > 0 ? 'rgba(239,68,68,0.25)' : 'rgba(34,197,94,0.25)'}`,
+          borderRadius: 10,
+          padding: '10px 14px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '8px'
+        }}>
+          <div>
+            <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>Total Outstanding Dues</div>
+            <div style={{ fontSize: '1.15rem', fontWeight: 800, color: totalPending > 0 ? '#f87171' : 'var(--success)' }}>
+              ₹{totalPending.toLocaleString('en-IN')}
+            </div>
+          </div>
+          {totalPending > 0 && (
+            <div style={{ display: 'flex', gap: '6px' }}>
+              <button
+                type="button"
+                onClick={() => setForm(f => ({ ...f, amount: totalPending }))}
+                style={{ fontSize: '0.72rem', padding: '5px 10px', borderRadius: 6, border: '1px solid rgba(249,115,22,0.4)', background: 'rgba(249,115,22,0.15)', color: 'var(--primary)', cursor: 'pointer', fontWeight: 700 }}>
+                Pay Full (₹{totalPending.toLocaleString('en-IN')})
+              </button>
+              {totalPending !== monthlyFee && (
+                <button
+                  type="button"
+                  onClick={() => setForm(f => ({ ...f, amount: monthlyFee }))}
+                  style={{ fontSize: '0.72rem', padding: '5px 10px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.05)', color: 'var(--text-muted)', cursor: 'pointer', fontWeight: 600 }}>
+                  1 Cycle (₹{monthlyFee.toLocaleString('en-IN')})
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         {/* FIFO Cycle selector — shows arrears first */}

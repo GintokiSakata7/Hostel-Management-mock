@@ -12,7 +12,7 @@ import { PrismaClient } from '@prisma/client';
 import fs from 'fs';
 import path from 'path';
 import { initReminderScheduler, executeFeeReminderDispatch, executeSingleStudentReminder, getReminderScheduleSettings, updateReminderScheduleTime } from './services/reminderScheduler';
-import { calculateStudentDueStatus, getStudentMonthFeeStatus, getOrdinal, formatMonthLabel, getCycleForMonth, toMonthString } from './services/billingHelper';
+import { calculateStudentDueStatus, getStudentMonthFeeStatus, computeStudentBillingLedger, getOrdinal, formatMonthLabel, getCycleForMonth, toMonthString } from './services/billingHelper';
 import { generateFeeReceiptPDFBuffer } from './services/pdfService';
 import { sendPaymentReceiptEmail, sendEmail } from './services/emailService';
 import { createFinanceRouter } from './routes/financeRoutes';
@@ -427,7 +427,9 @@ app.get('/api/students', async (req, res) => {
     const joiningMonthLabel = sJoinDate.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
     const dateOfJoiningFormatted = sJoinDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
     const isBeforeJoining = monthStatus.status === 'Not Enrolled';
-    const feeStatus = monthStatus.status;
+    const feeStatus = isBeforeJoining
+      ? 'Not Enrolled'
+      : (dueStatus.totalPendingAmount > 0 ? 'Pending' : monthStatus.status);
 
     return {
       id: s.id,
@@ -905,6 +907,7 @@ app.get('/api/rooms/:buildingId', async (req, res) => {
           dueDayLabel: monthStatus.cycleDueDay ? `${monthStatus.cycleDueDay}th` : null,
           hasArrears: monthStatus.hasAccumulatedArrears,
           arrearsCount: monthStatus.pendingMonthsCount,
+          totalPendingAmount: dueStatus.totalPendingAmount,
           pendingMonths: dueStatus.pendingMonths,
           studentObj: {
             dbId: b.student.id,
@@ -916,6 +919,8 @@ app.get('/api/rooms/:buildingId', async (req, res) => {
             feeStatus: monthStatus.status,
             cycleLabel: monthStatus.cycleLabel,
             feeRecord: feeRecord,
+            totalPendingAmount: dueStatus.totalPendingAmount,
+            amountDue: monthStatus.amountDue,
             pendingMonths: dueStatus.pendingMonths,
             pendingMonthsCount: dueStatus.pendingMonthsCount
           }
@@ -1049,11 +1054,22 @@ app.post('/api/fees/pay', async (req, res) => {
     ? Number(amount)
     : standardFee;
   try {
-    // Check duplicate
+    // Check student and calculate ledger before payment
+    const studentBefore = await prisma.student.findUnique({
+      where: { id: studentId },
+      include: { beds: { include: { room: { include: { building: true } } } }, fees: true }
+    });
+    if (!studentBefore) {
+      return res.status(404).json({ error: 'Student not found' });
+    }
+
+    const ledgerBefore = computeStudentBillingLedger(studentBefore, standardFee, new Date());
     const existing = await prisma.fee.findFirst({ where: { studentId, month: m } });
-    if (existing && existing.status === 'Completed') {
+
+    // Block payment only if the student has NO outstanding dues at all AND month m was already completed
+    if (existing && existing.status === 'Completed' && ledgerBefore.totalRemainingDue === 0) {
       return res.status(409).json({
-        error: `Fee for ${monthLabel(m)} has already been paid.`,
+        error: `Fee for ${monthLabel(m)} has already been paid and all outstanding dues are cleared.`,
         existing
       });
     }
@@ -1102,18 +1118,18 @@ app.post('/api/fees/pay', async (req, res) => {
         } as any
       });
     }
-    // Recompute and sync Student.feeStatus after payment (recomputing handles partial backlog correctly)
+
+    // Recompute and sync Student.feeStatus after payment using unified ledger
     const updatedForStatus = await prisma.student.findUnique({
       where: { id: studentId },
       include: { beds: { include: { room: { include: { building: true } } } }, fees: true }
     });
+    let updatedLedger = ledgerBefore;
     if (updatedForStatus) {
-      const settings = readSettings();
-      const monthlyFee = settings.monthlyFee || 5500;
-      const dueStatus = calculateStudentDueStatus(updatedForStatus, monthlyFee, new Date());
+      updatedLedger = computeStudentBillingLedger(updatedForStatus, standardFee, new Date());
       await prisma.student.update({
         where: { id: studentId },
-        data: { feeStatus: dueStatus.pendingMonthsCount === 0 ? 'Paid' : 'Pending' }
+        data: { feeStatus: updatedLedger.totalRemainingDue === 0 ? 'Paid' : 'Pending' }
       });
     }
     // Bust finance summary cache so Finance page reflects updated totals immediately
@@ -1142,7 +1158,8 @@ app.post('/api/fees/pay', async (req, res) => {
           paymentDate: formattedDate,
           monthLabel: label,
           cycleLabel: cycle.cycleLabel,
-          amount: Number(amount),
+          amount: finalAmount,
+          remainingBalance: updatedLedger.totalRemainingDue,
           method,
           upiProvider: upiProvider || null,
           transactionRef: transactionRef || null,
@@ -1193,7 +1210,8 @@ app.post('/api/fees/pay', async (req, res) => {
               roomName: bed ? bed.room.roomNumber : 'Unallocated',
               bedNumber: bed ? bed.bedNumber : null,
               receiptNo,
-              amount: Number(amount),
+              amount: finalAmount,
+              remainingBalance: updatedLedger.totalRemainingDue,
               monthLabel: label,
               paymentDate: formattedDate,
               method,
@@ -1229,6 +1247,9 @@ app.post('/api/fees/pay', async (req, res) => {
         return res.json({
           ...fee,
           monthLabel: monthLabel(m),
+          totalRemainingDue: updatedLedger.totalRemainingDue,
+          pendingMonthsCount: updatedLedger.pendingCycles.length,
+          advanceCredit: updatedLedger.advanceCredit,
           emailStatus: lastEmailSuccess === true ? 'SENT' : (lastEmailSuccess === false ? 'FAILED' : 'SKIPPED'),
           emailError: lastEmailError || undefined
         });
@@ -1238,7 +1259,13 @@ app.post('/api/fees/pay', async (req, res) => {
       }
     }
 
-    res.json({ ...fee, monthLabel: monthLabel(m) });
+    res.json({
+      ...fee,
+      monthLabel: monthLabel(m),
+      totalRemainingDue: updatedLedger.totalRemainingDue,
+      pendingMonthsCount: updatedLedger.pendingCycles.length,
+      advanceCredit: updatedLedger.advanceCredit
+    });
   } catch (err: any) {
     res.status(500).json({ error: 'Failed to record payment: ' + err.message });
   }
@@ -1292,7 +1319,8 @@ app.post('/api/fees/:feeId/email-receipt', async (req, res) => {
       include: {
         student: {
           include: {
-            beds: { include: { room: true } }
+            beds: { include: { room: true } },
+            fees: true
           }
         },
         receipt: true
@@ -1311,6 +1339,7 @@ app.post('/api/fees/:feeId/email-receipt', async (req, res) => {
     const joinDate = fee.student.dateOfJoining ? new Date(fee.student.dateOfJoining) : new Date();
     const joinDay = joinDate.getDate() || 1;
     const cycle = getCycleForMonth(joinDay, fee.month || currentMonth());
+    const studentLedger = computeStudentBillingLedger(fee.student, settings.monthlyFee || 5500, new Date());
 
     // Get or generate PDF Buffer
     let pdfBuffer: Buffer;
@@ -1323,6 +1352,7 @@ app.post('/api/fees/:feeId/email-receipt', async (req, res) => {
         monthLabel: label,
         cycleLabel: cycle.cycleLabel,
         amount: Number(fee.amount),
+        remainingBalance: studentLedger.totalRemainingDue,
         method: fee.method,
         upiProvider: fee.upiProvider || null,
         transactionRef: fee.transactionRef || null,
@@ -1361,6 +1391,7 @@ app.post('/api/fees/:feeId/email-receipt', async (req, res) => {
       bedNumber: bed ? bed.bedNumber : null,
       receiptNo,
       amount: Number(fee.amount),
+      remainingBalance: studentLedger.totalRemainingDue,
       monthLabel: label,
       paymentDate: formattedDate,
       method: fee.method,
@@ -1627,7 +1658,7 @@ app.get('/api/fees/monthly-status', async (req, res) => {
       feeStatus: monthStatus.status,
       cycleLabel: monthStatus.cycleLabel,
       hasArrears: dueStatus.pendingMonthsCount > 0,
-      amount: feeRecord?.amount || (isBeforeJoining ? 0 : monthlyFee),
+      amount: feeRecord?.amount || (isBeforeJoining ? 0 : (monthStatus.amountDue || monthlyFee)),
       paymentDate: feeRecord && feeRecord.status === 'Completed' ? feeRecord.date.toISOString().split('T')[0] : null,
       method: feeRecord?.method || null,
       upiProvider: feeRecord?.upiProvider || null,
