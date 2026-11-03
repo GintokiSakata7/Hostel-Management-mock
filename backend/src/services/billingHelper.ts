@@ -189,7 +189,7 @@ export function computeStudentBillingLedger(
   referenceDate: Date = new Date()
 ): StudentBillingLedger {
   const settings = readSettings();
-  const fee = standardMonthlyFee !== undefined && standardMonthlyFee !== null ? standardMonthlyFee : (settings.monthlyFee || 5500);
+  const fee = standardMonthlyFee !== undefined && standardMonthlyFee !== null ? standardMonthlyFee : (Number(settings.monthlyFee) || 6000);
   const joinDate = student.dateOfJoining ? new Date(student.dateOfJoining) : new Date();
   const joinDay = joinDate.getDate() || 1;
   const joinYear = joinDate.getFullYear();
@@ -310,7 +310,7 @@ export function getStudentMonthFeeStatus(
   referenceDate: Date = new Date(),
   standardMonthlyFee?: number
 ): MonthFeeStatus {
-  const fee = standardMonthlyFee !== undefined && standardMonthlyFee !== null ? standardMonthlyFee : (readSettings().monthlyFee || 5500);
+  const fee = standardMonthlyFee !== undefined && standardMonthlyFee !== null ? standardMonthlyFee : (Number(readSettings().monthlyFee) || 6000);
   const joinDate = student.dateOfJoining ? new Date(student.dateOfJoining) : new Date();
   const joinDay = joinDate.getDate() || 1;
   const joinYear = joinDate.getFullYear();
@@ -399,7 +399,7 @@ export function calculateStudentDueStatus(
   standardMonthlyFee?: number,
   referenceDate: Date = new Date()
 ): StudentDueStatus {
-  const fee = standardMonthlyFee !== undefined && standardMonthlyFee !== null ? standardMonthlyFee : (readSettings().monthlyFee || 5500);
+  const fee = standardMonthlyFee !== undefined && standardMonthlyFee !== null ? standardMonthlyFee : (Number(readSettings().monthlyFee) || 6000);
   const ledger = computeStudentBillingLedger(student, fee, referenceDate);
   const joinDate = student.dateOfJoining ? new Date(student.dateOfJoining) : new Date();
   const joinDay = joinDate.getDate() || 1;

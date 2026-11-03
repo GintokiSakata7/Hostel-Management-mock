@@ -174,7 +174,7 @@ export async function saveSettings(prisma: PrismaClient, incoming: Partial<AppSe
     if (incoming.previousMonthlyFee === undefined || incoming.previousMonthlyFee === null) {
       previousMonthlyFee = Number(current.monthlyFee) || 6000;
     }
-    feeEffectiveMonth = incoming.feeEffectiveMonth || '2026-11';
+    feeEffectiveMonth = incoming.feeEffectiveMonth || current.feeEffectiveMonth || '2026-11';
   }
 
   // Construct feeSchedule ensuring months prior to feeEffectiveMonth are locked at previousMonthlyFee, and effective month onwards uses monthlyFee
