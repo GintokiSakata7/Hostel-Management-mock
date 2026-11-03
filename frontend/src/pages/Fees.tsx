@@ -20,7 +20,7 @@ function PaymentModal({ student, selectedMonth, onClose, onSuccess }: {
 }) {
   const { showToast } = useToast();
   const { settings } = useSettings();
-  const monthlyFee = settings?.monthlyFee || 5500;
+  const monthlyFee = settings?.monthlyFee || 6000;
 
   // Build pending months list: existing arrears first (FIFO), then selected month
   const pendingMonths: { value: string; label: string; cycleLabel?: string; amount?: number }[] = [];
@@ -496,7 +496,7 @@ export function PrintReceiptModal({ record, onClose }: { record: any; onClose: (
 export default function Fees() {
   const { showToast } = useToast();
   const { settings } = useSettings();
-  const monthlyFee = settings?.monthlyFee || 5500;
+  const monthlyFee = settings?.monthlyFee || 6000;
   const [selectedMonth, setSelectedMonth] = useState(MONTHS[0].value);
   const [monthlyStatus, setMonthlyStatus] = useState<any[]>([]);
   const [transactions, setTransactions] = useState<any[]>([]);

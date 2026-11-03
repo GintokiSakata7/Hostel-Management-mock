@@ -277,7 +277,7 @@ app.get('/api/stats', async (req, res) => {
     : { month: cm, status: 'Completed', student: { status: 'Active' } };
 
   const settings = readSettings();
-  const monthlyFee = settings.monthlyFee || 5500;
+  const monthlyFee = Number(settings.monthlyFee) || 6000;
 
   const [
     totalStudents,
@@ -389,7 +389,7 @@ app.get('/api/students', async (req, res) => {
   const { month, buildingId } = req.query as { month?: string; buildingId?: string };
   const m = month || currentMonth();
   const settings = readSettings();
-  const monthlyFee = settings.monthlyFee || 5500;
+  const monthlyFee = Number(settings.monthlyFee) || 6000;
 
   const effectiveBuildingId = await resolveBuildingId(buildingId);
   const studentWhere: any = effectiveBuildingId
@@ -867,7 +867,7 @@ app.get('/api/rooms/:buildingId', async (req, res) => {
   });
 
   const settings = readSettings();
-  const monthlyFee = settings.monthlyFee || 5500;
+  const monthlyFee = Number(settings.monthlyFee) || 6000;
   const now = new Date();
 
   const formatted = rooms.map(r => {
@@ -1289,12 +1289,13 @@ app.post('/api/fees/unpay', async (req, res) => {
         }
       });
       if (updatedStudent) {
-        const settings = readSettings();
-        const monthlyFee = settings.monthlyFee || 5500;
-        const dueStatus = calculateStudentDueStatus(updatedStudent, monthlyFee, new Date());
+        // Use computeStudentBillingLedger (same as /api/fees/pay) for consistent feeStatus sync.
+        // Passing undefined lets getMonthlyFeeForMonth resolve the correct per-cycle fee,
+        // matching the pay path which never hardcodes a single monthlyFee value.
+        const updatedLedger = computeStudentBillingLedger(updatedStudent, undefined, new Date());
         await prisma.student.update({
           where: { id: studentId },
-          data: { feeStatus: dueStatus.pendingMonthsCount === 0 ? 'Paid' : 'Pending' }
+          data: { feeStatus: updatedLedger.totalRemainingDue === 0 ? 'Paid' : 'Pending' }
         });
       }
       // Bust finance summary cache so Finance page reflects updated totals immediately
@@ -1339,7 +1340,7 @@ app.post('/api/fees/:feeId/email-receipt', async (req, res) => {
     const joinDate = fee.student.dateOfJoining ? new Date(fee.student.dateOfJoining) : new Date();
     const joinDay = joinDate.getDate() || 1;
     const cycle = getCycleForMonth(joinDay, fee.month || currentMonth());
-    const studentLedger = computeStudentBillingLedger(fee.student, settings.monthlyFee || 5500, new Date());
+    const studentLedger = computeStudentBillingLedger(fee.student, Number(settings.monthlyFee) || 6000, new Date());
 
     // Get or generate PDF Buffer
     let pdfBuffer: Buffer;
@@ -1598,7 +1599,7 @@ app.get('/api/fees/monthly-status', async (req, res) => {
   const { month, buildingId } = req.query as { month?: string; buildingId?: string };
   const m = month || currentMonth();
   const settings = readSettings();
-  const monthlyFee = settings.monthlyFee || 5500;
+  const monthlyFee = Number(settings.monthlyFee) || 6000;
 
   const effectiveBuildingId = await resolveBuildingId(buildingId);
   const studentWhere: any = effectiveBuildingId
@@ -2062,7 +2063,7 @@ app.get('/api/notifications', async (req, res) => {
 
   try {
     const settings = readSettings();
-    const monthlyFee = settings.monthlyFee || 5500;
+    const monthlyFee = Number(settings.monthlyFee) || 6000;
     const cm = currentMonth();
     const today = new Date();
     const todayDay = today.getDate();
