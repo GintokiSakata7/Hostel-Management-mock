@@ -1811,11 +1811,6 @@ select option[value=""],
   background: rgba(255, 255, 255, 0.04) !important;
 }
 
-.bed-row-dragover {
-  background: rgba(249, 115, 22, 0.25) !important;
-  box-shadow: 0 0 16px rgba(249, 115, 22, 0.4) !important;
-  transform: scale(1.02);
-}
 
 .icon-btn-micro {
   padding: 4px 6px;
@@ -3318,22 +3313,6 @@ select option[value=""],
   border-color: var(--primary);
 }
 
-.floorplan-header-card {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 0.85rem;
-  background: rgba(255, 255, 255, 0.025);
-  border: 1px solid var(--border-light);
-  border-radius: 14px;
-  padding: 0.875rem 1.15rem;
-}
-.light-theme .floorplan-header-card {
-  background: #ffffff;
-  border-color: rgba(0, 0, 0, 0.08);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-}
 
 /* ===================== SEGMENTED NAVIGATION TABS ===================== */
 .app-nav-tabs,

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Printer, Search, Calendar, Users, Building, CreditCard, AlertCircle, FileText } from 'lucide-react';
+import { Printer, Search, Calendar, Users, Building, CreditCard, AlertCircle, FileText, Download } from 'lucide-react';
 import { useSettings } from '../components/SettingsContext';
 import { useBuilding } from '../components/BuildingContext';
 
@@ -450,10 +450,28 @@ export default function Reports() {
 
   return (
     <div className="animate-fade-in">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <h1 className="page-title" style={{ margin: '0 0 4px 0' }}>System Reports</h1>
-          <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>Filter, search, and print structured hostel reports</p>
+          <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>Filter, search, print reports, or download raw data backups</p>
+        </div>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button
+            className="ghost-btn"
+            style={{ fontSize: '0.78rem', padding: '6px 12px', border: '1px solid var(--border-dim)', display: 'flex', alignItems: 'center', gap: '6px' }}
+            onClick={() => window.open('/api/export/students', '_blank')}
+            title="Export all student records as JSON"
+          >
+            <Download size={14} /> Export Students JSON
+          </button>
+          <button
+            className="ghost-btn"
+            style={{ fontSize: '0.78rem', padding: '6px 12px', border: '1px solid var(--border-dim)', display: 'flex', alignItems: 'center', gap: '6px' }}
+            onClick={() => window.open('/api/export/fees', '_blank')}
+            title="Export all fee transaction records as JSON"
+          >
+            <Download size={14} /> Export Fees JSON
+          </button>
         </div>
       </div>
 

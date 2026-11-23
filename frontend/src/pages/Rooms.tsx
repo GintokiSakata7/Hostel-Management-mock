@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { Calendar, IndianRupee, BedDouble, Layers3, Search, Plus, Printer, Banknote, Smartphone, CheckCircle2, Phone, GraduationCap, User, XCircle, Home, Trash2, GripVertical, UserX, ArrowRightLeft, ChevronDown, ChevronRight, Check, ArrowRight, X, Clock } from 'lucide-react';
+import { Calendar, IndianRupee, BedDouble, Layers3, Search, Plus, Printer, Banknote, Smartphone, CheckCircle2, Phone, GraduationCap, User, XCircle, Home, Trash2, UserX, ArrowRightLeft, ChevronDown, ChevronRight, Check, ArrowRight, X, Clock } from 'lucide-react';
 import Modal from '../components/Modal';
 import { useToast } from '../components/ToastContext';
 import { PrintReceiptModal } from './Fees';
@@ -23,7 +23,6 @@ function BedRow({
   onStudentClick,
   onUnpay,
   onDeallocate,
-  onTransfer,
   onOpenTransferModal
 }: {
   bed: any;
@@ -36,10 +35,6 @@ function BedRow({
   onTransfer?: (sourceBedId: string, targetBedId: string) => void;
   onOpenTransferModal?: () => void;
 }) {
-  const [isDragOver, setIsDragOver] = useState(false);
-  const [isDraggingSelf, setIsDraggingSelf] = useState(false);
-  const dragCounter = useRef(0);
-
   const isOccupied = bed.status === 'occupied';
   const isPaid = bed.feeStatus === 'Paid' || bed.feeStatus === 'Completed';
   const isUpcoming = bed.feeStatus === 'Upcoming';
@@ -55,9 +50,7 @@ function BedRow({
     ? 'rgba(255,255,255,0.25)'
     : '#eab308';
 
-  const rowBg = isDragOver
-    ? 'rgba(249,115,22,0.22)'
-    : !isOccupied
+  const rowBg = !isOccupied
     ? 'transparent'
     : isPaid
     ? 'rgba(34,197,94,0.04)'
@@ -69,74 +62,16 @@ function BedRow({
 
   return (
     <div
-      className={`bed-row ${isDragOver ? 'bed-row-dragover' : ''}`}
-      draggable={isOccupied}
-      onDragStart={(e) => {
-        if (!isOccupied) return;
-        setIsDraggingSelf(true);
-        e.dataTransfer.setData('text/plain', bed.id);
-        e.dataTransfer.effectAllowed = 'move';
-      }}
-      onDragEnd={() => {
-        setIsDraggingSelf(false);
-        dragCounter.current = 0;
-        setIsDragOver(false);
-      }}
-      onDragOver={(e) => {
-        e.preventDefault();
-        e.dataTransfer.dropEffect = 'move';
-      }}
-      onDragEnter={(e) => {
-        e.preventDefault();
-        dragCounter.current++;
-        if (dragCounter.current === 1) {
-          setIsDragOver(true);
-        }
-      }}
-      onDragLeave={(e) => {
-        e.preventDefault();
-        dragCounter.current--;
-        if (dragCounter.current <= 0) {
-          dragCounter.current = 0;
-          setIsDragOver(false);
-        }
-      }}
-      onDrop={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        dragCounter.current = 0;
-        setIsDragOver(false);
-        const sourceBedId = e.dataTransfer.getData('text/plain');
-        if (sourceBedId && sourceBedId !== bed.id && onTransfer) {
-          onTransfer(sourceBedId, bed.id);
-        }
-      }}
+      className="bed-row"
       style={{
-        display: 'flex', alignItems: 'center', gap: '6px',
+        display: 'flex', alignItems: 'center', gap: '8px',
         padding: '7px 10px', borderRadius: 8, background: rowBg,
-        border: isDragOver
-          ? '2px dashed var(--primary)'
-          : isDraggingSelf
-          ? '1px dashed rgba(249,115,22,0.5)'
-          : '1px solid transparent',
-        opacity: isDraggingSelf ? 0.45 : 1,
+        border: '1px solid transparent',
         transition: 'all 0.15s ease',
-        cursor: isOccupied ? 'grab' : 'default',
-        boxShadow: isDragOver ? '0 0 12px rgba(249,115,22,0.35)' : 'none'
+        cursor: isOccupied ? 'pointer' : 'default'
       }}
       onClick={() => { if (isOccupied && onStudentClick) onStudentClick(); }}
     >
-      {/* Drag Handle Icon for occupied beds */}
-      {isOccupied && (
-        <span
-          title="Drag to transfer resident to another bed"
-          style={{ cursor: 'grab', color: 'rgba(255,255,255,0.25)', display: 'flex', alignItems: 'center', flexShrink: 0 }}
-          onMouseOver={e => e.currentTarget.style.color = 'var(--primary)'}
-          onMouseOut={e => e.currentTarget.style.color = 'rgba(255,255,255,0.25)'}
-        >
-          <GripVertical size={12} />
-        </span>
-      )}
 
       {/* Status dot */}
       <div style={{ width: 7, height: 7, borderRadius: '50%', background: dotColor, boxShadow: isOccupied ? `0 0 6px ${dotColor}` : 'none', flexShrink: 0 }} />
