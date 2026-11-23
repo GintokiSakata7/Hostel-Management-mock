@@ -16,6 +16,19 @@ export default function AdminLockScreen({ onUnlock }: AdminLockScreenProps) {
 
   const hostelName = settings?.hostelName || 'Majin Hostel';
 
+  const handleSuccessfulAuth = (adminName = 'Admin') => {
+    sessionStorage.setItem('majin_admin_auth', 'true');
+    sessionStorage.setItem('majin_admin_name', adminName);
+    localStorage.setItem('majin_admin_auth', 'true');
+    localStorage.setItem('majin_admin_name', adminName);
+    onUnlock();
+  };
+
+  const handleQuickDevUnlock = () => {
+    setPassword('admin123');
+    handleSuccessfulAuth('Admin');
+  };
+
   const handleUnlock = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!password.trim()) {
@@ -36,15 +49,11 @@ export default function AdminLockScreen({ onUnlock }: AdminLockScreenProps) {
 
       const data = await res.json();
       if (res.ok && data.success) {
-        sessionStorage.setItem('majin_admin_auth', 'true');
-        sessionStorage.setItem('majin_admin_name', data.adminName || 'Admin');
-        onUnlock();
+        handleSuccessfulAuth(data.adminName || 'Admin');
       } else {
         // Fallback for offline or default
         if (password.trim() === 'admin123' || password.trim() === 'admin') {
-          sessionStorage.setItem('majin_admin_auth', 'true');
-          sessionStorage.setItem('majin_admin_name', 'Admin');
-          onUnlock();
+          handleSuccessfulAuth('Admin');
           return;
         }
         setError(data.error || 'Incorrect admin password. Please try again.');
@@ -52,9 +61,7 @@ export default function AdminLockScreen({ onUnlock }: AdminLockScreenProps) {
       }
     } catch (err: any) {
       if (password.trim() === 'admin123' || password.trim() === 'admin') {
-        sessionStorage.setItem('majin_admin_auth', 'true');
-        sessionStorage.setItem('majin_admin_name', 'Admin');
-        onUnlock();
+        handleSuccessfulAuth('Admin');
         return;
       }
       setError('Connection error: ' + err.message);
@@ -298,6 +305,31 @@ export default function AdminLockScreen({ onUnlock }: AdminLockScreenProps) {
               </>
             )}
           </button>
+          <div style={{ display: 'flex', gap: '8px', marginTop: '0.25rem' }}>
+            <button
+              type="button"
+              onClick={handleQuickDevUnlock}
+              style={{
+                flex: 1,
+                padding: '9px 12px',
+                borderRadius: 10,
+                background: 'rgba(249, 115, 22, 0.12)',
+                border: '1px solid rgba(249, 115, 22, 0.3)',
+                color: '#f97316',
+                fontSize: '0.8rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 6,
+                transition: 'all 0.15s ease'
+              }}
+              title="Instantly unlocks portal using test PIN (admin123)"
+            >
+              <span>⚡ Quick Unlock (Dev Mode)</span>
+            </button>
+          </div>
         </form>
 
         <div style={{
@@ -307,7 +339,7 @@ export default function AdminLockScreen({ onUnlock }: AdminLockScreenProps) {
           borderTop: '1px solid rgba(255, 255, 255, 0.08)',
           paddingTop: '1rem'
         }}>
-          Default initial password: <code style={{ color: '#f97316', background: 'rgba(249,115,22,0.1)', padding: '2px 6px', borderRadius: 4 }}>admin123</code>
+          Testing PIN / Password: <code style={{ color: '#f97316', background: 'rgba(249,115,22,0.1)', padding: '2px 6px', borderRadius: 4 }}>admin123</code>
         </div>
       </div>
 

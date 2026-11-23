@@ -70,7 +70,7 @@ function App() {
   });
   const [securityModalOpen, setSecurityModalOpen] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
-    return sessionStorage.getItem('majin_admin_auth') === 'true';
+    return localStorage.getItem('majin_admin_auth') === 'true' || sessionStorage.getItem('majin_admin_auth') === 'true';
   });
 
   useEffect(() => {
@@ -153,6 +153,9 @@ function App() {
                     onClick={() => {
                       setMobileMenuOpen(false);
                       sessionStorage.removeItem('majin_admin_auth');
+                      sessionStorage.removeItem('majin_admin_name');
+                      localStorage.removeItem('majin_admin_auth');
+                      localStorage.removeItem('majin_admin_name');
                       setIsAuthenticated(false);
                     }}
                   >
@@ -225,6 +228,9 @@ function App() {
                 onClose={() => setSecurityModalOpen(false)}
                 onLock={() => {
                   sessionStorage.removeItem('majin_admin_auth');
+                  sessionStorage.removeItem('majin_admin_name');
+                  localStorage.removeItem('majin_admin_auth');
+                  localStorage.removeItem('majin_admin_name');
                   setIsAuthenticated(false);
                 }}
               />

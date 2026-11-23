@@ -104,9 +104,6 @@ function FeeTab({ settings, onSave }: { settings: any; onSave: (s: any) => void 
   const isMobile = useIsMobile();
   const [form, setForm] = useState(settings);
   const [saving, setSaving] = useState(false);
-  const [bulkMonth, setBulkMonth] = useState(MONTHS[12]?.value || '2026-11');
-  const [bulkAmount, setBulkAmount] = useState('');
-  const [bulkLoading, setBulkLoading] = useState(false);
   const [reminderTime, setReminderTime] = useState('19:00');
   const [savingSchedule, setSavingSchedule] = useState(false);
 
@@ -186,23 +183,6 @@ function FeeTab({ settings, onSave }: { settings: any; onSave: (s: any) => void 
     };
     setForm(updated);
     await executeSave(updated);
-  };
-
-  const handleBulkApply = async () => {
-    const label = MONTHS.find(m => m.value === bulkMonth)?.label || bulkMonth;
-    const amt = Number(bulkAmount) || form.monthlyFee;
-    if (!confirm(`Apply fee of ₹${amt} for ALL active students for ${label}?`)) return;
-    setBulkLoading(true);
-    try {
-      const res = await fetch(`${API}/api/fees/bulk-apply`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ month: bulkMonth, amount: amt })
-      });
-      const data = await res.json();
-      if (res.ok) showToast(`Created ${data.created} fee entries (${data.total} students total)`, 'success');
-      else showToast(data.error || 'Failed', 'error');
-    } catch { showToast('Network error', 'error'); }
-    setBulkLoading(false);
   };
 
   const effectiveLabel = MONTHS.find(m => m.value === (form.feeEffectiveMonth || pendingEffectiveMonth))?.label || (form.feeEffectiveMonth || 'November 2026');
@@ -323,28 +303,6 @@ function FeeTab({ settings, onSave }: { settings: any; onSave: (s: any) => void 
             onClick={handleSaveSchedule} 
             disabled={savingSchedule}>
             <Save size={14} /> {savingSchedule ? 'Saving Schedule…' : 'Save Cron Schedule'}
-          </button>
-        </div>
-      </SectionCard>
-
-      <SectionCard title="Bulk Fee Apply" icon={RefreshCw}>
-        <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem', marginBottom: '1rem', lineHeight: 1.6 }}>
-          Automatically create fee entries for all active students for a selected month. Students who already have a record for that month will be skipped.
-        </p>
-        <div className="settings-grid">
-          <SettingField label="Month" icon={Calendar}>
-            <select className="custom-input custom-select" value={bulkMonth} onChange={e => setBulkMonth(e.target.value)}>
-              {MONTHS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
-            </select>
-          </SettingField>
-          <SettingField label="Override Amount (₹) — blank uses monthly fee" icon={IndianRupee}>
-            <input className="custom-input" type="number" value={bulkAmount} onChange={e => setBulkAmount(e.target.value)} placeholder={`Default: ₹${form.monthlyFee}`} />
-          </SettingField>
-        </div>
-        <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'flex-end' }}>
-          <button className="primary-btn" style={{ justifyContent: 'center', minWidth: 200, background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.4)', color: 'var(--success)' }}
-            onClick={handleBulkApply} disabled={bulkLoading}>
-            <RefreshCw size={14} /> {bulkLoading ? 'Applying…' : 'Apply Fees for Month'}
           </button>
         </div>
       </SectionCard>
