@@ -246,6 +246,8 @@ export default function AdminLockScreen({ onUnlock }: AdminLockScreenProps) {
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
+              title={showPassword ? "Hide password" : "Show password"}
+              aria-label={showPassword ? "Hide password" : "Show password"}
               style={{
                 position: 'absolute',
                 right: 12,
@@ -253,11 +255,12 @@ export default function AdminLockScreen({ onUnlock }: AdminLockScreenProps) {
                 transform: 'translateY(-50%)',
                 background: 'none',
                 border: 'none',
-                color: 'rgba(255, 255, 255, 0.5)',
+                color: 'rgba(255, 255, 255, 0.6)',
                 cursor: 'pointer',
-                padding: 4,
+                padding: 6,
                 display: 'flex',
-                alignItems: 'center'
+                alignItems: 'center',
+                zIndex: 2
               }}
             >
               {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}

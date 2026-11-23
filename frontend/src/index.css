@@ -565,6 +565,7 @@ h1, h2, h3, h4, h5, h6 {
   padding: 2rem 2rem 1.5rem;
   -webkit-overflow-scrolling: touch !important;
   overscroll-behavior-y: contain;
+  scrollbar-gutter: stable;
 }
 
 /* ===================== COMPONENTS ===================== */
@@ -3478,6 +3479,13 @@ select option[value=""],
 }
 
 /* ===================== COMPLAINTS & KANBAN ===================== */
+.complaints-kanban-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.25rem;
+  flex: 1;
+  min-height: 0;
+}
 .complaint-col-surface {
   flex: 1;
   background: rgba(255, 255, 255, 0.02);

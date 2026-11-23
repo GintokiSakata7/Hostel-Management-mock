@@ -284,6 +284,8 @@ export default function AdminSecurityModal({ isOpen, onClose, onLock }: AdminSec
                 <button
                   type="button"
                   onClick={() => setShowCurrent(!showCurrent)}
+                  title={showCurrent ? "Hide password" : "Show password"}
+                  aria-label={showCurrent ? "Hide password" : "Show password"}
                   style={{
                     position: 'absolute',
                     right: 10,
@@ -291,9 +293,12 @@ export default function AdminSecurityModal({ isOpen, onClose, onLock }: AdminSec
                     transform: 'translateY(-50%)',
                     background: 'none',
                     border: 'none',
-                    color: 'rgba(255, 255, 255, 0.5)',
+                    color: 'rgba(255, 255, 255, 0.6)',
                     cursor: 'pointer',
-                    padding: 2
+                    padding: 4,
+                    display: 'flex',
+                    alignItems: 'center',
+                    zIndex: 2
                   }}
                 >
                   {showCurrent ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -328,6 +333,8 @@ export default function AdminSecurityModal({ isOpen, onClose, onLock }: AdminSec
                 <button
                   type="button"
                   onClick={() => setShowNew(!showNew)}
+                  title={showNew ? "Hide password" : "Show password"}
+                  aria-label={showNew ? "Hide password" : "Show password"}
                   style={{
                     position: 'absolute',
                     right: 10,
@@ -335,9 +342,12 @@ export default function AdminSecurityModal({ isOpen, onClose, onLock }: AdminSec
                     transform: 'translateY(-50%)',
                     background: 'none',
                     border: 'none',
-                    color: 'rgba(255, 255, 255, 0.5)',
+                    color: 'rgba(255, 255, 255, 0.6)',
                     cursor: 'pointer',
-                    padding: 2
+                    padding: 4,
+                    display: 'flex',
+                    alignItems: 'center',
+                    zIndex: 2
                   }}
                 >
                   {showNew ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -372,6 +382,8 @@ export default function AdminSecurityModal({ isOpen, onClose, onLock }: AdminSec
                 <button
                   type="button"
                   onClick={() => setShowConfirm(!showConfirm)}
+                  title={showConfirm ? "Hide password" : "Show password"}
+                  aria-label={showConfirm ? "Hide password" : "Show password"}
                   style={{
                     position: 'absolute',
                     right: 10,
@@ -379,9 +391,12 @@ export default function AdminSecurityModal({ isOpen, onClose, onLock }: AdminSec
                     transform: 'translateY(-50%)',
                     background: 'none',
                     border: 'none',
-                    color: 'rgba(255, 255, 255, 0.5)',
+                    color: 'rgba(255, 255, 255, 0.6)',
                     cursor: 'pointer',
-                    padding: 2
+                    padding: 4,
+                    display: 'flex',
+                    alignItems: 'center',
+                    zIndex: 2
                   }}
                 >
                   {showConfirm ? <EyeOff size={16} /> : <Eye size={16} />}

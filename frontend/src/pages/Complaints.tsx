@@ -149,7 +149,7 @@ export default function Complaints() {
   );
 
   return (
-    <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}
       onClick={() => activeDropdown && setActiveDropdown(null)}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem' }}>
         <div>
@@ -185,7 +185,7 @@ export default function Complaints() {
       )}
 
       {/* Kanban Columns */}
-      <div className={isMobile ? "" : "responsive-grid-3"} style={{ flex: 1, minHeight: 0 }}>
+      <div className={isMobile ? "" : "complaints-kanban-grid"} style={{ flex: 1, minHeight: 0 }}>
         {(!isMobile || mobileTab === 'pending') && <Column title="Pending" dot="danger" items={pending} />}
         {(!isMobile || mobileTab === 'in-progress') && <Column title="In Progress" dot="warning" items={inProgress} />}
         {(!isMobile || mobileTab === 'resolved') && <Column title="Resolved" dot="success" items={resolved} />}

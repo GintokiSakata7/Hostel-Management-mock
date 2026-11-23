@@ -790,7 +790,7 @@ function FloorPlanTab() {
       )}
 
       {/* Main Workspace */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1rem', overflow: 'auto', minWidth: 0 }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1rem', overflow: isMobile ? 'visible' : 'auto', minWidth: 0 }}>
         {!selectedBuilding ? (
           <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', flexDirection: 'column', gap: '1rem', padding: '3rem' }}>
             <Layers3 size={48} style={{ opacity: 0.2 }} />
