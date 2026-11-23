@@ -1,6 +1,67 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, memo } from 'react';
 import { AlertCircle, Clock, CheckCircle2, MoreHorizontal, Plus, X, Home, User } from 'lucide-react';
 import { useToast } from '../components/ToastContext';
+
+const priorityColors: Record<string, { bg: string; color: string; border: string }> = {
+  high:   { bg: 'rgba(239,68,68,0.08)',   color: 'var(--danger)',  border: 'rgba(239,68,68,0.2)'  },
+  medium: { bg: 'rgba(234,179,8,0.08)',   color: 'var(--warning)', border: 'rgba(234,179,8,0.2)'  },
+  low:    { bg: 'rgba(34,197,94,0.08)',   color: 'var(--success)', border: 'rgba(34,197,94,0.2)'  },
+};
+
+const ComplaintCard = memo(({ complaint, activeDropdown, setActiveDropdown, changeStatus }: {
+  complaint: any;
+  activeDropdown: string | null;
+  setActiveDropdown: (id: string | null) => void;
+  changeStatus: (id: string, status: string) => void;
+}) => {
+  const pc = priorityColors[complaint.priority] ?? priorityColors.medium;
+  return (
+    <div className="glass-panel" style={{ padding: '1rem', marginBottom: '0.75rem', position: 'relative', border: `1px solid ${pc.border}` }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '6px' }}>
+        <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 600 }}>{complaint.title}</h4>
+        <div style={{ position: 'relative' }}>
+          <button className="icon-btn-small" style={{ padding: '2px' }}
+            onClick={(e) => { e.stopPropagation(); setActiveDropdown(activeDropdown === complaint.id ? null : complaint.id); }}>
+            <MoreHorizontal size={16} />
+          </button>
+          {activeDropdown === complaint.id && (
+            <div className="glass" style={{ position: 'absolute', right: 0, top: '28px', padding: '6px', display: 'flex', flexDirection: 'column', gap: '2px', zIndex: 20, minWidth: '150px', borderRadius: 12 }}>
+              {['pending', 'in-progress', 'resolved'].map(s => (
+                <button key={s} className="custom-select" style={{ border: 'none', textAlign: 'left', fontSize: '0.8rem', padding: '6px 10px' }}
+                  onClick={() => changeStatus(complaint.id, s)}>
+                  Move to {s.replace('-', ' ').replace(/\b\w/g, c => c.toUpperCase())}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {complaint.description && (
+        <p style={{ margin: '0 0 8px 0', fontSize: '0.78rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>{complaint.description}</p>
+      )}
+
+      <div style={{ display: 'flex', gap: '6px', marginBottom: '10px', flexWrap: 'wrap' }}>
+        <span className="room-badge" style={{ fontSize: '0.72rem', display: 'flex', alignItems: 'center', gap: '4px' }}><Home size={12} /> {complaint.room}</span>
+        <span style={{ background: 'rgba(128,128,128,0.1)', borderRadius: 6, padding: '2px 8px', fontSize: '0.72rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <User size={12} /> {complaint.student}
+        </span>
+      </div>
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border-dim)', paddingTop: '10px' }}>
+        <span style={{
+          display: 'inline-flex', alignItems: 'center', gap: '4px',
+          padding: '3px 8px', borderRadius: 6, fontSize: '0.7rem', fontWeight: 600,
+          background: pc.bg, color: pc.color, border: `1px solid ${pc.border}`
+        }}>
+          {complaint.priority === 'high' ? <AlertCircle size={11} /> : complaint.priority === 'medium' ? <Clock size={11} /> : <CheckCircle2 size={11} />}
+          {complaint.priority.toUpperCase()}
+        </span>
+        <span style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>{complaint.date}</span>
+      </div>
+    </div>
+  );
+});
 
 export default function Complaints() {
   const { showToast } = useToast();
@@ -72,62 +133,6 @@ export default function Complaints() {
     }
   };
 
-  const priorityColors: Record<string, { bg: string; color: string; border: string }> = {
-    high:   { bg: 'rgba(239,68,68,0.08)',   color: 'var(--danger)',  border: 'rgba(239,68,68,0.2)'  },
-    medium: { bg: 'rgba(234,179,8,0.08)',   color: 'var(--warning)', border: 'rgba(234,179,8,0.2)'  },
-    low:    { bg: 'rgba(34,197,94,0.08)',   color: 'var(--success)', border: 'rgba(34,197,94,0.2)'  },
-  };
-
-  const ComplaintCard = ({ complaint }: { complaint: any }) => {
-    const pc = priorityColors[complaint.priority] ?? priorityColors.medium;
-    return (
-      <div className="glass-panel" style={{ padding: '1rem', marginBottom: '0.75rem', position: 'relative', border: `1px solid ${pc.border}` }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '6px' }}>
-          <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 600 }}>{complaint.title}</h4>
-          <div style={{ position: 'relative' }}>
-            <button className="icon-btn-small" style={{ padding: '2px' }}
-              onClick={(e) => { e.stopPropagation(); setActiveDropdown(activeDropdown === complaint.id ? null : complaint.id); }}>
-              <MoreHorizontal size={16} />
-            </button>
-            {activeDropdown === complaint.id && (
-              <div className="glass" style={{ position: 'absolute', right: 0, top: '28px', padding: '6px', display: 'flex', flexDirection: 'column', gap: '2px', zIndex: 20, minWidth: '150px', borderRadius: 12 }}>
-                {['pending', 'in-progress', 'resolved'].map(s => (
-                  <button key={s} className="custom-select" style={{ border: 'none', textAlign: 'left', fontSize: '0.8rem', padding: '6px 10px' }}
-                    onClick={() => changeStatus(complaint.id, s)}>
-                    Move to {s.replace('-', ' ').replace(/\b\w/g, c => c.toUpperCase())}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {complaint.description && (
-          <p style={{ margin: '0 0 8px 0', fontSize: '0.78rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>{complaint.description}</p>
-        )}
-
-        <div style={{ display: 'flex', gap: '6px', marginBottom: '10px', flexWrap: 'wrap' }}>
-          <span className="room-badge" style={{ fontSize: '0.72rem', display: 'flex', alignItems: 'center', gap: '4px' }}><Home size={12} /> {complaint.room}</span>
-          <span style={{ background: 'rgba(128,128,128,0.1)', borderRadius: 6, padding: '2px 8px', fontSize: '0.72rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <User size={12} /> {complaint.student}
-          </span>
-        </div>
-
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border-dim)', paddingTop: '10px' }}>
-          <span style={{
-            display: 'inline-flex', alignItems: 'center', gap: '4px',
-            padding: '3px 8px', borderRadius: 6, fontSize: '0.7rem', fontWeight: 600,
-            background: pc.bg, color: pc.color, border: `1px solid ${pc.border}`
-          }}>
-            {complaint.priority === 'high' ? <AlertCircle size={11} /> : complaint.priority === 'medium' ? <Clock size={11} /> : <CheckCircle2 size={11} />}
-            {complaint.priority.toUpperCase()}
-          </span>
-          <span style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>{complaint.date}</span>
-        </div>
-      </div>
-    );
-  };
-
   const Column = ({ title, dot, items }: { title: string; dot: string; items: any[] }) => (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1rem' }}>
@@ -138,13 +143,13 @@ export default function Complaints() {
       <div className="complaint-col-surface">
         {items.length === 0
           ? <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.8rem', padding: '2rem 0' }}>No complaints</div>
-          : items.map(c => <ComplaintCard key={c.id} complaint={c} />)}
+          : items.map(c => <ComplaintCard key={c.id} complaint={c} activeDropdown={activeDropdown} setActiveDropdown={setActiveDropdown} changeStatus={changeStatus} />)}
       </div>
     </div>
   );
 
   return (
-    <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}
+    <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}
       onClick={() => activeDropdown && setActiveDropdown(null)}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem' }}>
         <div>

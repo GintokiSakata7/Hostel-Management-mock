@@ -707,7 +707,7 @@ function FloorPlanTab() {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '1.25rem', height: '100%', minHeight: isMobile ? 'auto' : 500 }}>
+    <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '1.25rem', minHeight: isMobile ? 'auto' : 500 }}>
       {/* DESKTOP ONLY: Building left sidebar */}
       {!isMobile && (
         <div style={{
@@ -1512,7 +1512,7 @@ export default function SettingsPage() {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
       <div style={{ marginBottom: '1.5rem', flexShrink: 0 }}>
         <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '10px' }}>
           <Settings size={22} color="var(--primary)" /> Settings
@@ -1535,7 +1535,7 @@ export default function SettingsPage() {
         ))}
       </div>
 
-      <div style={{ flex: 1, overflow: 'auto', paddingRight: '4px' }}>
+      <div style={{ flex: 1, minHeight: 0, paddingRight: '4px' }}>
         {settings === null ? (
           <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>Loading settings…</div>
         ) : (
