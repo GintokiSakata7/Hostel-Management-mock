@@ -128,21 +128,21 @@ export default function AdminSecurityModal({ isOpen, onClose, onLock }: AdminSec
               A
             </div>
             <div>
-              <div style={{ fontWeight: 800, fontSize: '1.15rem', color: '#ffffff', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div style={{ fontWeight: 800, fontSize: '1.15rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: 6 }}>
                 <span>Administrator</span>
                 <span style={{
                   fontSize: '0.65rem',
                   padding: '2px 8px',
                   borderRadius: 10,
                   background: 'rgba(34, 197, 94, 0.15)',
-                  color: '#4ade80',
+                  color: 'var(--success)',
                   border: '1px solid rgba(34, 197, 94, 0.3)',
                   fontWeight: 700
                 }}>
                   Active Session
                 </span>
               </div>
-              <div style={{ fontSize: '0.8rem', color: 'rgba(255, 255, 255, 0.55)', marginTop: 2 }}>
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: 2 }}>
                 {settings?.hostelName || 'Majin Hostel'} · Super Admin
               </div>
             </div>
@@ -150,18 +150,7 @@ export default function AdminSecurityModal({ isOpen, onClose, onLock }: AdminSec
 
           <button
             onClick={onClose}
-            style={{
-              background: 'rgba(255, 255, 255, 0.08)',
-              border: 'none',
-              color: 'rgba(255, 255, 255, 0.7)',
-              width: 32,
-              height: 32,
-              borderRadius: 10,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer'
-            }}
+            className="icon-btn-small"
           >
             <X size={18} />
           </button>
@@ -181,18 +170,16 @@ export default function AdminSecurityModal({ isOpen, onClose, onLock }: AdminSec
               gap: 8,
               padding: '12px 14px',
               borderRadius: 14,
-              background: 'rgba(255, 255, 255, 0.05)',
-              border: '1px solid rgba(255, 255, 255, 0.12)',
-              color: '#ffffff',
+              background: 'var(--surface-3)',
+              border: '1px solid var(--border-light)',
+              color: 'var(--text-main)',
               fontSize: '0.85rem',
               fontWeight: 700,
               cursor: 'pointer',
-              transition: 'background 0.2s'
+              transition: 'border-color 0.2s'
             }}
-            onMouseOver={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)'}
-            onMouseOut={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'}
           >
-            <Settings size={16} color="#f97316" />
+            <Settings size={16} color="var(--primary)" />
             <span>Settings Panel</span>
           </button>
 
@@ -210,7 +197,7 @@ export default function AdminSecurityModal({ isOpen, onClose, onLock }: AdminSec
               borderRadius: 14,
               background: 'rgba(239, 68, 68, 0.12)',
               border: '1px solid rgba(239, 68, 68, 0.3)',
-              color: '#f87171',
+              color: 'var(--danger)',
               fontSize: '0.85rem',
               fontWeight: 700,
               cursor: 'pointer',
@@ -226,14 +213,14 @@ export default function AdminSecurityModal({ isOpen, onClose, onLock }: AdminSec
 
         {/* Change Password Card Section */}
         <div style={{
-          background: 'rgba(0, 0, 0, 0.3)',
-          border: '1px solid rgba(255, 255, 255, 0.08)',
+          background: 'var(--surface-3)',
+          border: '1px solid var(--border-dim)',
           borderRadius: 18,
           padding: '1.25rem'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: '1rem' }}>
-            <KeyRound size={18} color="#f97316" />
-            <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, color: '#ffffff' }}>
+            <KeyRound size={18} color="var(--primary)" />
+            <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-main)' }}>
               Change Admin Password
             </h3>
           </div>
@@ -245,9 +232,9 @@ export default function AdminSecurityModal({ isOpen, onClose, onLock }: AdminSec
               gap: 8,
               padding: '8px 12px',
               borderRadius: 10,
-              background: 'rgba(239, 68, 68, 0.15)',
+              background: 'rgba(239, 68, 68, 0.12)',
               border: '1px solid rgba(239, 68, 68, 0.3)',
-              color: '#fca5a5',
+              color: 'var(--danger)',
               fontSize: '0.8rem',
               marginBottom: '1rem'
             }}>
@@ -259,7 +246,7 @@ export default function AdminSecurityModal({ isOpen, onClose, onLock }: AdminSec
           <form onSubmit={handleUpdatePassword} style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
             {/* Current Password */}
             <div>
-              <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'rgba(255, 255, 255, 0.6)', marginBottom: 4 }}>
+              <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 4 }}>
                 Current Password
               </label>
               <div style={{ position: 'relative' }}>
@@ -269,17 +256,8 @@ export default function AdminSecurityModal({ isOpen, onClose, onLock }: AdminSec
                   value={currentPassword}
                   onChange={(e) => setCurrentPassword(e.target.value)}
                   placeholder="Enter current password…"
-                  style={{
-                    width: '100%',
-                    padding: '10px 40px 10px 12px',
-                    borderRadius: 10,
-                    background: 'rgba(0, 0, 0, 0.4)',
-                    border: '1px solid rgba(255, 255, 255, 0.12)',
-                    color: '#ffffff',
-                    fontSize: '0.88rem',
-                    outline: 'none',
-                    boxSizing: 'border-box'
-                  }}
+                  className="custom-input"
+                  style={{ paddingRight: '40px' }}
                 />
                 <button
                   type="button"
@@ -293,7 +271,7 @@ export default function AdminSecurityModal({ isOpen, onClose, onLock }: AdminSec
                     transform: 'translateY(-50%)',
                     background: 'none',
                     border: 'none',
-                    color: 'rgba(255, 255, 255, 0.6)',
+                    color: 'var(--text-muted)',
                     cursor: 'pointer',
                     padding: 4,
                     display: 'flex',
@@ -308,7 +286,7 @@ export default function AdminSecurityModal({ isOpen, onClose, onLock }: AdminSec
 
             {/* New Password */}
             <div>
-              <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'rgba(255, 255, 255, 0.6)', marginBottom: 4 }}>
+              <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 4 }}>
                 New Password
               </label>
               <div style={{ position: 'relative' }}>
@@ -318,17 +296,8 @@ export default function AdminSecurityModal({ isOpen, onClose, onLock }: AdminSec
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   placeholder="Enter new password (min. 4 chars)…"
-                  style={{
-                    width: '100%',
-                    padding: '10px 40px 10px 12px',
-                    borderRadius: 10,
-                    background: 'rgba(0, 0, 0, 0.4)',
-                    border: '1px solid rgba(255, 255, 255, 0.12)',
-                    color: '#ffffff',
-                    fontSize: '0.88rem',
-                    outline: 'none',
-                    boxSizing: 'border-box'
-                  }}
+                  className="custom-input"
+                  style={{ paddingRight: '40px' }}
                 />
                 <button
                   type="button"
@@ -342,7 +311,7 @@ export default function AdminSecurityModal({ isOpen, onClose, onLock }: AdminSec
                     transform: 'translateY(-50%)',
                     background: 'none',
                     border: 'none',
-                    color: 'rgba(255, 255, 255, 0.6)',
+                    color: 'var(--text-muted)',
                     cursor: 'pointer',
                     padding: 4,
                     display: 'flex',
@@ -357,7 +326,7 @@ export default function AdminSecurityModal({ isOpen, onClose, onLock }: AdminSec
 
             {/* Confirm New Password */}
             <div>
-              <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'rgba(255, 255, 255, 0.6)', marginBottom: 4 }}>
+              <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 4 }}>
                 Confirm New Password
               </label>
               <div style={{ position: 'relative' }}>
@@ -367,17 +336,8 @@ export default function AdminSecurityModal({ isOpen, onClose, onLock }: AdminSec
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="Re-type new password…"
-                  style={{
-                    width: '100%',
-                    padding: '10px 40px 10px 12px',
-                    borderRadius: 10,
-                    background: 'rgba(0, 0, 0, 0.4)',
-                    border: '1px solid rgba(255, 255, 255, 0.12)',
-                    color: '#ffffff',
-                    fontSize: '0.88rem',
-                    outline: 'none',
-                    boxSizing: 'border-box'
-                  }}
+                  className="custom-input"
+                  style={{ paddingRight: '40px' }}
                 />
                 <button
                   type="button"
@@ -391,7 +351,7 @@ export default function AdminSecurityModal({ isOpen, onClose, onLock }: AdminSec
                     transform: 'translateY(-50%)',
                     background: 'none',
                     border: 'none',
-                    color: 'rgba(255, 255, 255, 0.6)',
+                    color: 'var(--text-muted)',
                     cursor: 'pointer',
                     padding: 4,
                     display: 'flex',
@@ -407,21 +367,15 @@ export default function AdminSecurityModal({ isOpen, onClose, onLock }: AdminSec
             <button
               type="submit"
               disabled={updating}
+              className="primary-btn"
               style={{
                 marginTop: '0.5rem',
                 padding: '11px',
                 borderRadius: 12,
-                background: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)',
-                border: 'none',
-                color: '#ffffff',
                 fontSize: '0.88rem',
                 fontWeight: 700,
                 cursor: updating ? 'not-allowed' : 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 6,
-                boxShadow: '0 4px 14px rgba(249, 115, 22, 0.3)'
+                justifyContent: 'center'
               }}
             >
               {updating ? 'Updating password…' : (

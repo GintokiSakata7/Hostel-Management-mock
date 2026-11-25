@@ -260,8 +260,8 @@ export default function NotificationBell() {
         return (
           <div style={{
             width: 36, height: 36, borderRadius: 10,
-            background: 'rgba(255,255,255,0.06)',
-            border: '1px solid rgba(255,255,255,0.1)',
+            background: 'var(--surface-3)',
+            border: '1px solid var(--border-dim)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             color: 'var(--text-muted)', flexShrink: 0
           }}>
@@ -276,7 +276,7 @@ export default function NotificationBell() {
       {/* Top Header */}
       <div style={{
         padding: '1rem 1.15rem 0.85rem',
-        borderBottom: '1px solid rgba(255,255,255,0.08)',
+        borderBottom: '1px solid var(--border-dim)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
@@ -285,22 +285,21 @@ export default function NotificationBell() {
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <div style={{
             width: 28, height: 28, borderRadius: 8,
-            background: 'rgba(249,115,22,0.18)',
+            background: 'rgba(249,115,22,0.14)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: 'var(--primary)', border: '1px solid rgba(249,115,22,0.3)'
+            color: 'var(--primary)', border: '1px solid rgba(249,115,22,0.28)'
           }}>
             <Bell size={15} />
           </div>
-          <span style={{ fontWeight: 800, fontSize: '1rem', color: '#fff' }}>Notifications</span>
+          <span style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--text-main)' }}>Notifications</span>
           {unreadCount > 0 && (
             <span style={{
               fontSize: '0.68rem',
               fontWeight: 800,
               padding: '2px 8px',
               borderRadius: 12,
-              background: 'linear-gradient(135deg, #ef4444, #f97316)',
-              color: '#fff',
-              boxShadow: '0 2px 6px rgba(239,68,68,0.4)'
+              background: 'var(--primary)',
+              color: '#fff'
             }}>
               {unreadCount} New
             </span>
@@ -316,8 +315,8 @@ export default function NotificationBell() {
                   onClick={handleMarkAllRead}
                   title="Mark all as read"
                   style={{
-                    background: 'rgba(255,255,255,0.05)',
-                    border: '1px solid rgba(255,255,255,0.08)',
+                    background: 'var(--surface-3)',
+                    border: '1px solid var(--border-dim)',
                     borderRadius: 8,
                     color: 'var(--text-muted)',
                     fontSize: '0.72rem',
@@ -329,7 +328,7 @@ export default function NotificationBell() {
                     gap: '4px',
                     transition: 'all 0.15s ease'
                   }}
-                  onMouseOver={e => e.currentTarget.style.color = '#fff'}
+                  onMouseOver={e => e.currentTarget.style.color = 'var(--text-main)'}
                   onMouseOut={e => e.currentTarget.style.color = 'var(--text-muted)'}
                 >
                   <Check size={12} /> Read All
@@ -375,7 +374,7 @@ export default function NotificationBell() {
         display: 'flex',
         padding: '8px 12px',
         gap: '6px',
-        borderBottom: '1px solid rgba(255,255,255,0.05)',
+        borderBottom: '1px solid var(--border-dim)',
         overflowX: 'auto',
         WebkitOverflowScrolling: 'touch',
         scrollbarWidth: 'none',
@@ -395,8 +394,8 @@ export default function NotificationBell() {
               style={{
                 padding: '4px 10px',
                 borderRadius: 8,
-                border: isSelected ? '1px solid var(--primary)' : '1px solid rgba(255,255,255,0.06)',
-                background: isSelected ? 'rgba(249,115,22,0.18)' : 'rgba(255,255,255,0.02)',
+                border: isSelected ? '1px solid var(--primary)' : '1px solid var(--border-dim)',
+                background: isSelected ? 'rgba(249,115,22,0.14)' : 'var(--surface-3)',
                 color: isSelected ? 'var(--primary)' : 'var(--text-muted)',
                 fontSize: '0.72rem',
                 fontWeight: 700,
@@ -413,8 +412,8 @@ export default function NotificationBell() {
                   fontSize: '0.62rem',
                   padding: '1px 5px',
                   borderRadius: 10,
-                  background: isSelected ? 'var(--primary)' : 'rgba(255,255,255,0.08)',
-                  color: isSelected ? '#000' : 'var(--text-muted)',
+                  background: isSelected ? 'var(--primary)' : 'var(--surface-2)',
+                  color: isSelected ? '#fff' : 'var(--text-muted)',
                   fontWeight: 800
                 }}>
                   {tab.count}
@@ -460,7 +459,7 @@ export default function NotificationBell() {
             }}>
               <Sparkles size={24} />
             </div>
-            <div style={{ fontWeight: 800, fontSize: '0.95rem', color: '#fff' }}>All Caught Up!</div>
+            <div style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--text-main)' }}>All Caught Up!</div>
             <div style={{ fontSize: '0.74rem', maxWidth: 260, lineHeight: 1.5, color: 'var(--text-muted)' }}>
               {activeFilter !== 'all'
                 ? `No active notifications in ${activeFilter}.`
@@ -475,8 +474,8 @@ export default function NotificationBell() {
                 }}
                 style={{
                   marginTop: 8,
-                  background: 'rgba(255,255,255,0.06)',
-                  border: '1px solid rgba(255,255,255,0.1)',
+                  background: 'var(--surface-3)',
+                  border: '1px solid var(--border-dim)',
                   borderRadius: 8,
                   color: 'var(--primary)',
                   fontSize: '0.72rem',
@@ -502,18 +501,18 @@ export default function NotificationBell() {
                   gap: '10px',
                   padding: '10px 12px',
                   borderRadius: 14,
-                  background: isRead ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.045)',
+                  background: 'var(--surface-3)',
                   border: isRead
-                    ? '1px solid rgba(255,255,255,0.06)'
+                    ? '1px solid var(--border-dim)'
                     : item.priority === 'urgent'
                     ? '1px solid rgba(239,68,68,0.35)'
-                    : '1px solid rgba(249,115,22,0.25)',
+                    : '1px solid rgba(249,115,22,0.28)',
                   cursor: 'pointer',
                   position: 'relative',
                   transition: 'all 0.15s ease'
                 }}
-                onMouseOver={e => e.currentTarget.style.background = 'rgba(255,255,255,0.06)'}
-                onMouseOut={e => e.currentTarget.style.background = isRead ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.045)'}
+                onMouseOver={e => e.currentTarget.style.borderColor = 'var(--border-light)'}
+                onMouseOut={e => e.currentTarget.style.borderColor = isRead ? 'var(--border-dim)' : item.priority === 'urgent' ? 'rgba(239,68,68,0.35)' : 'rgba(249,115,22,0.28)'}
               >
                 {/* Category Icon */}
                 {renderIcon(item)}
@@ -524,7 +523,7 @@ export default function NotificationBell() {
                     <div style={{
                       fontWeight: isRead ? 700 : 800,
                       fontSize: '0.84rem',
-                      color: isRead ? 'var(--text-main)' : '#fff',
+                      color: 'var(--text-main)',
                       display: 'flex',
                       alignItems: 'center',
                       gap: '6px',
@@ -604,11 +603,11 @@ export default function NotificationBell() {
       {visibleNotifications.length > 0 && (
         <div style={{
           padding: '8px 14px',
-          borderTop: '1px solid rgba(255,255,255,0.06)',
+          borderTop: '1px solid var(--border-dim)',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          background: 'rgba(255,255,255,0.02)',
+          background: 'var(--surface-1)',
           fontSize: '0.72rem',
           color: 'var(--text-muted)',
           flexShrink: 0

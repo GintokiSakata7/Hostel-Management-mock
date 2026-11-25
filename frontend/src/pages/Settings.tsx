@@ -40,7 +40,7 @@ function useIsMobile() {
 function SectionCard({ title, icon: Icon, children }: { title: string; icon: any; children: React.ReactNode }) {
   const isMobile = useIsMobile();
   return (
-    <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-dim)', borderRadius: 16, padding: isMobile ? '1.15rem 0.85rem' : '1.5rem' }}>
+    <div style={{ background: 'var(--surface-2)', border: '1px solid var(--border-dim)', borderRadius: 16, padding: isMobile ? '1.15rem 0.85rem' : '1.5rem' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1.25rem', paddingBottom: '0.875rem', borderBottom: '1px solid var(--border-dim)' }}>
         <div style={{ width: 32, height: 32, borderRadius: 8, background: 'rgba(249,115,22,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <Icon size={16} color="var(--primary)" />
@@ -404,7 +404,7 @@ function DataTab() {
             { label: 'Export Students', desc: 'All student profiles, room allocations, and full fee history', icon: User, url: `${API}/api/export/students` },
             { label: 'Export Fee Records', desc: 'All payment transactions and fee status for every student', icon: FileText, url: `${API}/api/export/fees` },
           ].map(({ label, desc, icon: Icon, url }) => (
-            <div key={label} style={{ border: '1px solid var(--border-dim)', borderRadius: 14, padding: '1.25rem', background: 'rgba(255,255,255,0.02)', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            <div key={label} style={{ border: '1px solid var(--border-dim)', borderRadius: 14, padding: '1.25rem', background: 'var(--surface-3)', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 700 }}>
                 <Icon size={18} color="var(--primary)" />
                 {label}
@@ -430,7 +430,7 @@ function DataTab() {
               { label: 'Fees Pending', value: stats.pendingFees, color: 'var(--danger)' },
               { label: 'Monthly Revenue', value: `₹${Number(stats.monthlyCollection || 0).toLocaleString()}`, color: 'var(--success)' },
             ].map(({ label, value, color }) => (
-              <div key={label} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-dim)', borderRadius: 10, padding: '0.875rem', textAlign: 'center' }}>
+              <div key={label} style={{ background: 'var(--surface-3)', border: '1px solid var(--border-dim)', borderRadius: 10, padding: '0.875rem', textAlign: 'center' }}>
                 <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: 4 }}>{label}</div>
                 <div style={{ fontSize: '1.2rem', fontWeight: 800, color }}>{value}</div>
               </div>

@@ -117,7 +117,11 @@ function App() {
   if (!isAuthenticated) {
     return (
       <SettingsProvider>
-        <AdminLockScreen onUnlock={() => setIsAuthenticated(true)} />
+        <AdminLockScreen
+          onUnlock={() => setIsAuthenticated(true)}
+          isLightMode={isLightMode}
+          onToggleTheme={() => setIsLightMode(prev => !prev)}
+        />
       </SettingsProvider>
     );
   }

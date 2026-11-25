@@ -1845,7 +1845,7 @@ export default function Students() {
         </div>
         <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', width: isMobile ? '100%' : 'auto', justifyContent: isMobile ? 'space-between' : 'flex-end', flexWrap: 'wrap' }}>
           {/* Month selector */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-dim)', borderRadius: 10, padding: '8px 12px', flex: isMobile ? 1 : 'none' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--surface-input)', border: '1px solid var(--border-light)', borderRadius: 10, padding: '8px 12px', flex: isMobile ? 1 : 'none' }}>
             <Calendar size={14} color="var(--primary)" />
             <select className="custom-select" style={{ background: 'transparent', border: 'none', padding: 0, color: 'var(--text-main)', fontSize: '0.82rem', width: '100%', cursor: 'pointer' }}
               value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)}>
@@ -1876,7 +1876,7 @@ export default function Students() {
               style={{
                 background: (residentTab === tab && (feeFilter === filter || (filter === 'all' && feeFilter === 'all')))
                   ? 'rgba(249,115,22,0.1)'
-                  : 'rgba(255,255,255,0.03)',
+                  : 'var(--surface-2)',
                 border: (residentTab === tab && (feeFilter === filter || (filter === 'all' && feeFilter === 'all')))
                   ? '1px solid var(--primary)'
                   : '1px solid var(--border-dim)',
@@ -1902,13 +1902,13 @@ export default function Students() {
         <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
           {[
             { label: 'Active Residents', value: activeCount, color: 'var(--primary)' },
-            { label: `Enrolled (${selectedMonthLabel})`, value: enrolledCount, color: '#38bdf8' },
+            { label: `Enrolled (${selectedMonthLabel})`, value: enrolledCount, color: 'var(--text-main)' },
             { label: 'Fee Paid', value: paidCount, color: 'var(--success)' },
             { label: 'Fee Pending', value: pendingCount, color: 'var(--warning)' },
             ...(notEnrolledCount > 0 ? [{ label: 'Joined Later', value: notEnrolledCount, color: 'var(--text-muted)' }] : []),
-            { label: 'Vacated / Left', value: vacatedCount, color: '#ef4444' },
+            { label: 'Vacated / Left', value: vacatedCount, color: 'var(--danger)' },
           ].map(({ label, value, color }) => (
-            <div key={label} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border-dim)', borderRadius: 12, padding: '8px 16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div key={label} style={{ background: 'var(--surface-2)', border: '1px solid var(--border-dim)', borderRadius: 12, padding: '8px 16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span style={{ color, fontWeight: 700, fontSize: '1.1rem' }}>{value}</span>
               <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{label}</span>
             </div>
@@ -1922,7 +1922,7 @@ export default function Students() {
         {/* Tab Switcher: Active Residents vs Vacated Residents */}
         <div style={{
           display: 'flex',
-          background: 'rgba(255,255,255,0.04)',
+          background: 'var(--surface-input)',
           borderRadius: 12,
           padding: 3,
           border: '1px solid var(--border-dim)',

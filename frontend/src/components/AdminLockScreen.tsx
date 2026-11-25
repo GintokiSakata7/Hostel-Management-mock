@@ -1,12 +1,14 @@
-import React, { useState, useEffect } from 'react';
-import { Lock, Eye, EyeOff, ShieldCheck, KeyRound, AlertCircle, ArrowRight } from 'lucide-react';
+import React, { useState } from 'react';
+import { Lock, Eye, EyeOff, ShieldCheck, KeyRound, AlertCircle, ArrowRight, Sun, Moon } from 'lucide-react';
 import { useSettings } from './SettingsContext';
 
 interface AdminLockScreenProps {
   onUnlock: () => void;
+  isLightMode?: boolean;
+  onToggleTheme?: () => void;
 }
 
-export default function AdminLockScreen({ onUnlock }: AdminLockScreenProps) {
+export default function AdminLockScreen({ onUnlock, isLightMode, onToggleTheme }: AdminLockScreenProps) {
   const { settings } = useSettings();
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -84,33 +86,42 @@ export default function AdminLockScreen({ onUnlock }: AdminLockScreenProps) {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      background: '#000000',
+      background: 'var(--bg-dark)',
       padding: '1.25rem',
       fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif"
     }}>
-      {/* Background ambient orb */}
-      <div style={{
-        position: 'absolute',
-        width: 320,
-        height: 320,
-        borderRadius: '50%',
-        background: 'radial-gradient(circle, rgba(249,115,22,0.12) 0%, transparent 70%)',
-        top: '20%',
-        left: '20%',
-        filter: 'blur(50px)',
-        pointerEvents: 'none'
-      }} />
+      {/* Theme Toggle Button */}
+      {onToggleTheme && (
+        <button
+          type="button"
+          onClick={onToggleTheme}
+          aria-label="Toggle theme"
+          title={isLightMode ? 'Switch to Dark Theme' : 'Switch to Light Theme'}
+          className="icon-btn"
+          style={{
+            position: 'fixed',
+            top: '1.25rem',
+            right: '1.25rem',
+            background: 'var(--modal-bg)',
+            border: '1px solid var(--border-light)',
+            color: 'var(--text-main)',
+            boxShadow: '0 4px 14px rgba(0, 0, 0, 0.08)'
+          }}
+        >
+          {isLightMode ? <Moon size={18} /> : <Sun size={18} />}
+        </button>
+      )}
 
       {/* Main Lock Card */}
       <div style={{
         position: 'relative',
         width: '100%',
         maxWidth: 420,
-        background: '#111111',
-        border: '1px solid rgba(255, 255, 255, 0.14)',
+        background: 'var(--modal-bg)',
+        border: '1px solid var(--border-light)',
         borderRadius: 24,
         padding: '2.5rem 2rem',
-        boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.85)',
+        boxShadow: 'var(--modal-shadow)',
         animation: shake ? 'shake 0.45s ease-in-out' : 'fadeIn 0.4s ease-out',
         textAlign: 'center'
       }}>
@@ -133,7 +144,7 @@ export default function AdminLockScreen({ onUnlock }: AdminLockScreenProps) {
             justifyContent: 'center',
             fontSize: '2.2rem',
             fontWeight: 800,
-            boxShadow: '0 8px 24px rgba(249, 115, 22, 0.4)'
+            boxShadow: '0 8px 24px rgba(249, 115, 22, 0.3)'
           }}>
             A
           </div>
@@ -141,15 +152,15 @@ export default function AdminLockScreen({ onUnlock }: AdminLockScreenProps) {
             position: 'absolute',
             bottom: -4,
             right: -4,
-            background: '#000000',
-            border: '2px solid #f97316',
+            background: 'var(--modal-bg)',
+            border: '2px solid var(--primary)',
             borderRadius: '50%',
             width: 24,
             height: 24,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            color: '#f97316'
+            color: 'var(--primary)'
           }}>
             <Lock size={12} />
           </div>
@@ -160,7 +171,7 @@ export default function AdminLockScreen({ onUnlock }: AdminLockScreenProps) {
           margin: '0 0 6px 0',
           fontSize: '1.5rem',
           fontWeight: 800,
-          color: '#ffffff',
+          color: 'var(--text-main)',
           letterSpacing: '-0.02em'
         }}>
           {hostelName}
@@ -168,7 +179,7 @@ export default function AdminLockScreen({ onUnlock }: AdminLockScreenProps) {
         <p style={{
           margin: '0 0 1.75rem 0',
           fontSize: '0.85rem',
-          color: 'rgba(255, 255, 255, 0.6)',
+          color: 'var(--text-muted)',
           lineHeight: 1.4
         }}>
           Administrator Security Gate · Enter password to unlock portal
@@ -184,7 +195,7 @@ export default function AdminLockScreen({ onUnlock }: AdminLockScreenProps) {
             borderRadius: 12,
             background: 'rgba(239, 68, 68, 0.12)',
             border: '1px solid rgba(239, 68, 68, 0.3)',
-            color: '#fca5a5',
+            color: 'var(--danger)',
             fontSize: '0.82rem',
             marginBottom: '1.25rem',
             textAlign: 'left'
@@ -202,7 +213,7 @@ export default function AdminLockScreen({ onUnlock }: AdminLockScreenProps) {
               left: 14,
               top: '50%',
               transform: 'translateY(-50%)',
-              color: 'rgba(255, 255, 255, 0.45)',
+              color: 'var(--text-muted)',
               display: 'flex',
               alignItems: 'center'
             }}>
@@ -219,20 +230,20 @@ export default function AdminLockScreen({ onUnlock }: AdminLockScreenProps) {
                 width: '100%',
                 padding: '14px 44px 14px 44px',
                 borderRadius: 14,
-                background: 'rgba(0, 0, 0, 0.45)',
-                border: error ? '1.5px solid #ef4444' : '1px solid rgba(255, 255, 255, 0.14)',
-                color: '#ffffff',
+                background: 'var(--surface-input)',
+                border: error ? '1.5px solid var(--danger)' : '1px solid var(--border-light)',
+                color: 'var(--text-main)',
                 fontSize: '0.95rem',
                 outline: 'none',
                 boxSizing: 'border-box',
                 transition: 'border-color 0.2s, box-shadow 0.2s'
               }}
               onFocus={(e) => {
-                if (!error) e.target.style.borderColor = '#f97316';
-                e.target.style.boxShadow = '0 0 12px rgba(249,115,22,0.25)';
+                if (!error) e.target.style.borderColor = 'var(--primary)';
+                e.target.style.boxShadow = '0 0 0 3px rgba(249,115,22,0.18)';
               }}
               onBlur={(e) => {
-                if (!error) e.target.style.borderColor = 'rgba(255, 255, 255, 0.14)';
+                if (!error) e.target.style.borderColor = 'var(--border-light)';
                 e.target.style.boxShadow = 'none';
               }}
             />
@@ -249,7 +260,7 @@ export default function AdminLockScreen({ onUnlock }: AdminLockScreenProps) {
                 transform: 'translateY(-50%)',
                 background: 'none',
                 border: 'none',
-                color: 'rgba(255, 255, 255, 0.6)',
+                color: 'var(--text-muted)',
                 cursor: 'pointer',
                 padding: 6,
                 display: 'flex',
@@ -264,22 +275,15 @@ export default function AdminLockScreen({ onUnlock }: AdminLockScreenProps) {
           <button
             type="submit"
             disabled={loading}
+            className="primary-btn"
             style={{
               width: '100%',
               padding: '14px',
               borderRadius: 14,
-              background: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)',
-              border: 'none',
-              color: '#ffffff',
               fontSize: '0.95rem',
               fontWeight: 700,
               cursor: loading ? 'not-allowed' : 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 8,
-              boxShadow: '0 8px 24px rgba(249, 115, 22, 0.35)',
-              transition: 'transform 0.15s, box-shadow 0.15s'
+              justifyContent: 'center'
             }}
           >
             {loading ? (
@@ -300,9 +304,9 @@ export default function AdminLockScreen({ onUnlock }: AdminLockScreenProps) {
                 flex: 1,
                 padding: '9px 12px',
                 borderRadius: 10,
-                background: 'rgba(249, 115, 22, 0.12)',
-                border: '1px solid rgba(249, 115, 22, 0.3)',
-                color: '#f97316',
+                background: 'rgba(249, 115, 22, 0.1)',
+                border: '1px solid rgba(249, 115, 22, 0.28)',
+                color: 'var(--primary)',
                 fontSize: '0.8rem',
                 fontWeight: 700,
                 cursor: 'pointer',
@@ -322,11 +326,11 @@ export default function AdminLockScreen({ onUnlock }: AdminLockScreenProps) {
         <div style={{
           marginTop: '1.5rem',
           fontSize: '0.75rem',
-          color: 'rgba(255, 255, 255, 0.4)',
-          borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+          color: 'var(--text-muted)',
+          borderTop: '1px solid var(--border-dim)',
           paddingTop: '1rem'
         }}>
-          Testing PIN / Password: <code style={{ color: '#f97316', background: 'rgba(249,115,22,0.1)', padding: '2px 6px', borderRadius: 4 }}>admin123</code>
+          Testing PIN / Password: <code style={{ color: 'var(--primary)', background: 'rgba(249,115,22,0.1)', padding: '2px 6px', borderRadius: 4 }}>admin123</code>
         </div>
       </div>
 

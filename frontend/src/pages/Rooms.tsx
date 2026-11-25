@@ -42,24 +42,16 @@ function BedRow({
   const isNotEnrolled = bed.feeStatus === 'Not Enrolled';
 
   const dotColor = !isOccupied
-    ? 'rgba(255,255,255,0.2)'
+    ? 'var(--border-light)'
     : isPaid
-    ? '#22c55e'
+    ? 'var(--success)'
     : isUpcoming
     ? '#38bdf8'
     : isNotEnrolled
-    ? 'rgba(255,255,255,0.25)'
-    : '#eab308';
+    ? 'var(--text-muted)'
+    : 'var(--warning)';
 
-  const rowBg = !isOccupied
-    ? 'transparent'
-    : isPaid
-    ? 'rgba(34,197,94,0.04)'
-    : isUpcoming
-    ? 'rgba(56,189,248,0.04)'
-    : isNotEnrolled
-    ? 'transparent'
-    : 'rgba(234,179,8,0.04)';
+  const rowBg = 'transparent';
 
   return (
     <div
@@ -81,7 +73,7 @@ function BedRow({
       <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', minWidth: 16, flexShrink: 0 }}>{bed.bedIndex}</span>
 
       {/* Student name or vacant */}
-      <div style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '0.82rem', fontWeight: isOccupied ? 600 : 400, color: isOccupied ? 'var(--text-main)' : 'rgba(255,255,255,0.2)' }}>
+      <div style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '0.82rem', fontWeight: isOccupied ? 600 : 400, color: isOccupied ? 'var(--text-main)' : 'var(--text-muted)', opacity: isOccupied ? 1 : 0.45 }}>
         {isOccupied ? bed.student : '—'}
       </div>
 
@@ -93,9 +85,9 @@ function BedRow({
               bed.studentObj?.feeRecord ? (
                 <>
                   <button onClick={onPrint}
-                    style={{ padding: '3px 7px', fontSize: '0.62rem', borderRadius: 5, background: 'rgba(255,255,255,0.05)', color: 'var(--text-muted)', border: '1px solid rgba(255,255,255,0.08)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '3px', transition: 'all 0.15s' }}
-                    onMouseOver={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.12)'; e.currentTarget.style.color = '#fff'; }}
-                    onMouseOut={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.color = 'var(--text-muted)'; }}>
+                    style={{ padding: '3px 7px', fontSize: '0.62rem', borderRadius: 5, background: 'var(--surface-3)', color: 'var(--text-muted)', border: '1px solid var(--border-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '3px', transition: 'all 0.15s' }}
+                    onMouseOver={e => { e.currentTarget.style.borderColor = 'var(--border-light)'; e.currentTarget.style.color = 'var(--text-main)'; }}
+                    onMouseOut={e => { e.currentTarget.style.borderColor = 'var(--border-dim)'; e.currentTarget.style.color = 'var(--text-muted)'; }}>
                     <Printer size={9} /> Receipt
                   </button>
                   <button onClick={onUnpay} title="Undo Fee Payment" className="icon-btn-micro danger">
@@ -103,12 +95,12 @@ function BedRow({
                   </button>
                 </>
               ) : (
-                <span style={{ fontSize: '0.62rem', fontWeight: 700, color: '#4ade80', padding: '2px 7px', background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.25)', borderRadius: 5, whiteSpace: 'nowrap' }}>
+                <span style={{ fontSize: '0.62rem', fontWeight: 700, color: 'var(--success)', padding: '2px 7px', background: 'rgba(52,211,153,0.1)', borderRadius: 5, whiteSpace: 'nowrap' }}>
                   {bed.paidViaAdvance ? 'Advance' : 'Settled'}
                 </span>
               )
             ) : isNotEnrolled ? (
-              <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)', padding: '2px 6px', background: 'rgba(255,255,255,0.04)', borderRadius: 4, whiteSpace: 'nowrap' }}>
+              <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)', padding: '2px 6px', background: 'var(--surface-3)', borderRadius: 4, whiteSpace: 'nowrap' }}>
                 Joined later
               </span>
             ) : isUpcoming ? (

@@ -109,8 +109,8 @@ export default function ConfirmModal({
             position: 'absolute',
             top: 16,
             right: 16,
-            background: 'rgba(255,255,255,0.06)',
-            border: 'none',
+            background: 'var(--surface-3)',
+            border: '1px solid var(--border-dim)',
             borderRadius: '50%',
             width: 32,
             height: 32,
@@ -143,7 +143,7 @@ export default function ConfirmModal({
             {variant === 'danger' ? <Trash2 size={22} /> : <AlertTriangle size={22} />}
           </div>
           <div>
-            <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: '#fff' }}>{title}</h3>
+            <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-main)' }}>{title}</h3>
             <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Action Required</span>
           </div>
         </div>
@@ -152,13 +152,13 @@ export default function ConfirmModal({
         <div
           style={{
             fontSize: '0.9rem',
-            color: 'rgba(255, 255, 255, 0.85)',
+            color: 'var(--text-main)',
             lineHeight: 1.5,
             marginBottom: '1.5rem',
-            background: 'rgba(0, 0, 0, 0.25)',
+            background: 'var(--surface-3)',
             padding: '14px 16px',
             borderRadius: '14px',
-            border: '1px solid rgba(255, 255, 255, 0.05)',
+            border: '1px solid var(--border-dim)',
           }}
         >
           {message}
@@ -173,8 +173,8 @@ export default function ConfirmModal({
             style={{
               padding: '10px 18px',
               borderRadius: '12px',
-              border: '1px solid var(--border-dim)',
-              background: 'rgba(255, 255, 255, 0.05)',
+              border: '1px solid var(--border-light)',
+              background: 'var(--surface-3)',
               color: 'var(--text-main)',
               fontWeight: 600,
               fontSize: '0.85rem',

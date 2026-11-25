@@ -64,7 +64,7 @@ export default function WorkspaceSelector() {
           padding: '12px 14px',
           borderRadius: '12px',
           cursor: 'pointer',
-          background: selectedBuildingId === 'all' ? 'rgba(249,115,22,0.18)' : 'rgba(255,255,255,0.03)',
+          background: selectedBuildingId === 'all' ? 'rgba(249,115,22,0.14)' : 'var(--surface-3)',
           color: selectedBuildingId === 'all' ? 'var(--primary)' : 'var(--text-main)',
           fontSize: '0.88rem',
           fontWeight: selectedBuildingId === 'all' ? 700 : 500,
@@ -100,7 +100,7 @@ export default function WorkspaceSelector() {
                 padding: '12px 14px',
                 borderRadius: '12px',
                 cursor: 'pointer',
-                background: isSelected ? 'rgba(249,115,22,0.18)' : 'rgba(255,255,255,0.02)',
+                background: isSelected ? 'rgba(249,115,22,0.14)' : 'var(--surface-3)',
                 color: isSelected ? 'var(--primary)' : 'var(--text-main)',
                 fontSize: '0.88rem',
                 fontWeight: isSelected ? 700 : 500,
@@ -124,7 +124,7 @@ export default function WorkspaceSelector() {
         })}
       </div>
 
-      <div style={{ height: '1px', background: 'rgba(255,255,255,0.08)', margin: '8px 0' }} />
+      <div style={{ height: '1px', background: 'var(--border-dim)', margin: '8px 0' }} />
 
       {/* Add Building Option */}
       <div

@@ -753,7 +753,7 @@ export default function Fees() {
         ))}
       </div>
 
-      <div className="responsive-grid-1-1">
+      <div className="responsive-grid-1-1" style={{ alignItems: 'start' }}>
         
         {/* Mobile Tabs */}
         {isMobile && (
@@ -765,7 +765,13 @@ export default function Fees() {
 
         {/* Left: Student fee status table */}
         {(!isMobile || mobileTab === 'status') && (
-        <div className="glass-panel" style={{ padding: isMobile ? '1.1rem' : '1.35rem', position: 'relative', minWidth: 0 }}>
+        <div className="glass-panel" style={{
+          padding: isMobile ? '1.1rem' : '1.35rem',
+          position: isMobile ? 'relative' : 'sticky',
+          top: isMobile ? undefined : '0px',
+          alignSelf: 'start',
+          minWidth: 0
+        }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', gap: '8px' }}>
             <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700 }}>Student Fee Status — {MONTHS.find(m => m.value === selectedMonth)?.label}</h3>
             {isMobile && (
@@ -794,7 +800,7 @@ export default function Fees() {
           </div>
           )}
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '540px', overflowY: 'auto', paddingRight: '4px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: isMobile ? '540px' : 'calc(100dvh - 280px)', overflowY: 'auto', paddingRight: '4px' }}>
             {loading ? (
               <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>Loading…</div>
             ) : filtered.length === 0 ? (
@@ -815,13 +821,12 @@ export default function Fees() {
                 flexDirection: 'column',
                 alignItems: 'stretch',
                 gap: '10px',
-                border: '1px solid var(--border-dim)',
                 animation: 'slideInUp 0.3s ease-out'
               }}>
                 {/* Row Top: Identity + Primary Status/Action */}
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: '1 1 180px', minWidth: 0 }}>
-                    <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--surface-2)', border: '1px solid var(--border-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: 'var(--text-main)', flexShrink: 0, fontSize: '0.88rem' }}>
+                    <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--surface-2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: 'var(--text-main)', flexShrink: 0, fontSize: '0.88rem' }}>
                       {s.name.charAt(0).toUpperCase()}
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
@@ -932,7 +937,7 @@ export default function Fees() {
                 {(s.dueDayLabel || s.pendingMonthsCount > 1 || (s.advanceCredit || 0) > 0 || (s.securityDeposit || 0) > 0 || (s.feeStatus === 'Paid' && s.whatsappStatus)) && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', paddingTop: '6px', borderTop: '1px solid var(--border-dim)' }}>
                     {s.dueDayLabel && (
-                      <span style={{ background: 'var(--surface-2)', border: '1px solid var(--border-dim)', color: 'var(--text-muted)', padding: '2px 8px', borderRadius: 6, fontSize: '0.69rem', fontWeight: 600 }}>
+                      <span style={{ background: 'var(--surface-2)', color: 'var(--text-muted)', padding: '2px 8px', borderRadius: 6, fontSize: '0.69rem', fontWeight: 600 }}>
                         Due: {s.dueDayLabel}
                       </span>
                     )}
@@ -955,8 +960,7 @@ export default function Fees() {
                       <span style={{
                         fontSize: '0.69rem', fontWeight: 600, padding: '2px 8px', borderRadius: 6,
                         background: 'var(--surface-2)',
-                        color: 'var(--text-muted)',
-                        border: '1px solid var(--border-dim)'
+                        color: 'var(--text-muted)'
                       }}>
                         {notifyLabel}
                       </span>
@@ -1037,11 +1041,11 @@ export default function Fees() {
               ) : monthTx.map(tx => (
                 <div key={tx.id} className="fee-row-item" style={{
                   flexWrap: 'wrap',
-                  border: serialSearch && tx.receiptNo?.toLowerCase().includes(serialSearch.toLowerCase()) ? '1px solid var(--primary)' : '1px solid var(--border-dim)',
+                  borderColor: serialSearch && tx.receiptNo?.toLowerCase().includes(serialSearch.toLowerCase()) ? 'var(--primary)' : undefined,
                   animation: 'slideInUp 0.3s ease-out'
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: '1 1 160px', minWidth: 0 }}>
-                    <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--surface-2)', border: '1px solid var(--border-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: 'var(--text-main)', flexShrink: 0, fontSize: '0.88rem' }}>
+                    <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--surface-2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: 'var(--text-main)', flexShrink: 0, fontSize: '0.88rem' }}>
                       {tx.student.charAt(0).toUpperCase()}
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>

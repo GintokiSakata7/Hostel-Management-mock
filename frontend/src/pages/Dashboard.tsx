@@ -141,13 +141,13 @@ export default function Dashboard() {
           display: 'flex',
           alignItems: 'center',
           gap: '8px',
-          background: 'rgba(255,255,255,0.03)',
+          background: 'var(--surface-2)',
           border: '1px solid var(--border-dim)',
           padding: '6px 12px',
           borderRadius: 12,
           fontSize: '0.78rem'
         }}>
-          <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--success)', boxShadow: '0 0 8px var(--success)' }} />
+          <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--success)' }} />
           <span style={{ color: 'var(--text-muted)' }}>Occupancy Rate:</span>
           <strong style={{ color: 'var(--primary)' }}>{occupancyPct}%</strong>
         </div>
@@ -163,14 +163,14 @@ export default function Dashboard() {
             {[
               { label: 'Rooms', sub: 'Beds & Floors', path: '/rooms', icon: BedDouble, color: 'var(--primary)', bg: 'rgba(249,115,22,0.12)' },
               { label: 'Fees', sub: 'Collect Dues', path: '/fees', icon: IndianRupee, color: 'var(--success)', bg: 'rgba(34,197,94,0.12)' },
-              { label: 'Students', sub: 'Roster', path: '/students', icon: Users, color: '#818cf8', bg: 'rgba(129,140,248,0.12)' },
-              { label: 'Complaints', sub: 'Support', path: '/complaints', icon: AlertCircle, color: stats.activeComplaints > 0 ? 'var(--danger)' : 'var(--text-muted)', bg: stats.activeComplaints > 0 ? 'rgba(239,68,68,0.14)' : 'rgba(255,255,255,0.04)' },
+              { label: 'Students', sub: 'Roster', path: '/students', icon: Users, color: 'var(--text-main)', bg: 'var(--surface-3)' },
+              { label: 'Complaints', sub: 'Support', path: '/complaints', icon: AlertCircle, color: stats.activeComplaints > 0 ? 'var(--danger)' : 'var(--text-muted)', bg: stats.activeComplaints > 0 ? 'rgba(239,68,68,0.14)' : 'var(--surface-3)' },
             ].map(({ label, path, icon: Icon, color, bg }) => (
               <button
                 key={label}
                 onClick={() => navigate(path)}
                 style={{
-                  background: 'rgba(255,255,255,0.02)',
+                  background: 'var(--surface-2)',
                   border: '1px solid var(--border-dim)',
                   borderRadius: 12,
                   padding: '10px 4px',
@@ -197,8 +197,8 @@ export default function Dashboard() {
       {/* ─── 3. Operational Attention & Alerts Banner ──────────────── */}
       {(stats.activeComplaints > 0 || stats.pendingFees > 0) ? (
         <div style={{
-          background: 'linear-gradient(135deg, rgba(239,68,68,0.06), rgba(249,115,22,0.08))',
-          border: '1px solid rgba(249,115,22,0.25)',
+          background: 'var(--surface-2)',
+          border: '1px solid var(--border-light)',
           borderRadius: 14,
           padding: isMobile ? '12px 14px' : '14px 18px',
           display: 'flex',
@@ -555,7 +555,7 @@ export default function Dashboard() {
                         padding: '2px 8px',
                         borderRadius: 6,
                         border: 'none',
-                        background: activityFilter === f ? 'rgba(249,115,22,0.2)' : 'rgba(255,255,255,0.04)',
+                        background: activityFilter === f ? 'rgba(249,115,22,0.16)' : 'var(--surface-3)',
                         color: activityFilter === f ? 'var(--primary)' : 'var(--text-muted)',
                         fontSize: '0.65rem',
                         fontWeight: 700,
@@ -584,13 +584,13 @@ export default function Dashboard() {
                         alignItems: 'center',
                         padding: '6px 8px',
                         borderRadius: 8,
-                        background: 'rgba(255,255,255,0.02)',
-                        border: '1px solid rgba(255,255,255,0.03)',
+                        background: 'var(--surface-3)',
+                        border: '1px solid transparent',
                         cursor: 'pointer',
-                        transition: 'background 0.15s ease'
+                        transition: 'border-color 0.15s ease'
                       }}
-                      onMouseOver={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
-                      onMouseOut={e => e.currentTarget.style.background = 'rgba(255,255,255,0.02)'}
+                      onMouseOver={e => e.currentTarget.style.borderColor = 'var(--border-light)'}
+                      onMouseOut={e => e.currentTarget.style.borderColor = 'transparent'}
                     >
                       <div style={{
                         width: 30,
