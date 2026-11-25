@@ -672,13 +672,13 @@ export default function Fees() {
             className="primary-btn" 
             disabled={triggeringReminders}
             onClick={handleSendReminders}
-            style={{ background: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)', boxShadow: '0 4px 14px rgba(249,115,22,0.3)', gap: '8px' }}>
+            style={{ gap: '8px' }}>
             {triggeringReminders ? <Clock size={16} className="animate-spin" /> : <Send size={16} />}
             {triggeringReminders ? 'Sending Reminders…' : isMobile ? 'Send Reminders' : 'Send Fee Reminders Now (7 PM IST)'}
           </button>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-dim)', borderRadius: 10, padding: '8px 12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--surface-input)', border: '1px solid var(--border-light)', borderRadius: 10, padding: '8px 12px' }}>
             <Calendar size={16} color="var(--primary)" />
-            <select className="custom-select" style={{ background: 'transparent', border: 'none', padding: 0, color: 'var(--text-main)' }}
+            <select className="custom-select" style={{ background: 'transparent', border: 'none', padding: 0, height: 'auto', color: 'var(--text-main)' }}
               value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)}>
               {MONTHS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
             </select>
@@ -757,7 +757,7 @@ export default function Fees() {
         
         {/* Mobile Tabs */}
         {isMobile && (
-          <div style={{ display: 'flex', gap: '8px', marginBottom: '1rem', background: 'rgba(255,255,255,0.05)', padding: '6px', borderRadius: 12 }}>
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '1rem', background: 'var(--surface-input)', border: '1px solid var(--border-dim)', padding: '5px', borderRadius: 12 }}>
             <button onClick={() => setMobileTab('status')} style={{ flex: 1, padding: '10px', borderRadius: 8, border: 'none', background: mobileTab === 'status' ? 'var(--primary)' : 'transparent', color: mobileTab === 'status' ? '#fff' : 'var(--text-muted)', fontWeight: 600, fontSize: '0.85rem' }}>Student Status</button>
             <button onClick={() => setMobileTab('transactions')} style={{ flex: 1, padding: '10px', borderRadius: 8, border: 'none', background: mobileTab === 'transactions' ? 'var(--primary)' : 'transparent', color: mobileTab === 'transactions' ? '#fff' : 'var(--text-muted)', fontWeight: 600, fontSize: '0.85rem' }}>Recent Txns</button>
           </div>
@@ -765,28 +765,28 @@ export default function Fees() {
 
         {/* Left: Student fee status table */}
         {(!isMobile || mobileTab === 'status') && (
-        <div className="glass-panel" style={{ padding: '1.5rem', position: 'relative' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-            <h3 style={{ margin: 0 }}>Student Fee Status — {MONTHS.find(m => m.value === selectedMonth)?.label}</h3>
+        <div className="glass-panel" style={{ padding: isMobile ? '1.1rem' : '1.35rem', position: 'relative', minWidth: 0 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', gap: '8px' }}>
+            <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700 }}>Student Fee Status — {MONTHS.find(m => m.value === selectedMonth)?.label}</h3>
             {isMobile && (
-              <button className="icon-btn-small" onClick={() => setShowMobileFilters(true)}>
-                <Search size={16} /> Filters
+              <button className="icon-btn-small" style={{ width: 'auto', padding: '0 10px', gap: 5, fontSize: '0.78rem', fontWeight: 600 }} onClick={() => setShowMobileFilters(true)}>
+                <Search size={14} /> Filters
               </button>
             )}
           </div>
 
           {/* Filters (Desktop) */}
           {!isMobile && (
-          <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1rem' }}>
-            <div className="search-bar" style={{ flex: 1 }}>
+          <div style={{ display: 'flex', gap: '0.6rem', marginBottom: '1rem' }}>
+            <div className="search-bar" style={{ flex: 1, minWidth: 0 }}>
               <Search size={14} color="var(--text-muted)" />
               <input placeholder="Search student or room…" value={search} onChange={e => setSearch(e.target.value)} />
             </div>
             {(['all', 'Paid', 'Pending'] as const).map(f => (
               <button key={f} onClick={() => setFeeFilter(f)}
-                style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid', fontSize: '0.8rem', cursor: 'pointer', transition: 'all 0.2s',
+                style={{ padding: '6px 14px', borderRadius: 10, border: '1px solid', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s', flexShrink: 0,
                   borderColor: feeFilter === f ? 'var(--primary)' : 'var(--border-dim)',
-                  background: feeFilter === f ? 'rgba(249,115,22,0.1)' : 'transparent',
+                  background: feeFilter === f ? 'rgba(249,115,22,0.14)' : 'var(--surface-input)',
                   color: feeFilter === f ? 'var(--primary)' : 'var(--text-muted)' }}>
                 {f === 'all' ? 'All' : f}
               </button>
@@ -794,121 +794,101 @@ export default function Fees() {
           </div>
           )}
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '520px', overflowY: 'auto' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '540px', overflowY: 'auto', paddingRight: '4px' }}>
             {loading ? (
               <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>Loading…</div>
             ) : filtered.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>No students found.</div>
-            ) : filtered.map(s => (
+            ) : filtered.map(s => {
+              const notifyLabel = s.whatsappStatus === 'SENT_EMAIL'
+                ? 'Email Sent'
+                : s.whatsappStatus === 'READ'
+                ? 'WA Read'
+                : s.whatsappStatus === 'DELIVERED'
+                ? 'WA Delivered'
+                : s.whatsappStatus === 'SENT'
+                ? 'WA Sent'
+                : s.whatsappStatus;
+
+              return (
               <div key={s.studentId} className="fee-row-item" style={{
-                flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'stretch' : 'center',
-                border: `1px solid ${s.feeStatus === 'Paid' ? 'rgba(34,197,94,0.25)' : 'rgba(234,179,8,0.2)'}`,
+                flexDirection: 'column',
+                alignItems: 'stretch',
+                gap: '10px',
+                border: '1px solid var(--border-dim)',
                 animation: 'slideInUp 0.3s ease-out'
               }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: 0 }}>
-                  {/* Avatar */}
-                  <div style={{ width: 38, height: 38, borderRadius: 10, background: 'linear-gradient(135deg, var(--primary), var(--accent))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: '#fff', flexShrink: 0 }}>
-                    {s.name.charAt(0)}
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 600, fontSize: '0.9rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.name}</div>
-                    <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                      <span>{s.course}{s.branch ? ` · ${s.branch}` : ''} · {s.room}</span>
-                      {s.dueDayLabel && (
-                        <span style={{ background: 'rgba(249,115,22,0.12)', color: 'var(--primary)', padding: '1px 6px', borderRadius: 4, fontSize: '0.7rem', fontWeight: 600 }}>
-                          Due: {s.dueDayLabel}
-                        </span>
-                      )}
-                      {s.pendingMonthsCount > 1 && (
-                        <span style={{ background: 'rgba(239,68,68,0.15)', color: '#f87171', padding: '1px 6px', borderRadius: 4, fontSize: '0.7rem', fontWeight: 700 }}>
-                          {s.pendingMonthsCount} Mos Overdue (₹{s.totalPendingAmount?.toLocaleString('en-IN')})
-                        </span>
-                      )}
-                      {(s.advanceCredit || 0) > 0 && (
-                        <span style={{ background: 'rgba(34,197,94,0.12)', color: 'var(--success)', border: '1px solid rgba(34,197,94,0.28)', padding: '1px 6px', borderRadius: 4, fontSize: '0.7rem', fontWeight: 700 }}>
-                          Rent Credit: ₹{Number(s.advanceCredit).toLocaleString('en-IN')}
-                        </span>
-                      )}
-                      {(s.securityDeposit || 0) > 0 && (
-                        <span style={{ background: 'rgba(34,197,94,0.12)', color: 'var(--success)', border: '1px solid rgba(34,197,94,0.28)', padding: '1px 6px', borderRadius: 4, fontSize: '0.7rem', fontWeight: 700 }}>
-                          Advance Held: ₹{Number(s.securityDeposit).toLocaleString('en-IN')}
-                        </span>
-                      )}
+                {/* Row Top: Identity + Primary Status/Action */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: '1 1 180px', minWidth: 0 }}>
+                    <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--surface-2)', border: '1px solid var(--border-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: 'var(--text-main)', flexShrink: 0, fontSize: '0.88rem' }}>
+                      {s.name.charAt(0).toUpperCase()}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 700, fontSize: '0.92rem', color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {s.name}
+                      </div>
+                      <div style={{ color: 'var(--text-muted)', fontSize: '0.74rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {[s.course, s.branch && s.branch !== 'General' ? s.branch : null, s.room && s.room !== 'Unallocated' ? `Room ${s.room}` : 'Unallocated'].filter(Boolean).join(' · ')}
+                      </div>
                     </div>
                   </div>
-                </div>
-                
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: isMobile ? 'space-between' : 'flex-end', gap: '12px', marginTop: isMobile ? '4px' : 0, paddingTop: isMobile ? '8px' : 0, borderTop: isMobile ? '1px dashed rgba(255,255,255,0.05)' : 'none' }}>
-                  {/* Fee status badge */}
-                  {s.feeStatus === 'Paid' ? (
-                    <span style={{
-                      fontSize: '0.72rem', fontWeight: 700, padding: '4px 10px', borderRadius: 20,
-                      background: 'rgba(34,197,94,0.15)',
-                      color: 'var(--success)',
-                      border: '1px solid rgba(34,197,94,0.3)',
-                      flexShrink: 0,
-                      display: 'flex', alignItems: 'center', gap: '4px'
-                    }}>
-                      <CheckCircle2 size={12} /> PAID
-                    </span>
-                  ) : s.feeStatus === 'Not Enrolled' ? (
-                    <span style={{
-                      fontSize: '0.72rem', fontWeight: 600, padding: '4px 10px', borderRadius: 20,
-                      background: 'rgba(255,255,255,0.06)',
-                      color: 'var(--text-muted)',
-                      border: '1px solid rgba(255,255,255,0.1)',
-                      flexShrink: 0,
-                      display: 'flex', alignItems: 'center', gap: '4px'
-                    }}>
-                      Joined {s.joiningMonthLabel || 'Later'}
-                    </span>
-                  ) : s.feeStatus === 'Upcoming' ? (
-                    <span style={{
-                      fontSize: '0.72rem', fontWeight: 700, padding: '4px 10px', borderRadius: 20,
-                      background: 'rgba(56,189,248,0.15)',
-                      color: '#38bdf8',
-                      border: '1px solid rgba(56,189,248,0.3)',
-                      flexShrink: 0,
-                      display: 'flex', alignItems: 'center', gap: '4px'
-                    }}>
-                      <Clock size={12} /> DUE {s.dueDayLabel || '10TH'}
-                    </span>
-                  ) : (
-                    <span style={{
-                      fontSize: '0.72rem', fontWeight: 700, padding: '4px 10px', borderRadius: 20,
-                      background: 'rgba(234,179,8,0.15)',
-                      color: 'var(--warning)',
-                      border: '1px solid rgba(234,179,8,0.3)',
-                      flexShrink: 0,
-                      display: 'flex', alignItems: 'center', gap: '4px'
-                    }}>
-                      <Clock size={12} /> OVERDUE
-                    </span>
-                  )}
-                  {/* WhatsApp status badge if available */}
-                  {s.feeStatus === 'Paid' && s.whatsappStatus && (
-                    <span style={{
-                      fontSize: '0.68rem', fontWeight: 600, padding: '2px 7px', borderRadius: 4,
-                      background: s.whatsappStatus === 'READ' ? 'rgba(59,130,246,0.15)' : s.whatsappStatus === 'DELIVERED' ? 'rgba(34,197,94,0.15)' : 'rgba(249,115,22,0.15)',
-                      color: s.whatsappStatus === 'READ' ? '#60a5fa' : s.whatsappStatus === 'DELIVERED' ? '#4ade80' : '#fb923c',
-                      border: '1px solid rgba(255,255,255,0.1)'
-                    }} title={`Meta WhatsApp Status: ${s.whatsappStatus}`}>
-                      WA: {s.whatsappStatus}
-                    </span>
-                  )}
-                  {/* Actions */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+
+                  {/* Right Status + Action Cluster */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+                    {s.feeStatus === 'Paid' ? (
+                      <span style={{
+                        fontSize: '0.7rem', fontWeight: 700, padding: '4px 10px', borderRadius: 20,
+                        background: 'rgba(34,197,94,0.14)',
+                        color: 'var(--success)',
+                        border: '1px solid rgba(34,197,94,0.3)',
+                        display: 'inline-flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap'
+                      }}>
+                        <CheckCircle2 size={12} /> Paid
+                      </span>
+                    ) : s.feeStatus === 'Not Enrolled' ? (
+                      <span style={{
+                        fontSize: '0.7rem', fontWeight: 600, padding: '4px 10px', borderRadius: 20,
+                        background: 'var(--surface-2)',
+                        color: 'var(--text-muted)',
+                        border: '1px solid var(--border-dim)',
+                        whiteSpace: 'nowrap'
+                      }}>
+                        Joined {s.joiningMonthLabel || 'Later'}
+                      </span>
+                    ) : s.feeStatus === 'Upcoming' ? (
+                      <span style={{
+                        fontSize: '0.7rem', fontWeight: 600, padding: '4px 10px', borderRadius: 20,
+                        background: 'var(--surface-2)',
+                        color: 'var(--text-muted)',
+                        border: '1px solid var(--border-dim)',
+                        display: 'inline-flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap'
+                      }}>
+                        <Clock size={12} /> Due {s.dueDayLabel || '10th'}
+                      </span>
+                    ) : (
+                      <span style={{
+                        fontSize: '0.7rem', fontWeight: 700, padding: '4px 10px', borderRadius: 20,
+                        background: 'rgba(234,179,8,0.12)',
+                        color: 'var(--warning)',
+                        border: '1px solid rgba(234,179,8,0.24)',
+                        display: 'inline-flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap'
+                      }}>
+                        <Clock size={12} /> Overdue
+                      </span>
+                    )}
+
                     {s.feeStatus === 'Pending' && (
                       <button
                         className="icon-btn-small"
-                        title={`Send Personal Voice & Text Reminder to ${s.name}`}
+                        title={`Send Personal Reminder to ${s.name}`}
                         disabled={sendingReminderId === s.studentId}
                         onClick={() => handleSendIndividualReminder(s)}
-                        style={{ color: 'var(--primary)', border: '1px solid rgba(249,115,22,0.25)', background: 'rgba(249,115,22,0.08)' }}
                       >
                         {sendingReminderId === s.studentId ? <Clock size={13} className="animate-spin" /> : <Send size={13} />}
                       </button>
                     )}
+
                     {s.feeStatus === 'Paid' ? (
                       s.feeRecordId ? (
                         <>
@@ -917,8 +897,8 @@ export default function Fees() {
                             target="_blank"
                             rel="noopener noreferrer"
                             className="icon-btn-small"
-                            title="Download Official PDF Receipt (Stored in PostgreSQL)"
-                            style={{ color: '#4ade80', border: '1px solid rgba(74,222,128,0.3)', background: 'rgba(74,222,128,0.1)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                            title="Download Official PDF Receipt"
+                            style={{ textDecoration: 'none' }}
                           >
                             <FileText size={14} />
                           </a>
@@ -927,30 +907,65 @@ export default function Fees() {
                             title={`Email Detailed Invoice & PDF Receipt to ${s.name}`}
                             disabled={emailingFeeId === s.feeRecordId}
                             onClick={() => handleEmailReceipt(s.feeRecordId, s.name)}
-                            style={{ color: '#38bdf8', border: '1px solid rgba(56,189,248,0.3)', background: 'rgba(56,189,248,0.1)' }}
                           >
                             {emailingFeeId === s.feeRecordId ? <Clock size={14} className="animate-spin" /> : <Mail size={14} />}
                           </button>
-                          <button className="icon-btn-small" title="Print Receipt Template"
-                            onClick={() => setViewingReceipt(s)}>
+                          <button className="icon-btn-small" title="Print Receipt Template" onClick={() => setViewingReceipt(s)}>
                             <Printer size={14} />
                           </button>
                         </>
                       ) : (
-                        <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', padding: '3px 9px', borderRadius: 8, background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-dim)', whiteSpace: 'nowrap' }}>
-                          {s.paidViaAdvance ? 'Covered by Advance' : 'Settled (Prior)'}
+                        <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', padding: '3px 9px', borderRadius: 20, background: 'var(--surface-2)', border: '1px solid var(--border-dim)', whiteSpace: 'nowrap' }}>
+                          {s.paidViaAdvance ? 'Advance Settled' : 'Settled (Prior)'}
                         </span>
                       )
                     ) : s.feeStatus === 'Not Enrolled' ? null : (
-                      <button className="primary-btn" style={{ padding: '5px 12px', fontSize: '0.75rem', minHeight: 32, flexShrink: 0 }}
+                      <button className="primary-btn" style={{ padding: '5px 12px', fontSize: '0.76rem', minHeight: 32, borderRadius: 10, boxShadow: 'none' }}
                         onClick={() => setPayingStudent(s)}>
                         <IndianRupee size={12} /> Pay
                       </button>
                     )}
                   </div>
                 </div>
+
+                {/* Row Bottom Tags (Only shown when relevant tags exist) */}
+                {(s.dueDayLabel || s.pendingMonthsCount > 1 || (s.advanceCredit || 0) > 0 || (s.securityDeposit || 0) > 0 || (s.feeStatus === 'Paid' && s.whatsappStatus)) && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', paddingTop: '6px', borderTop: '1px solid var(--border-dim)' }}>
+                    {s.dueDayLabel && (
+                      <span style={{ background: 'var(--surface-2)', border: '1px solid var(--border-dim)', color: 'var(--text-muted)', padding: '2px 8px', borderRadius: 6, fontSize: '0.69rem', fontWeight: 600 }}>
+                        Due: {s.dueDayLabel}
+                      </span>
+                    )}
+                    {s.pendingMonthsCount > 1 && (
+                      <span style={{ background: 'rgba(239,68,68,0.12)', color: 'var(--danger)', padding: '2px 8px', borderRadius: 6, fontSize: '0.69rem', fontWeight: 700 }}>
+                        {s.pendingMonthsCount} Mos Overdue (₹{s.totalPendingAmount?.toLocaleString('en-IN')})
+                      </span>
+                    )}
+                    {(s.advanceCredit || 0) > 0 && (
+                      <span style={{ background: 'rgba(52,211,153,0.1)', color: 'var(--success)', padding: '2px 8px', borderRadius: 6, fontSize: '0.69rem', fontWeight: 600 }}>
+                        Rent Credit: ₹{Number(s.advanceCredit).toLocaleString('en-IN')}
+                      </span>
+                    )}
+                    {(s.securityDeposit || 0) > 0 && (
+                      <span style={{ background: 'rgba(52,211,153,0.1)', color: 'var(--success)', padding: '2px 8px', borderRadius: 6, fontSize: '0.69rem', fontWeight: 600 }}>
+                        Advance Held: ₹{Number(s.securityDeposit).toLocaleString('en-IN')}
+                      </span>
+                    )}
+                    {s.feeStatus === 'Paid' && notifyLabel && (
+                      <span style={{
+                        fontSize: '0.69rem', fontWeight: 600, padding: '2px 8px', borderRadius: 6,
+                        background: 'var(--surface-2)',
+                        color: 'var(--text-muted)',
+                        border: '1px solid var(--border-dim)'
+                      }}>
+                        {notifyLabel}
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
         )}
@@ -958,10 +973,10 @@ export default function Fees() {
 
         {/* Right: Chart + Monthly transactions */}
         {(!isMobile || mobileTab === 'transactions') && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', minWidth: 0 }}>
           {/* Fee statistics panel */}
-          <div className="glass-panel" style={{ padding: '1.5rem' }}>
-            <h3 style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div className="glass-panel" style={{ padding: isMobile ? '1.1rem' : '1.35rem', minWidth: 0 }}>
+            <h3 style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1.05rem', fontWeight: 700 }}>
               <TrendingUp size={18} color="var(--primary)" /> Fee Statistics
             </h3>
             <div className="responsive-grid-2" style={{ gap: '0.875rem', marginBottom: '1rem' }}>
@@ -971,7 +986,7 @@ export default function Fees() {
                 { label: 'Total Revenue', value: `₹${totalRevenue.toLocaleString()}`, color: 'var(--primary)', icon: IndianRupee, sub: `${transactions.length} transactions` },
                 { label: 'Avg Per Student', value: transactions.length > 0 ? `₹${Math.round(totalRevenue / transactions.length).toLocaleString()}` : '—', color: 'var(--accent)', icon: IndianRupee, sub: 'per payment' },
               ].map(({ label, value, color, icon: Icon, sub }) => (
-                <div key={label} style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 12, padding: '0.875rem', border: '1px solid rgba(255,255,255,0.06)' }}>
+                <div key={label} style={{ background: 'var(--surface-3)', borderRadius: 12, padding: '0.875rem', border: '1px solid var(--border-dim)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: 4 }}>
                     <Icon size={13} color={color} />
                     <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{label}</span>
@@ -982,13 +997,13 @@ export default function Fees() {
               ))}
             </div>
             {/* Payment method breakdown */}
-            <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '0.875rem' }}>
+            <div style={{ borderTop: '1px solid var(--border-dim)', paddingTop: '0.875rem' }}>
               <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '0.625rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>Payment Methods (This Month)</div>
-              <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                 {Object.entries(methodBreakdown).length === 0
                   ? <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>No data yet</div>
                   : Object.entries(methodBreakdown).map(([method, count]: [string, any]) => (
-                    <div key={method} style={{ background: 'rgba(249,115,22,0.1)', border: '1px solid rgba(249,115,22,0.2)', borderRadius: 8, padding: '4px 12px', fontSize: '0.78rem', fontWeight: 700, color: 'var(--primary)' }}>
+                    <div key={method} style={{ background: 'var(--surface-3)', border: '1px solid var(--border-dim)', borderRadius: 8, padding: '4px 10px', fontSize: '0.76rem', fontWeight: 600, color: 'var(--text-main)' }}>
                       {method}: {count}
                     </div>
                   ))
@@ -998,9 +1013,9 @@ export default function Fees() {
           </div>
 
           {/* This month's transaction list */}
-          <div className="glass-panel" style={{ padding: '1.5rem', flex: 1, overflow: 'hidden' }}>
+          <div className="glass-panel" style={{ padding: isMobile ? '1.1rem' : '1.35rem', flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-            <h3 style={{ margin: 0 }}>Recent Transactions</h3>
+            <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700 }}>Recent Transactions</h3>
           </div>
           {/* Serial number search */}
           <div className="search-bar" style={{ marginBottom: '1rem' }}>
@@ -1014,53 +1029,59 @@ export default function Fees() {
               <button onClick={() => setSerialSearch('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '0 4px' }}>✕</button>
             )}
           </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '520px', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '520px', overflowY: 'auto', paddingRight: '4px' }}>
               {monthTx.length === 0 ? (
                 <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', textAlign: 'center', padding: '1rem' }}>
                   {serialSearch ? `No receipt found for "${serialSearch}"` : 'No transactions found.'}
                 </div>
               ) : monthTx.map(tx => (
                 <div key={tx.id} className="fee-row-item" style={{
-                  border: serialSearch && tx.receiptNo?.toLowerCase().includes(serialSearch.toLowerCase()) ? '1px solid rgba(249,115,22,0.5)' : '1px solid rgba(34,197,94,0.2)',
+                  flexWrap: 'wrap',
+                  border: serialSearch && tx.receiptNo?.toLowerCase().includes(serialSearch.toLowerCase()) ? '1px solid var(--primary)' : '1px solid var(--border-dim)',
                   animation: 'slideInUp 0.3s ease-out'
                 }}>
-                  {/* Avatar */}
-                  <div style={{ width: 38, height: 38, borderRadius: 10, background: 'linear-gradient(135deg, var(--primary), var(--accent))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: '#fff', flexShrink: 0 }}>
-                    {tx.student.charAt(0)}
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 600, fontSize: '0.9rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{tx.student}</div>
-                    <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
-                      {tx.monthLabel} · {tx.date}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: '1 1 160px', minWidth: 0 }}>
+                    <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--surface-2)', border: '1px solid var(--border-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: 'var(--text-main)', flexShrink: 0, fontSize: '0.88rem' }}>
+                      {tx.student.charAt(0).toUpperCase()}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 700, fontSize: '0.92rem', color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {tx.student}
+                      </div>
+                      <div style={{ color: 'var(--text-muted)', fontSize: '0.74rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {tx.monthLabel} · {tx.date}
+                      </div>
                     </div>
                   </div>
-                  <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
-                    <div style={{ fontWeight: 700, color: 'var(--success)', fontSize: '0.9rem' }}>₹{Number(tx.amount).toLocaleString()}</div>
-                    {tx.receiptNo && <div style={{ color: 'var(--primary)', fontSize: '0.7rem', fontWeight: 700 }}>S.No: {tx.receiptNo}</div>}
-                  </div>
-                  <div style={{ display: 'flex', gap: '4px', marginLeft: '4px' }}>
-                    <a
-                      href={`/api/fees/receipt/${tx.id}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="icon-btn-small"
-                      title="Download PDF Receipt (From PostgreSQL)"
-                      style={{ color: '#4ade80', border: '1px solid rgba(74,222,128,0.3)', background: 'rgba(74,222,128,0.1)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-                    >
-                      <FileText size={14} />
-                    </a>
-                    <button
-                      className="icon-btn-small"
-                      title={`Email Detailed Invoice & PDF Receipt to ${tx.student}`}
-                      disabled={emailingFeeId === tx.id}
-                      onClick={() => handleEmailReceipt(tx.id, tx.student)}
-                      style={{ color: '#38bdf8', border: '1px solid rgba(56,189,248,0.3)', background: 'rgba(56,189,248,0.1)' }}
-                    >
-                      {emailingFeeId === tx.id ? <Clock size={14} className="animate-spin" /> : <Mail size={14} />}
-                    </button>
-                    <button className="icon-btn-small" title="Print Receipt Template" onClick={() => setViewingReceipt({ ...tx, name: tx.student, room: tx.room, paymentDate: tx.date })}>
-                      <Printer size={14} />
-                    </button>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0, marginLeft: 'auto' }}>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontWeight: 700, color: 'var(--success)', fontSize: '0.94rem' }}>₹{Number(tx.amount).toLocaleString('en-IN')}</div>
+                      {tx.receiptNo && <div style={{ color: 'var(--text-muted)', fontSize: '0.69rem', fontWeight: 600 }}>S.No: {tx.receiptNo}</div>}
+                    </div>
+                    <div style={{ display: 'flex', gap: '6px' }}>
+                      <a
+                        href={`/api/fees/receipt/${tx.id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="icon-btn-small"
+                        title="Download PDF Receipt (From PostgreSQL)"
+                        style={{ textDecoration: 'none' }}
+                      >
+                        <FileText size={14} />
+                      </a>
+                      <button
+                        className="icon-btn-small"
+                        title={`Email Detailed Invoice & PDF Receipt to ${tx.student}`}
+                        disabled={emailingFeeId === tx.id}
+                        onClick={() => handleEmailReceipt(tx.id, tx.student)}
+                      >
+                        {emailingFeeId === tx.id ? <Clock size={14} className="animate-spin" /> : <Mail size={14} />}
+                      </button>
+                      <button className="icon-btn-small" title="Print Receipt Template" onClick={() => setViewingReceipt({ ...tx, name: tx.student, room: tx.room, paymentDate: tx.date })}>
+                        <Printer size={14} />
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}

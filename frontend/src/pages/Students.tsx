@@ -2285,10 +2285,10 @@ export default function Students() {
                     ) : (
                       <div style={{
                         width: 48, height: 48, borderRadius: 14,
-                        background: 'linear-gradient(135deg, rgba(249,115,22,0.2), rgba(99,102,241,0.2))',
-                        border: '1.5px solid rgba(255,255,255,0.1)',
+                        background: 'var(--surface-3)',
+                        border: '1.5px solid var(--border-light)',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontWeight: 800, fontSize: '1.2rem', color: '#fff'
+                        fontWeight: 800, fontSize: '1.2rem', color: 'var(--text-main)'
                       }}>
                         {student.name.charAt(0).toUpperCase()}
                       </div>
@@ -2298,8 +2298,7 @@ export default function Students() {
                         position: 'absolute', bottom: -3, right: -3,
                         width: 12, height: 12, borderRadius: '50%',
                         background: student.feeStatus === 'Paid' ? 'var(--success)' : 'var(--warning)',
-                        border: '2px solid var(--surface-2)',
-                        boxShadow: `0 0 6px ${student.feeStatus === 'Paid' ? 'var(--success)' : 'var(--warning)'}`
+                        border: '2px solid var(--surface-2)'
                       }} />
                     )}
                   </div>

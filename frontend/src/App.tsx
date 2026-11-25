@@ -65,7 +65,7 @@ function PageLoadingFallback() {
 function App() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isLightMode, setIsLightMode] = useState<boolean>(() => {
-    return localStorage.getItem('majin_theme') === 'light';
+    return localStorage.getItem('majin_theme') !== 'dark';
   });
   const [securityModalOpen, setSecurityModalOpen] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
@@ -89,12 +89,15 @@ function App() {
   }, [isAuthenticated]);
 
   useEffect(() => {
+    const themeMeta = document.querySelector('meta[name="theme-color"]');
     if (isLightMode) {
       document.body.classList.add('light-theme');
       localStorage.setItem('majin_theme', 'light');
+      if (themeMeta) themeMeta.setAttribute('content', '#f8fafc');
     } else {
       document.body.classList.remove('light-theme');
       localStorage.setItem('majin_theme', 'dark');
+      if (themeMeta) themeMeta.setAttribute('content', '#000000');
     }
   }, [isLightMode]);
 
