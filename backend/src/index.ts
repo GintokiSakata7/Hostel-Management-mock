@@ -6,13 +6,20 @@ try {
 } catch (e) {
   // Ignore in environments where setDefaultResultOrder is unavailable
 }
+
+process.on('uncaughtException', (err) => {
+  console.error('[Process] Uncaught Exception:', err);
+});
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('[Process] Unhandled Rejection at:', promise, 'reason:', reason);
+});
 import express from 'express';
 import cors from 'cors';
 import { PrismaClient } from '@prisma/client';
 import fs from 'fs';
 import path from 'path';
 import { initReminderScheduler, executeFeeReminderDispatch, executeSingleStudentReminder, getReminderScheduleSettings, updateReminderScheduleTime } from './services/reminderScheduler';
-import { calculateStudentDueStatus, getStudentMonthFeeStatus, computeStudentBillingLedger, getMonthlyFeeForMonth, getOrdinal, formatMonthLabel, getCycleForMonth, toMonthString } from './services/billingHelper';
+import { calculateStudentDueStatus, getStudentMonthFeeStatus, computeStudentBillingLedger, getMonthlyFeeForMonth, resolveInitialLedgerSnapshot, getOrdinal, formatMonthLabel, getCycleForMonth, toMonthString } from './services/billingHelper';
 import { generateFeeReceiptPDFBuffer } from './services/pdfService';
 import { sendPaymentReceiptEmail, sendEmail } from './services/emailService';
 import { createFinanceRouter } from './routes/financeRoutes';
@@ -417,8 +424,10 @@ app.get('/api/students', async (req, res) => {
   const [qYear, qMonth] = m.split('-').map(Number);
 
   const formatted = students.map(s => {
-    // Get fee record for specified month
-    const feeRecord = s.fees.find(f => f.month === m);
+    // Get latest completed fee record for specified month
+    const feeRecord = s.fees
+      .filter(f => f.month === m && f.status === 'Completed')
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0] || null;
     const bed = s.beds.length > 0 ? s.beds[0] : null;
     const dueStatus = calculateStudentDueStatus(s, monthlyFee, now);
     const monthStatus = getStudentMonthFeeStatus(s, m, now, monthlyFee);
@@ -444,9 +453,15 @@ app.get('/api/students', async (req, res) => {
       year: s.year,
       rollNumber: s.rollNumber,
       dateOfJoining: s.dateOfJoining,
+      billingStartMonth: (s as any).billingStartMonth || null,
+      openingBalance: Number((s as any).openingBalance) || 0,
+      advanceCredit: dueStatus.advanceCredit || 0,
+      securityDeposit: Number((s as any).securityDeposit) || 0,
       dateOfJoiningFormatted,
       joiningMonthLabel,
       isBeforeJoining,
+      isPreSettled: Boolean(monthStatus.isPreSettled),
+      paidViaAdvance: Boolean(monthStatus.paidViaAdvance),
       dueDayOfMonth: dueStatus.dueDayOfMonth,
       dueDayLabel: dueStatus.dueDayLabel,
       nextDueDate: dueStatus.nextDueDate,
@@ -455,6 +470,7 @@ app.get('/api/students', async (req, res) => {
       totalPendingAmount: isBeforeJoining ? 0 : dueStatus.totalPendingAmount,
       aadhar: s.aadhar,
       aadharCardUrl: (s as any).aadharCardUrl || null,
+      studentIdCardUrl: (s as any).studentIdCardUrl || null,
       phone: s.phone,
       parentName: s.parentName,
       parentPhone: s.parentPhone,
@@ -467,7 +483,6 @@ app.get('/api/students', async (req, res) => {
       state: s.state,
       address: s.address,
       pincode: s.pincode,
-      securityDeposit: s.securityDeposit,
       status: s.status,
       // Notice Period / Departure details
       isOnNotice: (s as any).isOnNotice || false,
@@ -519,23 +534,57 @@ app.post('/api/students', async (req, res) => {
     const {
       name, gender, dob, email, photoUrl,
       course, branch, year, rollNumber,
-      dateOfJoining, aadhar, aadharCardUrl, phone,
+      dateOfJoining, aadhar, aadharCardUrl, studentIdCardUrl, phone,
       parentName, parentPhone, parentRelationship, parentAltPhone, parentAddress,
       emergencyName, emergencyPhone, emergencyRelationship,
       state, address, pincode, securityDeposit, feeStatus, status,
-      isOnNotice, noticeVacateDate, noticeReason
+      isOnNotice, noticeVacateDate, noticeReason,
+      feeStatusPreset, unpaidMonthsCount, openingAmount, billingStartMonth, openingBalance
     } = req.body;
+    const joinDateObj = dateOfJoining ? new Date(dateOfJoining) : new Date();
+    const ledgerInit = resolveInitialLedgerSnapshot({
+      dateOfJoining: joinDateObj,
+      feeStatusPreset,
+      unpaidMonthsCount,
+      openingAmount,
+      billingStartMonth,
+      openingBalance
+    }, new Date());
+    const initDue = calculateStudentDueStatus(
+      {
+        id: 'new',
+        name: name || '',
+        dateOfJoining: joinDateObj,
+        billingStartMonth: ledgerInit.billingStartMonth,
+        openingBalance: ledgerInit.openingBalance,
+        fees: []
+      } as any,
+      undefined,
+      new Date()
+    );
+    const computedInitialFeeStatus = feeStatusPreset && feeStatusPreset !== 'default'
+      ? (initDue.totalPendingAmount > 0 ? 'Pending' : 'Paid')
+      : (feeStatus || (initDue.totalPendingAmount > 0 ? 'Pending' : 'Paid'));
+
     const student = await prisma.student.create({
       data: {
         name, gender, dob: dob ? new Date(dob) : undefined, email, photoUrl,
-        course, branch, year, rollNumber,
-        dateOfJoining: dateOfJoining ? new Date(dateOfJoining) : undefined,
-        aadhar, aadharCardUrl, phone,
+        course,
+        branch: branch || 'General',
+        year: year || '1st Year',
+        rollNumber,
+        dateOfJoining: joinDateObj,
+        billingStartMonth: ledgerInit.billingStartMonth,
+        openingBalance: ledgerInit.openingBalance,
+        aadhar,
+        aadharCardUrl: aadharCardUrl || undefined,
+        studentIdCardUrl: studentIdCardUrl || undefined,
+        phone,
         parentName, parentPhone, parentRelationship, parentAltPhone, parentAddress,
         emergencyName, emergencyPhone, emergencyRelationship,
         state, address, pincode,
-        securityDeposit: securityDeposit ? Number(securityDeposit) : undefined,
-        feeStatus: feeStatus || 'Pending',
+        securityDeposit: securityDeposit !== undefined && securityDeposit !== null && securityDeposit !== '' ? Number(securityDeposit) : undefined,
+        feeStatus: computedInitialFeeStatus,
         status: status || 'Active',
         isOnNotice: Boolean(isOnNotice),
         noticeVacateDate: noticeVacateDate ? new Date(noticeVacateDate) : undefined,
@@ -554,28 +603,50 @@ app.put('/api/students/:id', async (req, res) => {
     const {
       name, gender, dob, email, photoUrl,
       course, branch, year, rollNumber,
-      dateOfJoining, aadhar, aadharCardUrl, phone,
+      dateOfJoining, aadhar, aadharCardUrl, studentIdCardUrl, phone,
       parentName, parentPhone, parentRelationship, parentAltPhone, parentAddress,
       emergencyName, emergencyPhone, emergencyRelationship,
       state, address, pincode, securityDeposit, feeStatus, status,
-      isOnNotice, noticeVacateDate, noticeReason
+      isOnNotice, noticeVacateDate, noticeReason,
+      feeStatusPreset, unpaidMonthsCount, openingAmount, billingStartMonth, openingBalance
     } = req.body;
+    const updateData: any = {
+      name, gender, dob: dob ? new Date(dob) : undefined, email, photoUrl,
+      course, branch, year, rollNumber,
+      dateOfJoining: dateOfJoining ? new Date(dateOfJoining) : undefined,
+      aadhar,
+      aadharCardUrl: aadharCardUrl !== undefined ? (aadharCardUrl || null) : undefined,
+      studentIdCardUrl: studentIdCardUrl !== undefined ? (studentIdCardUrl || null) : undefined,
+      phone,
+      parentName, parentPhone, parentRelationship, parentAltPhone, parentAddress,
+      emergencyName, emergencyPhone, emergencyRelationship,
+      state, address, pincode,
+      securityDeposit: securityDeposit !== undefined && securityDeposit !== null && securityDeposit !== '' ? Number(securityDeposit) : undefined,
+      feeStatus, status,
+      isOnNotice: Boolean(isOnNotice),
+      noticeVacateDate: noticeVacateDate ? new Date(noticeVacateDate) : null,
+      noticeReason: noticeReason || null
+    };
+    if (feeStatusPreset !== undefined && feeStatusPreset !== 'keep') {
+      const joinDateObj = dateOfJoining ? new Date(dateOfJoining) : new Date();
+      const ledgerInit = resolveInitialLedgerSnapshot({
+        dateOfJoining: joinDateObj,
+        feeStatusPreset,
+        unpaidMonthsCount,
+        openingAmount,
+        billingStartMonth,
+        openingBalance
+      }, new Date());
+      updateData.billingStartMonth = ledgerInit.billingStartMonth;
+      updateData.openingBalance = ledgerInit.openingBalance;
+    } else if (billingStartMonth !== undefined || openingBalance !== undefined) {
+      if (billingStartMonth !== undefined) updateData.billingStartMonth = billingStartMonth || null;
+      if (openingBalance !== undefined) updateData.openingBalance = Number(openingBalance) || 0;
+    }
+
     const student = await prisma.student.update({
       where: { id },
-      data: {
-        name, gender, dob: dob ? new Date(dob) : undefined, email, photoUrl,
-        course, branch, year, rollNumber,
-        dateOfJoining: dateOfJoining ? new Date(dateOfJoining) : undefined,
-        aadhar, aadharCardUrl, phone,
-        parentName, parentPhone, parentRelationship, parentAltPhone, parentAddress,
-        emergencyName, emergencyPhone, emergencyRelationship,
-        state, address, pincode,
-        securityDeposit: securityDeposit ? Number(securityDeposit) : undefined,
-        feeStatus, status,
-        isOnNotice: Boolean(isOnNotice),
-        noticeVacateDate: noticeVacateDate ? new Date(noticeVacateDate) : null,
-        noticeReason: noticeReason || null
-      } as any
+      data: updateData
     });
     res.json(student);
   } catch (err: any) {
@@ -895,7 +966,9 @@ app.get('/api/rooms/:buildingId', async (req, res) => {
         // Use unified billing helper for accurate fee status
         const monthStatus = getStudentMonthFeeStatus(b.student, m, now, monthlyFee);
         const dueStatus = calculateStudentDueStatus(b.student, monthlyFee, now);
-        const feeRecord = b.student?.fees?.find(f => f.month === m && f.status === 'Completed') || null;
+        const feeRecord = (b.student?.fees || [])
+          .filter(f => f.month === m && f.status === 'Completed')
+          .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0] || null;
         return {
           id: b.id,
           bedIndex: idx + 1,
@@ -903,6 +976,10 @@ app.get('/api/rooms/:buildingId', async (req, res) => {
           student: b.student.name,
           studentDbId: b.student.id,
           feeStatus: monthStatus.status,
+          isPreSettled: Boolean(monthStatus.isPreSettled),
+          paidViaAdvance: Boolean(monthStatus.paidViaAdvance),
+          advanceCredit: dueStatus.advanceCredit || 0,
+          securityDeposit: Number((b.student as any).securityDeposit) || 0,
           cycleLabel: monthStatus.cycleLabel,
           dueDayLabel: monthStatus.cycleDueDay ? `${monthStatus.cycleDueDay}th` : null,
           hasArrears: monthStatus.hasAccumulatedArrears,
@@ -917,6 +994,10 @@ app.get('/api/rooms/:buildingId', async (req, res) => {
             phone: b.student.phone,
             parentName: b.student.parentName,
             feeStatus: monthStatus.status,
+            isPreSettled: Boolean(monthStatus.isPreSettled),
+            paidViaAdvance: Boolean(monthStatus.paidViaAdvance),
+            advanceCredit: dueStatus.advanceCredit || 0,
+            securityDeposit: Number((b.student as any).securityDeposit) || 0,
             cycleLabel: monthStatus.cycleLabel,
             feeRecord: feeRecord,
             totalPendingAmount: dueStatus.totalPendingAmount,
@@ -1047,12 +1128,11 @@ app.post('/api/beds/transfer', async (req, res) => {
 // Record a payment (with duplicate-month check)
 app.post('/api/fees/pay', async (req, res) => {
   const { studentId, amount, method, upiProvider, transactionRef, date, month } = req.body;
-  const m = month || currentMonth();
+  const rawMonth = month || currentMonth();
+  const isOpeningSettlement = rawMonth === 'OPENING';
+  const paymentDateObj = date ? new Date(date) : new Date();
+  const storageMonth = isOpeningSettlement ? toMonthString(paymentDateObj) : rawMonth;
   const settings = readSettings();
-  const standardFeeForMonth = getMonthlyFeeForMonth(m, settings);
-  const finalAmount = (amount !== undefined && amount !== null && !isNaN(Number(amount)) && Number(amount) > 0)
-    ? Number(amount)
-    : standardFeeForMonth;
   try {
     // Check student and calculate ledger before payment
     const studentBefore = await prisma.student.findUnique({
@@ -1064,19 +1144,40 @@ app.post('/api/fees/pay', async (req, res) => {
     }
 
     const ledgerBefore = computeStudentBillingLedger(studentBefore, undefined, new Date());
-    const existing = await prisma.fee.findFirst({ where: { studentId, month: m } });
+    const standardFeeForMonth = isOpeningSettlement
+      ? (ledgerBefore.pendingCycles.find(c => c.month === 'OPENING')?.remainingDue || getMonthlyFeeForMonth(storageMonth, settings))
+      : getMonthlyFeeForMonth(storageMonth, settings);
+    const finalAmount = (amount !== undefined && amount !== null && !isNaN(Number(amount)) && Number(amount) > 0)
+      ? Number(amount)
+      : standardFeeForMonth;
 
-    // Block payment only if the student has NO outstanding dues at all AND month m was already completed
+    // If settling from held Security Advance, verify sufficient balance
+    const heldAdvanceBefore = Number((studentBefore as any).securityDeposit) || 0;
+    const isUsingAdvance = method === 'Advance';
+    if (isUsingAdvance) {
+      if (heldAdvanceBefore <= 0) {
+        return res.status(400).json({ error: 'This student has no Advance Held balance available.' });
+      }
+      if (finalAmount > heldAdvanceBefore) {
+        return res.status(400).json({
+          error: `Requested amount (₹${finalAmount.toLocaleString('en-IN')}) exceeds Advance Held (₹${heldAdvanceBefore.toLocaleString('en-IN')}).`
+        });
+      }
+    }
+
+    const existing = await prisma.fee.findFirst({ where: { studentId, month: storageMonth } });
+
+    // Block payment only if the student has NO outstanding dues at all AND storageMonth was already completed
     if (existing && existing.status === 'Completed' && ledgerBefore.totalRemainingDue === 0) {
       return res.status(409).json({
-        error: `Fee for ${monthLabel(m)} has already been paid and all outstanding dues are cleared.`,
+        error: `Fee for ${monthLabel(storageMonth)} has already been paid and all outstanding dues are cleared.`,
         existing
       });
     }
 
     let fee;
-    // Generate a static receipt number YYMM-XXX based on the fee's month (e.g. 2609-001)
-    const prefix = m.substring(2, 4) + m.substring(5, 7); // "2026-09" -> "2609"
+    // Generate a static receipt number YYMM-XXX based on the fee's storageMonth (e.g. 2609-001)
+    const prefix = storageMonth.substring(2, 4) + storageMonth.substring(5, 7); // "2026-09" -> "2609"
     
     // Find the latest receipt in this month to increment
     const lastFee = await prisma.fee.findFirst({
@@ -1099,7 +1200,7 @@ app.post('/api/fees/pay', async (req, res) => {
           upiProvider: upiProvider || null,
           transactionRef: transactionRef || null,
           status: 'Completed',
-          date: date ? new Date(date) : new Date(),
+          date: paymentDateObj,
           receiptNo: (existing as any).receiptNo || generatedReceiptNo
         } as any
       });
@@ -1107,29 +1208,34 @@ app.post('/api/fees/pay', async (req, res) => {
       fee = await prisma.fee.create({
         data: {
           studentId,
-          month: m,
+          month: storageMonth,
           amount: finalAmount,
           method,
           upiProvider: upiProvider || null,
           transactionRef: transactionRef || null,
           status: 'Completed',
-          date: date ? new Date(date) : new Date(),
+          date: paymentDateObj,
           receiptNo: generatedReceiptNo
         } as any
       });
     }
 
-    // Recompute and sync Student.feeStatus after payment using unified ledger
+    // Recompute and sync Student.feeStatus & deduct Advance Held if paid from Advance
     const updatedForStatus = await prisma.student.findUnique({
       where: { id: studentId },
       include: { beds: { include: { room: { include: { building: true } } } }, fees: true }
     });
     let updatedLedger = ledgerBefore;
+    let remainingSecurityDeposit = heldAdvanceBefore;
     if (updatedForStatus) {
       updatedLedger = computeStudentBillingLedger(updatedForStatus, undefined, new Date());
+      remainingSecurityDeposit = isUsingAdvance ? Math.max(0, heldAdvanceBefore - finalAmount) : heldAdvanceBefore;
       await prisma.student.update({
         where: { id: studentId },
-        data: { feeStatus: updatedLedger.totalRemainingDue === 0 ? 'Paid' : 'Pending' }
+        data: {
+          feeStatus: updatedLedger.totalRemainingDue === 0 ? 'Paid' : 'Pending',
+          ...(isUsingAdvance ? { securityDeposit: remainingSecurityDeposit } : {})
+        }
       });
     }
     // Bust finance summary cache so Finance page reflects updated totals immediately
@@ -1146,10 +1252,11 @@ app.post('/api/fees/pay', async (req, res) => {
       const bed = student.beds[0] || null;
       const receiptNo = fee.receiptNo || generatedReceiptNo;
       const formattedDate = fee.date ? fee.date.toLocaleDateString('en-IN') : new Date().toLocaleDateString('en-IN');
-      const label = monthLabel(m);
+      const label = isOpeningSettlement ? 'Previous Balance Settlement' : monthLabel(storageMonth);
       const joinDate = student.dateOfJoining ? new Date(student.dateOfJoining) : new Date();
       const joinDay = joinDate.getDate() || 1;
-      const cycle = getCycleForMonth(joinDay, m);
+      const cycle = getCycleForMonth(joinDay, storageMonth);
+      const receiptCycleLabel = isOpeningSettlement ? 'Brought Forward Dues' : cycle.cycleLabel;
 
       // 1. Generate PDF Receipt Buffer
       try {
@@ -1157,7 +1264,7 @@ app.post('/api/fees/pay', async (req, res) => {
           receiptNo,
           paymentDate: formattedDate,
           monthLabel: label,
-          cycleLabel: cycle.cycleLabel,
+          cycleLabel: receiptCycleLabel,
           amount: finalAmount,
           remainingBalance: updatedLedger.totalRemainingDue,
           method,
@@ -1246,10 +1353,11 @@ app.post('/api/fees/pay', async (req, res) => {
 
         return res.json({
           ...fee,
-          monthLabel: monthLabel(m),
+          monthLabel: label,
           totalRemainingDue: updatedLedger.totalRemainingDue,
           pendingMonthsCount: updatedLedger.pendingCycles.length,
           advanceCredit: updatedLedger.advanceCredit,
+          securityDeposit: remainingSecurityDeposit,
           emailStatus: lastEmailSuccess === true ? 'SENT' : (lastEmailSuccess === false ? 'FAILED' : 'SKIPPED'),
           emailError: lastEmailError || undefined
         });
@@ -1261,10 +1369,11 @@ app.post('/api/fees/pay', async (req, res) => {
 
     res.json({
       ...fee,
-      monthLabel: monthLabel(m),
+      monthLabel: isOpeningSettlement ? 'Previous Balance Settlement' : monthLabel(storageMonth),
       totalRemainingDue: updatedLedger.totalRemainingDue,
       pendingMonthsCount: updatedLedger.pendingCycles.length,
-      advanceCredit: updatedLedger.advanceCredit
+      advanceCredit: updatedLedger.advanceCredit,
+      securityDeposit: remainingSecurityDeposit
     });
   } catch (err: any) {
     res.status(500).json({ error: 'Failed to record payment: ' + err.message });
@@ -1280,7 +1389,7 @@ app.post('/api/fees/unpay', async (req, res) => {
     if (existing) {
       await prisma.fee.delete({ where: { id: existing.id } });
 
-      // Recompute and sync Student.feeStatus after deletion
+      // Recompute and sync Student.feeStatus after deletion (and restore Advance Held if paid via Advance)
       const updatedStudent = await prisma.student.findUnique({
         where: { id: studentId },
         include: {
@@ -1289,13 +1398,16 @@ app.post('/api/fees/unpay', async (req, res) => {
         }
       });
       if (updatedStudent) {
-        // Use computeStudentBillingLedger (same as /api/fees/pay) for consistent feeStatus sync.
-        // Passing undefined lets getMonthlyFeeForMonth resolve the correct per-cycle fee,
-        // matching the pay path which never hardcodes a single monthlyFee value.
         const updatedLedger = computeStudentBillingLedger(updatedStudent, undefined, new Date());
+        const restoredDeposit = existing.method === 'Advance'
+          ? (Number((updatedStudent as any).securityDeposit) || 0) + (Number(existing.amount) || 0)
+          : undefined;
         await prisma.student.update({
           where: { id: studentId },
-          data: { feeStatus: updatedLedger.totalRemainingDue === 0 ? 'Paid' : 'Pending' }
+          data: {
+            feeStatus: updatedLedger.totalRemainingDue === 0 ? 'Paid' : 'Pending',
+            ...(restoredDeposit !== undefined ? { securityDeposit: restoredDeposit } : {})
+          }
         });
       }
       // Bust finance summary cache so Finance page reflects updated totals immediately
@@ -1623,7 +1735,9 @@ app.get('/api/fees/monthly-status', async (req, res) => {
   const now = new Date();
 
   const mapped = students.map(s => {
-    const feeRecord = s.fees.find(f => f.month === m && f.status === 'Completed') || null;
+    const feeRecord = s.fees
+      .filter(f => f.month === m && f.status === 'Completed')
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0] || null;
     const bed = s.beds[0] || null;
     const dueStatus = calculateStudentDueStatus(s, monthlyFee, now);
     const monthStatus = getStudentMonthFeeStatus(s, m, now, monthlyFee);
@@ -1646,9 +1760,15 @@ app.get('/api/fees/monthly-status', async (req, res) => {
       month: m,
       monthLabel: monthLabel(m),
       dateOfJoining: s.dateOfJoining,
+      billingStartMonth: (s as any).billingStartMonth || null,
+      openingBalance: Number((s as any).openingBalance) || 0,
+      advanceCredit: dueStatus.advanceCredit || 0,
+      securityDeposit: Number((s as any).securityDeposit) || 0,
       dateOfJoiningFormatted,
       joiningMonthLabel,
       isBeforeJoining,
+      isPreSettled: Boolean(monthStatus.isPreSettled),
+      paidViaAdvance: Boolean(monthStatus.paidViaAdvance),
       dueDayOfMonth: dueStatus.dueDayOfMonth,
       dueDayLabel: dueStatus.dueDayLabel,
       nextDueDate: dueStatus.nextDueDate,
@@ -1659,7 +1779,7 @@ app.get('/api/fees/monthly-status', async (req, res) => {
       feeStatus: monthStatus.status,
       cycleLabel: monthStatus.cycleLabel,
       hasArrears: dueStatus.pendingMonthsCount > 0,
-      amount: feeRecord?.amount || (isBeforeJoining ? 0 : (monthStatus.amountDue || getMonthlyFeeForMonth(m, settings))),
+      amount: feeRecord?.amount || (isBeforeJoining || monthStatus.isPreSettled ? 0 : (monthStatus.amountDue || getMonthlyFeeForMonth(m, settings))),
       paymentDate: feeRecord && feeRecord.status === 'Completed' ? feeRecord.date.toISOString().split('T')[0] : null,
       method: feeRecord?.method || null,
       upiProvider: feeRecord?.upiProvider || null,

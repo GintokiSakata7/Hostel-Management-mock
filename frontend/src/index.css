@@ -1,31 +1,39 @@
 :root {
   color-scheme: dark;
-  --bg-dark: #000;
+  --bg-dark: #000000;
+  --surface-1: #080808;
+  --surface-2: #111111;
+  --surface-3: #171717;
+  --surface-input: #0a0a0a;
   --primary: #f97316;
   --primary-hover: #ea580c;
   --accent: #f59e0b;
 
   --text-main: #ffffff;
-  --text-muted: rgba(255, 255, 255, 0.55);
+  --text-muted: #a1a1aa;
 
   --success: #22c55e;
   --warning: #eab308;
   --danger: #ef4444;
 
-  --border-light: rgba(255, 255, 255, 0.15);
-  --border-dim: rgba(255, 255, 255, 0.06);
+  --border-light: rgba(255, 255, 255, 0.16);
+  --border-dim: rgba(255, 255, 255, 0.09);
 
-  --modal-bg: #141722;
-  --modal-shadow: 0 24px 64px rgba(0, 0, 0, 0.6);
+  --modal-bg: #121212;
+  --modal-shadow: 0 24px 64px rgba(0, 0, 0, 0.78);
 
   --sidebar-collapsed: 76px;
   --sidebar-expanded: 220px;
-  --sidebar-transition: 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  --sidebar-transition: 0.2s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .light-theme {
   color-scheme: light;
   --bg-dark: #eef2f7;
+  --surface-1: #f8fafc;
+  --surface-2: #ffffff;
+  --surface-3: #f1f5f9;
+  --surface-input: #ffffff;
   --text-main: #1a202c;
   --text-muted: #4a5568;
   --border-light: rgba(0, 0, 0, 0.12);
@@ -56,13 +64,10 @@ html, body {
 
 body {
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  background-color: #080a0f;
+  background-color: #000000;
   color: var(--text-main);
   line-height: 1.5;
-  background-image: 
-    radial-gradient(circle at 10% 20%, rgba(249, 115, 22, 0.09) 0%, transparent 35%),
-    radial-gradient(circle at 90% 80%, rgba(245, 158, 11, 0.06) 0%, transparent 40%),
-    linear-gradient(180deg, #0b0d14 0%, #030407 100%);
+  background-image: none;
   background-attachment: scroll;
 }
 
@@ -162,11 +167,11 @@ body.light-theme {
 
 /* Glassmorphism */
 .glass {
-  background: rgba(30, 30, 30, 0.35);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
+  background: rgba(14, 14, 14, 0.92);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   border: 1px solid var(--border-light);
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.55);
   border-radius: 20px;
 }
 .light-theme .glass {
@@ -175,23 +180,23 @@ body.light-theme {
 }
 
 .glass-heavy {
-  background: rgba(18, 18, 22, 0.6);
-  backdrop-filter: blur(40px);
-  -webkit-backdrop-filter: blur(40px);
-  border: 1px solid rgba(255, 255, 255, 0.10);
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+  background: #080808;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border: 1px solid var(--border-dim);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.65);
   border-radius: 24px;
 }
 .light-theme .glass-heavy {
-  background: rgba(255, 255, 255, 0.65);
+  background: rgba(255, 255, 255, 0.92);
   border: 1px solid rgba(0, 0, 0, 0.10);
   box-shadow: 0 16px 48px rgba(0, 0, 0, 0.1);
 }
 
 .glass-panel {
-  background: rgba(40, 40, 50, 0.3);
-  backdrop-filter: blur(20px);
+  background: var(--surface-2);
   border: 1px solid var(--border-dim);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45);
   border-radius: 18px;
 }
 .light-theme .glass-panel {
@@ -216,7 +221,7 @@ h1, h2, h3, h4, h5, h6 {
 
 /* ===================== APP LAYOUT ===================== */
 .app-wrapper {
-  padding: 1.25rem;
+  padding: 1.25rem 1.25rem 1.25rem calc(1.25rem + var(--sidebar-collapsed) + 1.25rem);
   height: 100%;
   height: 100dvh;
   max-height: 100dvh;
@@ -227,25 +232,37 @@ h1, h2, h3, h4, h5, h6 {
   box-sizing: border-box;
   align-items: stretch;
   overflow: hidden;
+  position: relative;
 }
 
-/* ===================== ANIMATED SIDEBAR ===================== */
+/* ===================== ANIMATED SIDEBAR (ZERO-REFLOW OVERLAY ON HOVER) ===================== */
 .sidebar-pill {
+  position: fixed;
+  left: 1.25rem;
+  top: 1.25rem;
+  bottom: 1.25rem;
   width: var(--sidebar-collapsed);
-  min-width: var(--sidebar-collapsed);
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   padding: 1.25rem 0;
   overflow: hidden;
-  transition: width var(--sidebar-transition), min-width var(--sidebar-transition);
-  z-index: 100;
-  position: relative;
+  transition: width var(--sidebar-transition), box-shadow var(--sidebar-transition);
+  will-change: width;
+  contain: layout style;
+  z-index: 600;
+  background: #0d0d0d;
+  border-color: var(--border-dim);
 }
 
-.sidebar-pill.sidebar-expanded {
-  width: var(--sidebar-expanded);
-  min-width: var(--sidebar-expanded);
+@media (min-width: 769px) {
+  .sidebar-pill:hover {
+    width: var(--sidebar-expanded);
+    box-shadow: 0 20px 56px rgba(0, 0, 0, 0.55);
+  }
+  .light-theme .sidebar-pill:hover {
+    box-shadow: 0 20px 48px rgba(0, 0, 0, 0.14) !important;
+  }
 }
 
 /* Logo Section */
@@ -253,7 +270,7 @@ h1, h2, h3, h4, h5, h6 {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 0 16px;
+  padding: 0 17px;
   margin-bottom: 2.5rem;
   overflow: hidden;
   white-space: nowrap;
@@ -283,18 +300,21 @@ h1, h2, h3, h4, h5, h6 {
   font-size: 0.95rem;
   font-weight: 700;
   color: var(--text-main);
-  display: none;
+  display: inline-block;
   opacity: 0;
-  transform: translateX(-10px);
-  transition: opacity var(--sidebar-transition), transform var(--sidebar-transition);
+  transform: translateX(-6px);
+  transition: opacity 0.16s ease, transform var(--sidebar-transition);
   white-space: nowrap;
   letter-spacing: -0.01em;
+  pointer-events: none;
 }
 
-.sidebar-expanded .sidebar-brand-name {
-  display: inline-block;
-  opacity: 1;
-  transform: translateX(0);
+@media (min-width: 769px) {
+  .sidebar-pill:hover .sidebar-brand-name {
+    opacity: 1;
+    transform: translateX(0);
+    pointer-events: auto;
+  }
 }
 
 /* Nav Links */
@@ -314,11 +334,12 @@ h1, h2, h3, h4, h5, h6 {
   border-radius: 12px;
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 0 12px;
+  justify-content: flex-start;
+  gap: 14px;
+  padding: 0 19px;
   color: var(--text-muted);
   text-decoration: none;
-  transition: all 0.2s ease;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
   border: 1px solid transparent;
   background: transparent;
   cursor: pointer;
@@ -327,15 +348,13 @@ h1, h2, h3, h4, h5, h6 {
   position: relative;
 }
 
-.sidebar-pill:not(.sidebar-expanded) .nav-item-icon {
-  justify-content: center;
-  padding: 0;
-  gap: 0;
-}
-
 .nav-item-icon:hover {
   color: var(--text-main);
   background: rgba(255, 255, 255, 0.06);
+}
+
+.light-theme .nav-item-icon:hover {
+  background: rgba(0, 0, 0, 0.04);
 }
 
 .nav-item-icon.active {
@@ -359,32 +378,37 @@ h1, h2, h3, h4, h5, h6 {
 .nav-label {
   font-size: 0.875rem;
   font-weight: 500;
-  display: none;
+  display: inline-block;
   opacity: 0;
-  transform: translateX(-8px);
-  transition: opacity var(--sidebar-transition), transform var(--sidebar-transition);
+  transform: translateX(-6px);
+  transition: opacity 0.16s ease, transform var(--sidebar-transition);
   flex: 1;
+  pointer-events: none;
 }
 
-.sidebar-expanded .nav-label {
-  display: inline-block;
-  opacity: 1;
-  transform: translateX(0);
+@media (min-width: 769px) {
+  .sidebar-pill:hover .nav-label {
+    opacity: 1;
+    transform: translateX(0);
+    pointer-events: auto;
+  }
 }
 
 .nav-arrow {
   opacity: 0;
-  transition: opacity 0.2s;
+  transition: opacity 0.16s ease;
   color: var(--text-muted);
   flex-shrink: 0;
 }
 
-.sidebar-expanded .nav-arrow {
-  opacity: 0.4;
+@media (min-width: 769px) {
+  .sidebar-pill:hover .nav-arrow {
+    opacity: 0.4;
+  }
 }
 
 .nav-item-icon:hover .nav-arrow {
-  opacity: 0.7;
+  opacity: 0.75;
 }
 
 /* Sidebar Bottom */
@@ -425,6 +449,8 @@ h1, h2, h3, h4, h5, h6 {
   overflow: hidden !important;
   position: relative;
   min-width: 0;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
 }
 
 .top-header {
@@ -437,7 +463,7 @@ h1, h2, h3, h4, h5, h6 {
   justify-content: space-between;
   padding: 0 1.75rem;
   border-bottom: 1px solid var(--border-dim);
-  background: rgba(12, 14, 22, 0.95);
+  background: rgba(10, 10, 10, 0.96);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   flex-shrink: 0 !important;
@@ -593,8 +619,8 @@ h1, h2, h3, h4, h5, h6 {
 .search-bar {
   display: flex;
   align-items: center;
-  background: rgba(0,0,0,0.25);
-  border: 1px solid var(--border-dim);
+  background: var(--surface-input);
+  border: 1px solid var(--border-light);
   padding: 0 14px;
   border-radius: 12px;
   height: 42px;
@@ -616,8 +642,8 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .custom-select {
-  background: rgba(0,0,0,0.25);
-  border: 1px solid var(--border-dim);
+  background: var(--surface-input);
+  border: 1px solid var(--border-light);
   color: var(--text-main);
   padding: 0 14px;
   border-radius: 12px;
@@ -633,7 +659,7 @@ h1, h2, h3, h4, h5, h6 {
 .custom-select option,
 select option,
 .custom-input option {
-  background-color: #18181b !important;
+  background-color: #141414 !important;
   color: #ffffff !important;
   padding: 8px 12px;
 }
@@ -801,8 +827,8 @@ select option[value=""],
 
 .custom-input {
   width: 100%;
-  background: rgba(0,0,0,0.25);
-  border: 1px solid var(--border-dim);
+  background: var(--surface-input);
+  border: 1px solid var(--border-light);
   color: var(--text-main);
   padding: 11px 14px;
   border-radius: 12px;
@@ -1089,9 +1115,9 @@ select option[value=""],
   border-bottom-color: rgba(0,0,0,0.08);
 }
 .light-theme .sidebar-pill {
-  background: rgba(255,255,255,0.92) !important;
-  border-color: rgba(0,0,0,0.10) !important;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.08) !important;
+  background: rgba(255, 255, 255, 0.96) !important;
+  border-color: rgba(0, 0, 0, 0.10) !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08) !important;
 }
 .light-theme .nav-item-icon {
   color: #475569 !important;
@@ -1503,7 +1529,7 @@ select option[value=""],
     height: 56px !important;
     padding: 0 0.85rem !important;
     gap: 8px !important;
-    background: rgba(12, 14, 22, 0.95) !important;
+    background: rgba(10, 10, 10, 0.96) !important;
     backdrop-filter: blur(16px) !important;
     -webkit-backdrop-filter: blur(16px) !important;
     border-bottom: 1px solid var(--border-dim) !important;
@@ -1574,14 +1600,14 @@ select option[value=""],
   .sidebar-pill {
     position: fixed !important;
     left: -100% !important;
-    top: 0;
-    bottom: 0;
-    z-index: 1000;
+    top: 0 !important;
+    bottom: 0 !important;
+    z-index: 1000 !important;
     transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     height: 100vh;
     border-radius: 0 !important;
     width: 270px !important;
-    background: rgba(14, 16, 24, 0.97) !important;
+    background: rgba(13, 13, 13, 0.98) !important;
     backdrop-filter: blur(20px) !important;
     -webkit-backdrop-filter: blur(20px) !important;
     box-shadow: 20px 0 50px rgba(0, 0, 0, 0.7);
@@ -1671,7 +1697,7 @@ select option[value=""],
   /* Bottom Sheet for Modals */
   .bottom-sheet {
     width: 100%;
-    background: #0f121b;
+    background: var(--modal-bg);
     border-top-left-radius: 24px;
     border-top-right-radius: 24px;
     border: 1px solid var(--border-light);
@@ -1716,7 +1742,7 @@ select option[value=""],
   .mobile-top-modal {
     width: 100%;
     max-width: 520px;
-    background: var(--modal-bg, #141721);
+    background: var(--modal-bg);
     border: 1px solid var(--border-light);
     border-radius: 20px;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
@@ -1750,12 +1776,12 @@ select option[value=""],
 
 /* ===================== VELOZTY AI VIRTUAL WORKSPACE STYLES ===================== */
 .velozty-canvas-container {
-  background-color: #0b0d14;
+  background-color: #080808;
   background-image: radial-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px);
   background-size: 24px 24px;
   border-radius: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: inset 0 0 60px rgba(0, 0, 0, 0.6);
+  border: 1px solid var(--border-dim);
+  box-shadow: inset 0 0 60px rgba(0, 0, 0, 0.7);
   position: relative;
   overflow: visible;
   flex: 1;
@@ -1771,8 +1797,8 @@ select option[value=""],
 
 /* ===== Room Card V2 ===== */
 .room-card-v2 {
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: var(--surface-2);
+  border: 1px solid var(--border-dim);
   border-radius: 16px;
   overflow: hidden;
   transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
@@ -1785,10 +1811,10 @@ select option[value=""],
 }
 
 .room-card-v2:hover {
-  border-color: rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.03);
+  border-color: var(--border-light);
+  background: var(--surface-3);
   transform: translateY(-2px);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
 }
 
 .light-theme .room-card-v2:hover {
@@ -1845,20 +1871,20 @@ select option[value=""],
 
 
 .velozty-sidebar-panel {
-  background: rgba(14, 17, 26, 0.85);
+  background: rgba(17, 17, 17, 0.94);
   backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid var(--border-light);
   border-radius: 20px;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.65);
 }
 
 .velozty-room-box {
-  background: rgba(18, 22, 34, 0.9);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: var(--surface-2);
+  border: 1px solid var(--border-light);
   border-radius: 16px;
   backdrop-filter: blur(12px);
   transition: all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
 }
 
 .velozty-room-box:hover {
@@ -1909,14 +1935,11 @@ select option[value=""],
   width: 100%;
   max-width: 920px;
   max-height: 85vh;
-  background: rgba(18, 20, 30, 0.95);
-  backdrop-filter: blur(40px);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: var(--modal-bg);
+  backdrop-filter: blur(24px);
+  border: 1px solid var(--border-light);
   border-radius: 22px;
-  box-shadow:
-    0 32px 80px rgba(0, 0, 0, 0.6),
-    0 0 0 1px rgba(255, 255, 255, 0.05) inset,
-    0 -1px 0 rgba(255, 255, 255, 0.06) inset;
+  box-shadow: var(--modal-shadow);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -1928,8 +1951,8 @@ select option[value=""],
   justify-content: space-between;
   align-items: center;
   padding: 18px 24px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.02);
+  border-bottom: 1px solid var(--border-dim);
+  background: var(--surface-2);
   flex-shrink: 0;
 }
 
@@ -1959,8 +1982,8 @@ select option[value=""],
   min-width: 220px;
   display: flex;
   flex-direction: column;
-  border-right: 1px solid rgba(255, 255, 255, 0.06);
-  background: rgba(0, 0, 0, 0.15);
+  border-right: 1px solid var(--border-dim);
+  background: var(--surface-1);
   overflow: hidden;
 }
 
@@ -2000,8 +2023,8 @@ select option[value=""],
 }
 
 .edit-building-room-card {
-  background: rgba(255, 255, 255, 0.025);
-  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: var(--surface-3);
+  border: 1px solid var(--border-dim);
   border-radius: 14px;
   padding: 14px;
   transition: all 0.25s ease;
@@ -2009,10 +2032,10 @@ select option[value=""],
 }
 
 .edit-building-room-card:hover {
-  background: rgba(255, 255, 255, 0.045);
-  border-color: rgba(255, 255, 255, 0.12);
+  background: #1c1c1c;
+  border-color: var(--border-light);
   transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
 }
 
 .edit-building-cap-btn {
@@ -2040,8 +2063,8 @@ select option[value=""],
 
 .edit-building-add-room-bar {
   padding: 14px 24px;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
-  background: rgba(0, 0, 0, 0.15);
+  border-top: 1px solid var(--border-dim);
+  background: var(--surface-1);
   flex-shrink: 0;
 }
 
@@ -2265,14 +2288,14 @@ select option[value=""],
 
 /* Top Executive Header Hub */
 .finance-header-card {
-  background: linear-gradient(135deg, rgba(24, 27, 36, 0.85) 0%, rgba(15, 17, 24, 0.95) 100%);
+  background: var(--surface-2);
   border: 1px solid var(--border-dim);
   border-radius: 20px;
   padding: 1.25rem 1.5rem;
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
   margin-bottom: 1.5rem;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -2334,8 +2357,8 @@ select option[value=""],
 .fiscal-navigator {
   display: flex;
   align-items: center;
-  background: rgba(0, 0, 0, 0.35);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--surface-input);
+  border: 1px solid var(--border-light);
   border-radius: 12px;
   padding: 3px 6px;
   gap: 4px;
@@ -2391,7 +2414,7 @@ select option[value=""],
 }
 
 .fiscal-select option {
-  background: #181b24;
+  background: #141414;
   color: #fff;
 }
 
@@ -2512,14 +2535,14 @@ select option[value=""],
 }
 
 .finance-kpi-card {
-  background: linear-gradient(145deg, rgba(24, 27, 36, 0.7) 0%, rgba(15, 17, 24, 0.85) 100%);
+  background: var(--surface-2);
   border: 1px solid var(--border-dim);
   border-radius: 18px;
   padding: 1.25rem;
   position: relative;
   overflow: hidden;
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
 }
 
 .light-theme .finance-kpi-card {
@@ -2531,32 +2554,32 @@ select option[value=""],
 .finance-kpi-card:hover {
   transform: translateY(-2px);
   border-color: var(--border-light);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6);
 }
 
 .finance-kpi-card.hero-net {
-  background: linear-gradient(145deg, rgba(16, 185, 129, 0.12) 0%, rgba(5, 150, 105, 0.03) 100%);
+  background: linear-gradient(145deg, rgba(16, 185, 129, 0.11) 0%, #111111 75%);
   border-color: rgba(16, 185, 129, 0.35);
 }
 
 .finance-kpi-card.hero-net.negative {
-  background: linear-gradient(145deg, rgba(239, 68, 68, 0.12) 0%, rgba(185, 28, 28, 0.03) 100%);
+  background: linear-gradient(145deg, rgba(239, 68, 68, 0.11) 0%, #111111 75%);
   border-color: rgba(239, 68, 68, 0.35);
 }
 
 .finance-kpi-card.income-card {
   border-color: rgba(59, 130, 246, 0.3);
-  background: linear-gradient(145deg, rgba(59, 130, 246, 0.08) 0%, rgba(29, 78, 216, 0.02) 100%);
+  background: linear-gradient(145deg, rgba(59, 130, 246, 0.09) 0%, #111111 75%);
 }
 
 .finance-kpi-card.expense-card {
   border-color: rgba(239, 68, 68, 0.3);
-  background: linear-gradient(145deg, rgba(239, 68, 68, 0.08) 0%, rgba(185, 28, 28, 0.02) 100%);
+  background: linear-gradient(145deg, rgba(239, 68, 68, 0.09) 0%, #111111 75%);
 }
 
 .finance-kpi-card.margin-card {
   border-color: rgba(245, 158, 11, 0.3);
-  background: linear-gradient(145deg, rgba(245, 158, 11, 0.08) 0%, rgba(217, 119, 6, 0.02) 100%);
+  background: linear-gradient(145deg, rgba(245, 158, 11, 0.09) 0%, #111111 75%);
 }
 
 .finance-kpi-header {
@@ -2609,12 +2632,12 @@ select option[value=""],
 
 /* Trend Bars Chart Container */
 .finance-chart-card {
-  background: linear-gradient(145deg, rgba(24, 27, 36, 0.8) 0%, rgba(15, 17, 24, 0.9) 100%);
+  background: var(--surface-2);
   border: 1px solid var(--border-dim);
   border-radius: 20px;
   padding: 1.35rem;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 .light-theme .finance-chart-card {
@@ -2725,12 +2748,12 @@ select option[value=""],
 
 /* Category Spending Breakdown */
 .finance-category-card {
-  background: linear-gradient(145deg, rgba(24, 27, 36, 0.8) 0%, rgba(15, 17, 24, 0.9) 100%);
+  background: var(--surface-2);
   border: 1px solid var(--border-dim);
   border-radius: 20px;
   padding: 1.35rem;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
   display: flex;
   flex-direction: column;
 }
@@ -2751,8 +2774,8 @@ select option[value=""],
 }
 
 .finance-category-row {
-  background: rgba(255, 255, 255, 0.025);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: var(--surface-3);
+  border: 1px solid var(--border-dim);
   border-radius: 12px;
   padding: 10px 12px;
   cursor: pointer;
@@ -2799,7 +2822,7 @@ select option[value=""],
 
 /* Quick Presets Dock */
 .finance-presets-dock {
-  background: rgba(24, 27, 36, 0.5);
+  background: var(--surface-input);
   border: 1px solid var(--border-dim);
   border-radius: 16px;
   padding: 10px 14px;
@@ -2850,13 +2873,13 @@ select option[value=""],
 
 /* Transaction Ledger Card */
 .finance-ledger-card {
-  background: linear-gradient(145deg, rgba(24, 27, 36, 0.85) 0%, rgba(15, 17, 24, 0.95) 100%);
+  background: var(--surface-2);
   border: 1px solid var(--border-dim);
   border-radius: 20px;
   padding: 1.5rem;
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
 }
 
 .light-theme .finance-ledger-card {
@@ -2876,8 +2899,8 @@ select option[value=""],
 .finance-search-box {
   display: flex;
   align-items: center;
-  background: rgba(0, 0, 0, 0.35);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: var(--surface-input);
+  border: 1px solid var(--border-light);
   border-radius: 12px;
   padding: 8px 14px;
   min-width: 260px;
@@ -3124,16 +3147,16 @@ select option[value=""],
 /* ===== Building & Floor Mobile Optimizations ===== */
 @media (max-width: 768px) {
   .room-card-v2 {
-    background: rgba(24, 27, 36, 0.75);
-    backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.28);
+    background: var(--surface-2);
+    backdrop-filter: none;
+    border: 1px solid var(--border-dim);
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45);
   }
 
   .velozty-canvas-container {
-    background: rgba(15, 18, 25, 0.5) !important;
+    background: #080808 !important;
     border-radius: 16px !important;
-    border: 1px solid rgba(255, 255, 255, 0.06) !important;
+    border: 1px solid var(--border-dim) !important;
   }
 
   .room-grid {
@@ -3182,10 +3205,10 @@ select option[value=""],
 
 /* ===================== FLOOR PLAN RESPONSIVE & THEME STYLES ===================== */
 .floor-card {
-  border: 1px solid var(--border-light);
+  border: 1px solid var(--border-dim);
   border-radius: 16px;
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.025);
+  background: var(--surface-2);
   transition: all 0.2s ease;
 }
 .light-theme .floor-card {
@@ -3214,7 +3237,7 @@ select option[value=""],
   border: 1px solid var(--border-dim);
   border-radius: 14px;
   padding: 0.85rem;
-  background: rgba(255, 255, 255, 0.025);
+  background: var(--surface-3);
   transition: all 0.2s ease;
   display: flex;
   flex-direction: column;
@@ -3296,7 +3319,7 @@ select option[value=""],
   border-radius: 14px;
   cursor: pointer;
   border: 1px solid var(--border-dim);
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--surface-2);
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .light-theme .building-sidebar-card {
@@ -3320,7 +3343,7 @@ select option[value=""],
   display: flex;
   gap: 6px;
   margin-bottom: 1.5rem;
-  background: rgba(255, 255, 255, 0.035);
+  background: var(--surface-input);
   border: 1px solid var(--border-dim);
   border-radius: 14px;
   padding: 5px;
@@ -3381,7 +3404,7 @@ select option[value=""],
 /* ===================== ROOMS FLOOR PILLS ===================== */
 .rooms-floor-pills-bar {
   display: flex;
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--surface-input);
   border-radius: 14px;
   padding: 4px;
   border: 1px solid var(--border-dim);
@@ -3443,7 +3466,7 @@ select option[value=""],
 
 /* ===================== FEE ROWS & TRANSACTIONS ===================== */
 .fee-row-item {
-  background: rgba(255, 255, 255, 0.025);
+  background: var(--surface-3);
   border-radius: 12px;
   transition: all 0.2s;
 }
@@ -3467,10 +3490,10 @@ select option[value=""],
 }
 .complaint-col-surface {
   flex: 1;
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--surface-1);
   border-radius: 16px;
   padding: 0.875rem;
-  border: 1px dashed var(--border-dim);
+  border: 1px solid var(--border-dim);
   overflow-y: auto;
 }
 .light-theme .complaint-col-surface {
@@ -3485,7 +3508,7 @@ select option[value=""],
 
 /* ===================== STUDENT DETAIL BOXES ===================== */
 .student-detail-box {
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--surface-3);
   border: 1px solid var(--border-dim);
   border-radius: 10px;
 }
@@ -3533,7 +3556,7 @@ select option[value=""],
 
 .preview-fee-card {
   text-align: center;
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--surface-3);
   border-radius: 8px;
   padding: 0.75rem;
   border: 1px solid var(--border-dim);

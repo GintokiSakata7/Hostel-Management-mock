@@ -59,6 +59,7 @@ function PaymentModal({ student, selectedMonth, onClose, onSuccess }: {
     ? Number(student.totalPendingAmount)
     : (student.pendingMonthsCount ? Number(student.pendingMonthsCount) * monthlyFee : monthlyFee);
   const initialAmount = totalPending > 0 ? totalPending : (Number(student.amount) || monthlyFee);
+  const heldAdvance = Number(student.securityDeposit) || 0;
 
   const [form, setForm] = useState({
     amount: initialAmount,
@@ -78,6 +79,10 @@ function PaymentModal({ student, selectedMonth, onClose, onSuccess }: {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (form.method === 'Advance' && Number(form.amount) > heldAdvance) {
+      showToast(`Amount ₹${Number(form.amount).toLocaleString('en-IN')} exceeds Advance Held (₹${heldAdvance.toLocaleString('en-IN')})`, 'error');
+      return;
+    }
     setSaving(true);
     try {
       const studentId = student.studentId || student.dbId || student.id;
@@ -206,22 +211,33 @@ function PaymentModal({ student, selectedMonth, onClose, onSuccess }: {
 
         <div className="form-group">
           <label>Payment Method</label>
-          <div style={{ display: 'flex', gap: '1rem' }}>
-            {['Cash', 'UPI'].map(m => (
+          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+            {(['Cash', 'UPI', ...(heldAdvance > 0 ? ['Advance'] : [])] as string[]).map(m => (
               <button key={m} type="button"
-                onClick={() => setForm({ ...form, method: m })}
+                onClick={() => {
+                  if (m === 'Advance') {
+                    setForm(prev => ({ ...prev, method: 'Advance', amount: Math.min(Number(prev.amount) || initialAmount, heldAdvance) }));
+                  } else {
+                    setForm(prev => ({ ...prev, method: m }));
+                  }
+                }}
                 style={{
-                  flex: 1, padding: '10px', borderRadius: 10, border: '2px solid',
-                  borderColor: form.method === m ? 'var(--primary)' : 'var(--border-dim)',
-                  background: form.method === m ? 'rgba(249,115,22,0.1)' : 'transparent',
-                  color: form.method === m ? 'var(--primary)' : 'var(--text-muted)',
-                  fontWeight: 600, cursor: 'pointer', fontSize: '0.9rem',
+                  flex: 1, minWidth: 96, padding: '10px', borderRadius: 10, border: '2px solid',
+                  borderColor: form.method === m ? (m === 'Advance' ? 'var(--success)' : 'var(--primary)') : 'var(--border-dim)',
+                  background: form.method === m ? (m === 'Advance' ? 'var(--success)' : 'var(--primary)') : 'transparent',
+                  color: form.method === m ? '#ffffff' : 'var(--text-muted)',
+                  fontWeight: 700, cursor: 'pointer', fontSize: '0.86rem',
                   transition: 'all 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
                 }}>
-                {m === 'Cash' ? <><Banknote size={16} /> Cash</> : <><Smartphone size={16} /> UPI</>}
+                {m === 'Cash' ? <><Banknote size={16} /> Cash</> : m === 'UPI' ? <><Smartphone size={16} /> UPI</> : <>🏦 Advance (₹{heldAdvance.toLocaleString('en-IN')})</>}
               </button>
             ))}
           </div>
+          {form.method === 'Advance' && heldAdvance > 0 && (
+            <div style={{ marginTop: 8, padding: '8px 12px', borderRadius: 8, background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.28)', fontSize: '0.78rem', color: 'var(--success)', fontWeight: 600 }}>
+              Adjusts ₹{Math.min(Number(form.amount) || 0, heldAdvance).toLocaleString('en-IN')} from Advance Held · Remaining Advance: ₹{Math.max(0, heldAdvance - (Number(form.amount) || 0)).toLocaleString('en-IN')}
+            </div>
+          )}
         </div>
 
         {form.method === 'UPI' && (
@@ -627,10 +643,10 @@ export default function Fees() {
   const pendingCount = monthlyStatus.filter(s => s.feeStatus === 'Pending').length;
   const enrolledCount = monthlyStatus.filter(s => s.feeStatus !== 'Not Enrolled').length;
   const collectionRate = enrolledCount > 0 ? `${Math.round(paidCount / enrolledCount * 100)}%` : '—';
-  const totalCollected = monthlyStatus.filter(s => s.feeStatus === 'Paid').reduce((sum, s) => sum + s.amount, 0);
 
   // Fee statistics — transactions are already filtered by selectedMonth from API
   const thisMonthRevenue = transactions.reduce((s: number, t: any) => s + t.amount, 0);
+  const totalCollected = thisMonthRevenue;
   const totalRevenue = thisMonthRevenue;
   const thisMonthTx = transactions; // Already month-scoped
 
@@ -808,6 +824,16 @@ export default function Fees() {
                           {s.pendingMonthsCount} Mos Overdue (₹{s.totalPendingAmount?.toLocaleString('en-IN')})
                         </span>
                       )}
+                      {(s.advanceCredit || 0) > 0 && (
+                        <span style={{ background: 'rgba(34,197,94,0.12)', color: 'var(--success)', border: '1px solid rgba(34,197,94,0.28)', padding: '1px 6px', borderRadius: 4, fontSize: '0.7rem', fontWeight: 700 }}>
+                          Rent Credit: ₹{Number(s.advanceCredit).toLocaleString('en-IN')}
+                        </span>
+                      )}
+                      {(s.securityDeposit || 0) > 0 && (
+                        <span style={{ background: 'rgba(34,197,94,0.12)', color: 'var(--success)', border: '1px solid rgba(34,197,94,0.28)', padding: '1px 6px', borderRadius: 4, fontSize: '0.7rem', fontWeight: 700 }}>
+                          Advance Held: ₹{Number(s.securityDeposit).toLocaleString('en-IN')}
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -884,32 +910,38 @@ export default function Fees() {
                       </button>
                     )}
                     {s.feeStatus === 'Paid' ? (
-                      <>
-                        <a
-                          href={`/api/fees/receipt/${s.feeRecordId}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="icon-btn-small"
-                          title="Download Official PDF Receipt (Stored in PostgreSQL)"
-                          style={{ color: '#4ade80', border: '1px solid rgba(74,222,128,0.3)', background: 'rgba(74,222,128,0.1)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-                        >
-                          <FileText size={14} />
-                        </a>
-                        <button
-                          className="icon-btn-small"
-                          title={`Email Detailed Invoice & PDF Receipt to ${s.name}`}
-                          disabled={emailingFeeId === s.feeRecordId}
-                          onClick={() => handleEmailReceipt(s.feeRecordId, s.name)}
-                          style={{ color: '#38bdf8', border: '1px solid rgba(56,189,248,0.3)', background: 'rgba(56,189,248,0.1)' }}
-                        >
-                          {emailingFeeId === s.feeRecordId ? <Clock size={14} className="animate-spin" /> : <Mail size={14} />}
-                        </button>
-                        <button className="icon-btn-small" title="Print Receipt Template"
-                          onClick={() => setViewingReceipt(s)}>
-                          <Printer size={14} />
-                        </button>
-                      </>
-                    ) : (
+                      s.feeRecordId ? (
+                        <>
+                          <a
+                            href={`/api/fees/receipt/${s.feeRecordId}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="icon-btn-small"
+                            title="Download Official PDF Receipt (Stored in PostgreSQL)"
+                            style={{ color: '#4ade80', border: '1px solid rgba(74,222,128,0.3)', background: 'rgba(74,222,128,0.1)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                          >
+                            <FileText size={14} />
+                          </a>
+                          <button
+                            className="icon-btn-small"
+                            title={`Email Detailed Invoice & PDF Receipt to ${s.name}`}
+                            disabled={emailingFeeId === s.feeRecordId}
+                            onClick={() => handleEmailReceipt(s.feeRecordId, s.name)}
+                            style={{ color: '#38bdf8', border: '1px solid rgba(56,189,248,0.3)', background: 'rgba(56,189,248,0.1)' }}
+                          >
+                            {emailingFeeId === s.feeRecordId ? <Clock size={14} className="animate-spin" /> : <Mail size={14} />}
+                          </button>
+                          <button className="icon-btn-small" title="Print Receipt Template"
+                            onClick={() => setViewingReceipt(s)}>
+                            <Printer size={14} />
+                          </button>
+                        </>
+                      ) : (
+                        <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', padding: '3px 9px', borderRadius: 8, background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-dim)', whiteSpace: 'nowrap' }}>
+                          {s.paidViaAdvance ? 'Covered by Advance' : 'Settled (Prior)'}
+                        </span>
+                      )
+                    ) : s.feeStatus === 'Not Enrolled' ? null : (
                       <button className="primary-btn" style={{ padding: '5px 12px', fontSize: '0.75rem', minHeight: 32, flexShrink: 0 }}
                         onClick={() => setPayingStudent(s)}>
                         <IndianRupee size={12} /> Pay

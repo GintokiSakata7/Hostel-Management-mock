@@ -676,7 +676,7 @@ export default function NotificationBell() {
               alignItems: 'center',
               justifyContent: 'center',
               boxShadow: '0 0 10px rgba(239,68,68,0.7)',
-              border: '1.5px solid #141821',
+              border: '1.5px solid var(--surface-2)',
               animation: 'pulseBadge 2s infinite'
             }}
           >
@@ -706,8 +706,8 @@ export default function NotificationBell() {
               style={{
                 width: '100%',
                 maxHeight: '85vh',
-                background: '#13161f',
-                borderTop: '1px solid rgba(255, 255, 255, 0.12)',
+                background: 'var(--modal-bg)',
+                borderTop: '1px solid var(--border-light)',
                 borderRadius: '24px 24px 0 0',
                 boxShadow: '0 -10px 40px rgba(0, 0, 0, 0.8)',
                 overflow: 'hidden',
@@ -734,11 +734,11 @@ export default function NotificationBell() {
               top: dropdownPos.top,
               right: dropdownPos.right,
               width: 390,
-              background: 'rgba(18, 22, 30, 0.96)',
+              background: 'var(--modal-bg)',
               backdropFilter: 'blur(20px)',
-              border: '1px solid rgba(255, 255, 255, 0.12)',
+              border: '1px solid var(--border-light)',
               borderRadius: 20,
-              boxShadow: '0 20px 50px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(255, 255, 255, 0.05)',
+              boxShadow: 'var(--modal-shadow)',
               zIndex: 99999,
               overflow: 'hidden',
               animation: 'slideDownFade 0.2s cubic-bezier(0.16, 1, 0.3, 1)'

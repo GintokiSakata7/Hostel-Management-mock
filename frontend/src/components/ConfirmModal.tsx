@@ -91,8 +91,9 @@ export default function ConfirmModal({
                 maxWidth: '440px',
                 padding: '1.75rem',
                 borderRadius: '24px',
-                border: '1px solid rgba(255, 255, 255, 0.12)',
-                boxShadow: '0 25px 60px rgba(0, 0, 0, 0.7)',
+                background: 'var(--modal-bg)',
+                border: '1px solid var(--border-light)',
+                boxShadow: 'var(--modal-shadow)',
                 position: 'relative',
                 animation: 'scaleUp 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
               }

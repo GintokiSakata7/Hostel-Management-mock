@@ -104,8 +104,8 @@ export default function Modal({ isOpen, onClose, title, children, maxWidth, alig
                 touchAction: 'pan-y',
                 borderRadius: '20px',
                 border: '1px solid var(--border-light)',
-                background: 'var(--modal-bg, #141721)',
-                boxShadow: 'var(--modal-shadow, 0 20px 60px rgba(0,0,0,0.6))',
+                background: 'var(--modal-bg)',
+                boxShadow: 'var(--modal-shadow)',
               }
             : isMobile
             ? {
@@ -126,8 +126,8 @@ export default function Modal({ isOpen, onClose, title, children, maxWidth, alig
                 position: 'relative',
                 borderRadius: '24px',
                 border: '1px solid var(--border-light)',
-                boxShadow: 'var(--modal-shadow, 0 24px 64px rgba(0,0,0,0.6))',
-                background: 'var(--modal-bg, #141721)',
+                boxShadow: 'var(--modal-shadow)',
+                background: 'var(--modal-bg)',
                 backdropFilter: 'blur(20px)',
                 display: 'flex',
                 flexDirection: 'column',

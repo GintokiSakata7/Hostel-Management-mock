@@ -63,7 +63,6 @@ function PageLoadingFallback() {
 }
 
 function App() {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isLightMode, setIsLightMode] = useState<boolean>(() => {
     return localStorage.getItem('majin_theme') === 'light';
@@ -72,6 +71,22 @@ function App() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
     return localStorage.getItem('majin_admin_auth') === 'true' || sessionStorage.getItem('majin_admin_auth') === 'true';
   });
+
+  // Preload all route chunks right after authentication so sidebar navigation is instant (0ms)
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const timer = setTimeout(() => {
+      import('./pages/Dashboard');
+      import('./pages/Students');
+      import('./pages/Rooms');
+      import('./pages/Fees');
+      import('./pages/Finance');
+      import('./pages/Complaints');
+      import('./pages/Reports');
+      import('./pages/Settings');
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [isAuthenticated]);
 
   useEffect(() => {
     if (isLightMode) {
@@ -113,11 +128,9 @@ function App() {
               {/* Mobile Overlay */}
               {mobileMenuOpen && <div className="mobile-overlay" onClick={() => setMobileMenuOpen(false)} />}
               
-              {/* Animated Sidebar */}
+              {/* Animated Sidebar (pure CSS hover on desktop — zero React re-renders) */}
               <aside
-                className={`sidebar-pill glass-heavy ${sidebarOpen ? 'sidebar-expanded' : ''} ${mobileMenuOpen ? 'mobile-open' : ''}`}
-                onMouseEnter={() => setSidebarOpen(true)}
-                onMouseLeave={() => setSidebarOpen(false)}
+                className={`sidebar-pill glass-heavy ${mobileMenuOpen ? 'mobile-open' : ''}`}
               >
                 {/* Logo */}
                 <div className="sidebar-logo-section">
@@ -140,7 +153,7 @@ function App() {
                     >
                       <div className="nav-icon-wrap"><Icon size={20} /></div>
                       <span className="nav-label">{label}</span>
-                      {sidebarOpen && <ChevronRight size={14} className="nav-arrow" />}
+                      <ChevronRight size={14} className="nav-arrow" />
                     </NavLink>
                   ))}
                 </nav>

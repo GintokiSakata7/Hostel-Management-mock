@@ -126,7 +126,7 @@ export const ToastProvider = ({ children }: { children: ReactNode }) => {
               style={{
                 pointerEvents: 'auto',
                 position: 'relative',
-                background: 'rgba(15, 18, 28, 0.95)',
+                background: 'var(--modal-bg)',
                 backdropFilter: 'blur(16px)',
                 border: `1px solid ${accentColor}35`,
                 borderRadius: '14px',
@@ -134,7 +134,7 @@ export const ToastProvider = ({ children }: { children: ReactNode }) => {
                 display: 'flex',
                 alignItems: 'center',
                 gap: '12px',
-                boxShadow: `0 10px 30px rgba(0, 0, 0, 0.6), 0 0 20px ${bgGlow}`,
+                boxShadow: `0 12px 32px rgba(0, 0, 0, 0.45), 0 0 18px ${bgGlow}`,
                 animation: 'slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
                 overflow: 'hidden',
               }}
@@ -160,7 +160,7 @@ export const ToastProvider = ({ children }: { children: ReactNode }) => {
                 <div style={{ fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.5, color: accentColor }}>
                   {isSuccess ? 'Success' : isError ? 'Error' : isWarning ? 'Warning' : 'Notification'}
                 </div>
-                <div style={{ fontSize: '0.84rem', color: '#fff', fontWeight: 500, marginTop: 2, wordBreak: 'break-word' }}>
+                <div style={{ fontSize: '0.84rem', color: 'var(--text-main)', fontWeight: 500, marginTop: 2, wordBreak: 'break-word' }}>
                   {toast.message}
                 </div>
               </div>
@@ -170,7 +170,7 @@ export const ToastProvider = ({ children }: { children: ReactNode }) => {
                 style={{
                   background: 'transparent',
                   border: 'none',
-                  color: 'rgba(255, 255, 255, 0.4)',
+                  color: 'var(--text-muted)',
                   cursor: 'pointer',
                   padding: 4,
                   borderRadius: 6,
@@ -179,8 +179,8 @@ export const ToastProvider = ({ children }: { children: ReactNode }) => {
                   justifyContent: 'center',
                   flexShrink: 0,
                 }}
-                onMouseOver={(e) => (e.currentTarget.style.color = '#fff')}
-                onMouseOut={(e) => (e.currentTarget.style.color = 'rgba(255, 255, 255, 0.4)')}
+                onMouseOver={(e) => (e.currentTarget.style.color = 'var(--text-main)')}
+                onMouseOut={(e) => (e.currentTarget.style.color = 'var(--text-muted)')}
               >
                 <X size={14} />
               </button>

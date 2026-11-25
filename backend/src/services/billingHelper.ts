@@ -14,12 +14,15 @@ export interface StudentDueStatus {
   roomName: string;
   course: string;
   dateOfJoining: Date;
+  billingStartMonth?: string | null;
+  openingBalance: number;
+  advanceCredit: number;
   dueDayOfMonth: number; // e.g., 15
   dueDayLabel: string;   // e.g., "15th"
   nextDueDate: string;   // formatted e.g., "15 Sep 2026"
   isDueToday: boolean;
   pendingMonthsCount: number;
-  pendingMonths: { month: string; monthLabel: string; amount: number }[];
+  pendingMonths: { month: string; monthLabel: string; cycleLabel?: string; amount: number; paidAmount?: number; expectedAmount?: number }[];
   totalPendingAmount: number;
   latestPaidMonth: string | null;
 }
@@ -35,6 +38,18 @@ export interface MonthFeeStatus {
   pendingMonthsCount: number;
   totalArrearsAmount: number;
   oldestUnpaidMonth: string | null;  // YYYY-MM of oldest cycle needing payment
+  advanceCredit: number;
+  isPreSettled?: boolean;
+  paidViaAdvance?: boolean;
+}
+
+export interface InitialLedgerInput {
+  dateOfJoining: Date;
+  feeStatusPreset?: 'default' | 'cleared' | 'months_due' | 'custom_due' | 'advance';
+  unpaidMonthsCount?: number;
+  openingAmount?: number;
+  billingStartMonth?: string | null;
+  openingBalance?: number;
 }
 
 // Ordinal helper: 1 -> 1st, 2 -> 2nd, 3 -> 3rd, 15 -> 15th
@@ -47,12 +62,89 @@ export function getOrdinal(n: number): string {
 // Format YYYY-MM to human readable label: "2026-09" -> "September 2026"
 export function formatMonthLabel(m: string): string {
   if (!m) return '';
+  if (m === 'OPENING') return 'Previous Balance Due';
   const parts = m.split('-');
   if (parts.length < 2) return m;
   const y = Number(parts[0]);
   const mo = Number(parts[1]);
   const d = new Date(y, mo - 1, 1);
   return d.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+}
+
+/**
+ * Adds/subtracts delta months on a "YYYY-MM" string accurately without Date day-rollover bugs.
+ */
+export function addMonths(monthStr: string, delta: number): string {
+  const [y, m] = monthStr.split('-').map(Number);
+  const total = y * 12 + (m - 1) + delta;
+  const newY = Math.floor(total / 12);
+  const newM = ((total % 12) + 12) % 12 + 1;
+  return `${newY}-${String(newM).padStart(2, '0')}`;
+}
+
+/**
+ * Resolves billingStartMonth & openingBalance from friendly onboarding presets
+ * so historical residents never accumulate false past arrears or corrupt Finance cashbook.
+ */
+export function resolveInitialLedgerSnapshot(
+  input: InitialLedgerInput,
+  referenceDate: Date = new Date()
+): { billingStartMonth: string | null; openingBalance: number } {
+  const joinDate = input.dateOfJoining ? new Date(input.dateOfJoining) : new Date();
+  const joinDay = joinDate.getDate() || 1;
+  const joinMonthStr = toMonthString(joinDate);
+
+  const refDateStart = new Date(referenceDate.getFullYear(), referenceDate.getMonth(), referenceDate.getDate());
+  const joinDateStart = new Date(joinDate.getFullYear(), joinDate.getMonth(), joinDay);
+  const refMonthStr = toMonthString(refDateStart);
+
+  // Determine the latest cycle whose due date has already arrived (<= referenceDate)
+  const refDueDate = clampDate(refDateStart.getFullYear(), refDateStart.getMonth(), joinDay);
+  let latestDueMonth: string | null = refDueDate <= refDateStart ? refMonthStr : addMonths(refMonthStr, -1);
+  if (refDateStart < joinDateStart || latestDueMonth < joinMonthStr) {
+    latestDueMonth = null;
+  }
+
+  const nextUpcomingMonth = latestDueMonth ? addMonths(latestDueMonth, 1) : joinMonthStr;
+  const preset = input.feeStatusPreset || 'default';
+
+  switch (preset) {
+    case 'cleared':
+      return { billingStartMonth: nextUpcomingMonth, openingBalance: 0 };
+
+    case 'months_due': {
+      const count = Math.max(1, Math.min(24, Math.floor(Number(input.unpaidMonthsCount) || 1)));
+      if (!latestDueMonth) {
+        return { billingStartMonth: joinMonthStr, openingBalance: 0 };
+      }
+      const rawStart = addMonths(latestDueMonth, -(count - 1));
+      const clampedStart = rawStart < joinMonthStr ? joinMonthStr : rawStart;
+      return { billingStartMonth: clampedStart, openingBalance: 0 };
+    }
+
+    case 'custom_due': {
+      const dueAmt = Math.max(0, Math.round(Number(input.openingAmount) || 0));
+      return { billingStartMonth: nextUpcomingMonth, openingBalance: dueAmt };
+    }
+
+    case 'advance': {
+      const advAmt = Math.max(0, Math.round(Number(input.openingAmount) || 0));
+      return { billingStartMonth: nextUpcomingMonth, openingBalance: advAmt > 0 ? -advAmt : 0 };
+    }
+
+    case 'default':
+    default: {
+      const explicitStart =
+        input.billingStartMonth && /^\d{4}-\d{2}$/.test(input.billingStartMonth)
+          ? input.billingStartMonth
+          : null;
+      const explicitOpening =
+        input.openingBalance !== undefined && input.openingBalance !== null && !isNaN(Number(input.openingBalance))
+          ? Number(input.openingBalance)
+          : 0;
+      return { billingStartMonth: explicitStart, openingBalance: explicitOpening };
+    }
+  }
 }
 
 // Format YYYY-MM string
@@ -189,7 +281,6 @@ export function computeStudentBillingLedger(
   referenceDate: Date = new Date()
 ): StudentBillingLedger {
   const settings = readSettings();
-  const fee = standardMonthlyFee !== undefined && standardMonthlyFee !== null ? standardMonthlyFee : (Number(settings.monthlyFee) || 6000);
   const joinDate = student.dateOfJoining ? new Date(student.dateOfJoining) : new Date();
   const joinDay = joinDate.getDate() || 1;
   const joinYear = joinDate.getFullYear();
@@ -200,8 +291,13 @@ export function computeStudentBillingLedger(
   const refDay = referenceDate.getDate();
   const refDateStart = new Date(refYear, refMonth0, refDay);
   const joinDateStart = new Date(joinYear, joinMonth0, joinDay);
+  const joinMonthStr = toMonthString(joinDateStart);
 
-  if (refDateStart < joinDateStart) {
+  const rawBillingStart = (student as any).billingStartMonth as string | null | undefined;
+  const hasValidBillingStart = Boolean(rawBillingStart && /^\d{4}-\d{2}$/.test(rawBillingStart));
+  const openingBalance = Number((student as any).openingBalance) || 0;
+
+  if (refDateStart < joinDateStart && openingBalance === 0) {
     return {
       studentId: student.id,
       studentName: student.name,
@@ -215,16 +311,41 @@ export function computeStudentBillingLedger(
     };
   }
 
-  // Generate all elapsed cycles from join date up to reference date
+  // Determine start month for software-tracked cycles
   let currY = joinYear;
   let currM = joinMonth0;
-  const earliestAllowed = new Date(refYear, refMonth0 - 24, 1);
-  if (new Date(currY, currM, 1) < earliestAllowed) {
-    currY = earliestAllowed.getFullYear();
-    currM = earliestAllowed.getMonth();
+  if (hasValidBillingStart) {
+    const clampedStart = rawBillingStart! >= joinMonthStr ? rawBillingStart! : joinMonthStr;
+    const [sy, sm] = clampedStart.split('-').map(Number);
+    currY = sy;
+    currM = sm - 1;
+  } else {
+    const earliestAllowed = new Date(refYear, refMonth0 - 24, 1);
+    if (new Date(currY, currM, 1) < earliestAllowed) {
+      currY = earliestAllowed.getFullYear();
+      currM = earliestAllowed.getMonth();
+    }
   }
 
   const dueCycles: CycleBillDetail[] = [];
+
+  // Prepend Opening Arrears (+ve openingBalance) as the very first FIFO obligation
+  if (openingBalance > 0) {
+    dueCycles.push({
+      month: 'OPENING',
+      monthLabel: 'Previous Balance Due',
+      cycleLabel: 'Brought Forward (Pre-Software Dues)',
+      cycleStart: joinDateStart,
+      cycleEnd: refDateStart,
+      cycleDueDate: joinDateStart,
+      isDue: true,
+      expectedAmount: openingBalance,
+      paidAmount: 0,
+      remainingDue: openingBalance,
+      status: 'Pending'
+    });
+  }
+
   while (currY < refYear || (currY === refYear && currM <= refMonth0)) {
     const mStr = `${currY}-${String(currM + 1).padStart(2, '0')}`;
     const { cycleStart, cycleEnd, cycleDueDate, cycleLabel } = getCycleForMonth(joinDay, mStr);
@@ -256,13 +377,14 @@ export function computeStudentBillingLedger(
     }
   }
 
-  // Calculate total completed payments
+  // Calculate total completed payments recorded in software + any pre-app advance (-ve openingBalance)
   const fees = student.fees || [];
   const completedFees = fees.filter(f => f.status === 'Completed');
   const totalPaid = completedFees.reduce((sum, f) => sum + (Number(f.amount) || 0), 0);
+  const openingAdvance = openingBalance < 0 ? Math.abs(openingBalance) : 0;
 
-  // Allocate totalPaid FIFO chronologically across dueCycles
-  let pool = totalPaid;
+  // Allocate (cash paid + opening advance) FIFO chronologically across dueCycles
+  let pool = totalPaid + openingAdvance;
   let latestPaidMonth: string | null = null;
   for (const c of dueCycles) {
     if (pool >= c.expectedAmount) {
@@ -270,7 +392,9 @@ export function computeStudentBillingLedger(
       c.remainingDue = 0;
       c.status = 'Paid';
       pool -= c.expectedAmount;
-      latestPaidMonth = c.month;
+      if (c.month !== 'OPENING') {
+        latestPaidMonth = c.month;
+      }
     } else if (pool > 0) {
       c.paidAmount = pool;
       c.remainingDue = c.expectedAmount - pool;
@@ -310,16 +434,17 @@ export function getStudentMonthFeeStatus(
   referenceDate: Date = new Date(),
   standardMonthlyFee?: number
 ): MonthFeeStatus {
-  const fee = standardMonthlyFee !== undefined && standardMonthlyFee !== null ? standardMonthlyFee : (Number(readSettings().monthlyFee) || 6000);
+  const settings = readSettings();
   const joinDate = student.dateOfJoining ? new Date(student.dateOfJoining) : new Date();
   const joinDay = joinDate.getDate() || 1;
   const joinYear = joinDate.getFullYear();
   const joinMonth0 = joinDate.getMonth();
+  const joinMonthStr = toMonthString(new Date(joinYear, joinMonth0, 1));
 
   const [qYear, qMonth1] = monthStr.split('-').map(Number);
   const qMonth0 = qMonth1 - 1;
 
-  const { cycleStart, cycleEnd, cycleDueDate, cycleLabel } = getCycleForMonth(joinDay, monthStr);
+  const { cycleStart, cycleEnd, cycleLabel } = getCycleForMonth(joinDay, monthStr);
 
   // Status: Not Enrolled (queried month is before joining)
   const isBeforeJoining = qYear < joinYear || (qYear === joinYear && qMonth0 < joinMonth0);
@@ -334,18 +459,27 @@ export function getStudentMonthFeeStatus(
       hasAccumulatedArrears: false,
       pendingMonthsCount: 0,
       totalArrearsAmount: 0,
-      oldestUnpaidMonth: null
+      oldestUnpaidMonth: null,
+      advanceCredit: 0
     };
   }
 
-  const settings = readSettings();
-  const cycleExpectedFee = getMonthlyFeeForMonth(monthStr, settings);
   const ledger = computeStudentBillingLedger(student, standardMonthlyFee, referenceDate);
   const oldestUnpaid = ledger.pendingCycles[0]?.month || null;
+  const refMonthStr = toMonthString(referenceDate);
 
-  // Check if monthStr is one of the due cycles
+  const rawBillingStart = (student as any).billingStartMonth as string | null | undefined;
+  const hasValidBillingStart = Boolean(rawBillingStart && /^\d{4}-\d{2}$/.test(rawBillingStart));
+  const effectiveStartMonthStr = hasValidBillingStart
+    ? (rawBillingStart! >= joinMonthStr ? rawBillingStart! : joinMonthStr)
+    : joinMonthStr;
+
+  const openingDueCycle = ledger.dueCycles.find(c => c.month === 'OPENING' && c.remainingDue > 0);
+
+  // Check if monthStr is one of the actively tracked due cycles
   const cycleDetail = ledger.dueCycles.find(c => c.month === monthStr);
   if (cycleDetail) {
+    const hasCompletedCashFee = (student.fees || []).some(f => f.month === monthStr && f.status === 'Completed');
     if (cycleDetail.remainingDue === 0) {
       return {
         status: 'Paid',
@@ -357,7 +491,9 @@ export function getStudentMonthFeeStatus(
         hasAccumulatedArrears: ledger.totalRemainingDue > 0,
         pendingMonthsCount: ledger.pendingCycles.length,
         totalArrearsAmount: ledger.totalRemainingDue,
-        oldestUnpaidMonth: oldestUnpaid
+        oldestUnpaidMonth: oldestUnpaid,
+        advanceCredit: ledger.advanceCredit,
+        paidViaAdvance: !hasCompletedCashFee
       };
     } else {
       return {
@@ -370,13 +506,88 @@ export function getStudentMonthFeeStatus(
         hasAccumulatedArrears: ledger.totalRemainingDue > cycleDetail.remainingDue,
         pendingMonthsCount: ledger.pendingCycles.length,
         totalArrearsAmount: ledger.totalRemainingDue,
-        oldestUnpaidMonth: oldestUnpaid
+        oldestUnpaidMonth: oldestUnpaid,
+        advanceCredit: ledger.advanceCredit
       };
     }
   }
 
-  // Upcoming cycle (future month or current month before due date)
-  const upcomingRemaining = Math.max(0, cycleExpectedFee - ledger.advanceCredit);
+  // If queried month is prior to software billing cutover (pre-app settled history)
+  if (hasValidBillingStart && monthStr < effectiveStartMonthStr) {
+    // Surface unpaid Opening Arrears on the current active calendar month so Pay buttons remain accessible everywhere
+    if (openingDueCycle && monthStr === refMonthStr) {
+      return {
+        status: 'Pending',
+        cycleDueDay: joinDay,
+        cycleStart,
+        cycleEnd,
+        cycleLabel: openingDueCycle.cycleLabel,
+        amountDue: openingDueCycle.remainingDue,
+        hasAccumulatedArrears: ledger.totalRemainingDue > openingDueCycle.remainingDue,
+        pendingMonthsCount: ledger.pendingCycles.length,
+        totalArrearsAmount: ledger.totalRemainingDue,
+        oldestUnpaidMonth: 'OPENING',
+        advanceCredit: ledger.advanceCredit
+      };
+    }
+
+    return {
+      status: 'Paid',
+      cycleDueDay: joinDay,
+      cycleStart,
+      cycleEnd,
+      cycleLabel,
+      amountDue: 0,
+      hasAccumulatedArrears: ledger.totalRemainingDue > 0,
+      pendingMonthsCount: ledger.pendingCycles.length,
+      totalArrearsAmount: ledger.totalRemainingDue,
+      oldestUnpaidMonth: oldestUnpaid,
+      advanceCredit: ledger.advanceCredit,
+      isPreSettled: true
+    };
+  }
+
+  // Also surface Opening Arrears if queried month is current calendar month whose due day hasn't arrived yet (e.g. joinDay=28)
+  if (openingDueCycle && monthStr === refMonthStr) {
+    return {
+      status: 'Pending',
+      cycleDueDay: joinDay,
+      cycleStart,
+      cycleEnd,
+      cycleLabel: openingDueCycle.cycleLabel,
+      amountDue: openingDueCycle.remainingDue,
+      hasAccumulatedArrears: ledger.totalRemainingDue > openingDueCycle.remainingDue,
+      pendingMonthsCount: ledger.pendingCycles.length,
+      totalArrearsAmount: ledger.totalRemainingDue,
+      oldestUnpaidMonth: 'OPENING',
+      advanceCredit: ledger.advanceCredit
+    };
+  }
+
+  // Upcoming cycle (future month or current month before due date) — cascade advance credit chronologically
+  const billedMonthSet = new Set(ledger.dueCycles.map(c => c.month));
+  let remainingAdvance = ledger.advanceCredit;
+  let mIter = effectiveStartMonthStr > monthStr ? monthStr : effectiveStartMonthStr;
+  let upcomingRemaining = 0;
+  let coveredByAdvance = false;
+
+  while (mIter <= monthStr) {
+    if (!billedMonthSet.has(mIter)) {
+      const iterFee =
+        standardMonthlyFee !== undefined && standardMonthlyFee !== settings.monthlyFee
+          ? standardMonthlyFee
+          : getMonthlyFeeForMonth(mIter, settings);
+      const covered = Math.min(remainingAdvance, iterFee);
+      if (mIter === monthStr) {
+        coveredByAdvance = covered > 0;
+        upcomingRemaining = Math.max(0, iterFee - covered);
+        break;
+      }
+      remainingAdvance = Math.max(0, remainingAdvance - covered);
+    }
+    mIter = addMonths(mIter, 1);
+  }
+
   return {
     status: upcomingRemaining === 0 ? 'Paid' : 'Upcoming',
     cycleDueDay: joinDay,
@@ -387,7 +598,9 @@ export function getStudentMonthFeeStatus(
     hasAccumulatedArrears: ledger.totalRemainingDue > 0,
     pendingMonthsCount: ledger.pendingCycles.length,
     totalArrearsAmount: ledger.totalRemainingDue,
-    oldestUnpaidMonth: oldestUnpaid
+    oldestUnpaidMonth: oldestUnpaid,
+    advanceCredit: ledger.advanceCredit,
+    paidViaAdvance: upcomingRemaining === 0 && coveredByAdvance
   };
 }
 
@@ -430,6 +643,7 @@ export function calculateStudentDueStatus(
   const pendingMonths = ledger.pendingCycles.map(c => ({
     month: c.month,
     monthLabel: c.monthLabel,
+    cycleLabel: c.cycleLabel,
     amount: c.remainingDue,
     paidAmount: c.paidAmount,
     expectedAmount: c.expectedAmount
@@ -443,6 +657,9 @@ export function calculateStudentDueStatus(
     roomName,
     course: student.course,
     dateOfJoining: joinDate,
+    billingStartMonth: (student as any).billingStartMonth || null,
+    openingBalance: Number((student as any).openingBalance) || 0,
+    advanceCredit: ledger.advanceCredit,
     dueDayOfMonth: joinDay,
     dueDayLabel: getOrdinal(joinDay),
     nextDueDate: nextDueDateFormatted,

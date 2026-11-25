@@ -27,9 +27,13 @@ model Student {
   rollNumber              String?
   // Hostel
   dateOfJoining           DateTime    @default(now())
+  // Opening Ledger Snapshot (for existing/legacy residents onboarded mid-stay)
+  billingStartMonth       String?     // "YYYY-MM": First cycle billed in software; earlier cycles settled offline
+  openingBalance          Float       @default(0) // +ve = Prior arrears due | -ve = Pre-app advance/partial credit
   // Address / ID
   aadhar                  String?
   aadharCardUrl           String?
+  studentIdCardUrl        String?
   address                 String?
   pincode                 String?
   state                   String?

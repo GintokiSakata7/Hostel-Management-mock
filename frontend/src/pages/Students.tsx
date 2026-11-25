@@ -29,6 +29,7 @@ const EMPTY_FORM = {
   email: '',
   course: 'B.Tech',
   aadharCardUrl: '',
+  studentIdCardUrl: '',
   photoUrl: '',
   branch: 'General',
   year: '1st Year',
@@ -81,6 +82,7 @@ function PaymentModal({ student, selectedMonth, onClose, onSuccess }: { student:
     ? Number(student.totalPendingAmount)
     : (student.pendingMonthsCount ? Number(student.pendingMonthsCount) * monthlyFee : monthlyFee);
   const initialAmount = totalPending > 0 ? totalPending : (Number(student.amount) || monthlyFee);
+  const heldAdvance = Number(student.securityDeposit) || 0;
 
   const [form, setForm] = useState({ amount: initialAmount, method: 'Cash', upiProvider: 'PhonePe', transactionRef: '', date: new Date().toISOString().split('T')[0] });
   const [saving, setSaving] = useState(false);
@@ -93,7 +95,12 @@ function PaymentModal({ student, selectedMonth, onClose, onSuccess }: { student:
   }, [student, monthlyFee]);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault(); setSaving(true);
+    e.preventDefault();
+    if (form.method === 'Advance' && Number(form.amount) > heldAdvance) {
+      showToast(`Amount ₹${Number(form.amount).toLocaleString('en-IN')} exceeds Advance Held (₹${heldAdvance.toLocaleString('en-IN')})`, 'error');
+      return;
+    }
+    setSaving(true);
     try {
       const res = await fetch('/api/fees/pay', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -199,14 +206,25 @@ function PaymentModal({ student, selectedMonth, onClose, onSuccess }: { student:
         <div className="form-group"><label>Amount (₹)</label>
           <input type="number" required className="custom-input" value={form.amount} onChange={e => setForm({ ...form, amount: Number(e.target.value) })} /></div>
         <div className="form-group"><label>Payment Method</label>
-          <div style={{ display: 'flex', gap: '1rem' }}>
-            {['Cash', 'UPI'].map(m => (
-              <button key={m} type="button" onClick={() => setForm({ ...form, method: m })}
-                style={{ flex: 1, padding: '10px', borderRadius: 10, border: '2px solid', borderColor: form.method === m ? 'var(--primary)' : 'var(--border-dim)', background: form.method === m ? 'rgba(249,115,22,0.1)' : 'transparent', color: form.method === m ? 'var(--primary)' : 'var(--text-muted)', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }}>
-                {m === 'Cash' ? '💵 Cash' : '📱 UPI'}
+          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+            {(['Cash', 'UPI', ...(heldAdvance > 0 ? ['Advance'] : [])] as string[]).map(m => (
+              <button key={m} type="button" onClick={() => {
+                if (m === 'Advance') {
+                  setForm(prev => ({ ...prev, method: 'Advance', amount: Math.min(Number(prev.amount) || initialAmount, heldAdvance) }));
+                } else {
+                  setForm(prev => ({ ...prev, method: m }));
+                }
+              }}
+                style={{ flex: 1, minWidth: 96, padding: '10px', borderRadius: 10, border: '2px solid', borderColor: form.method === m ? (m === 'Advance' ? 'var(--success)' : 'var(--primary)') : 'var(--border-dim)', background: form.method === m ? (m === 'Advance' ? 'var(--success)' : 'var(--primary)') : 'transparent', color: form.method === m ? '#ffffff' : 'var(--text-muted)', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s', fontSize: '0.84rem' }}>
+                {m === 'Cash' ? '💵 Cash' : m === 'UPI' ? '📱 UPI' : `🏦 Advance (₹${heldAdvance.toLocaleString('en-IN')})`}
               </button>
             ))}
           </div>
+          {form.method === 'Advance' && heldAdvance > 0 && (
+            <div style={{ marginTop: 8, padding: '8px 12px', borderRadius: 8, background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.28)', fontSize: '0.76rem', color: 'var(--success)', fontWeight: 600 }}>
+              Adjusts ₹{Math.min(Number(form.amount) || 0, heldAdvance).toLocaleString('en-IN')} from Advance Held · Remaining Advance: ₹{Math.max(0, heldAdvance - (Number(form.amount) || 0)).toLocaleString('en-IN')}
+            </div>
+          )}
         </div>
         {form.method === 'UPI' && (<>
           <div className="form-group"><label>UPI Provider</label>
@@ -461,20 +479,30 @@ function StudentDetailCard({ student, selectedMonth, onClose, onRefresh, isMobil
                     <div style={{ fontWeight: 800, fontSize: '0.95rem', color: isPaidThisMonth ? '#4ade80' : '#fb923c', letterSpacing: '0.01em' }}>
                       {isPaidThisMonth ? '✓ Fee Paid' : '⚡ Fee Pending'}
                     </div>
-                    <div style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>For {monthLabel}</div>
+                    <div style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>
+                      For {monthLabel}{(student.securityDeposit || 0) > 0 ? ` · Advance Held: ₹${Number(student.securityDeposit).toLocaleString('en-IN')}` : ''}
+                    </div>
                   </div>
                 </div>
 
                 <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                   <div style={{ textAlign: 'right', marginRight: 4 }}>
-                    <div style={{ fontWeight: 800, fontSize: '1.25rem', color: 'var(--text-main)' }}>₹{(student.totalPendingAmount || monthlyFee).toLocaleString()}</div>
+                    <div style={{ fontWeight: 800, fontSize: '1.25rem', color: 'var(--text-main)' }}>
+                      ₹{(isPaidThisMonth ? (feeRecord?.amount || 0) : (student.totalPendingAmount || monthlyFee)).toLocaleString()}
+                    </div>
                     <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Due {student.dueDayLabel || '10th'}</div>
                   </div>
 
                   {isPaidThisMonth ? (
-                    <button className="primary-btn" title="Print Receipt" onClick={() => setShowReceipt(true)} style={{ background: 'rgba(34,197,94,0.2)', color: '#4ade80', border: '1px solid rgba(34,197,94,0.4)', padding: '7px 12px', fontSize: '0.82rem', gap: '6px' }}>
-                      <Printer size={15} /> Receipt
-                    </button>
+                    feeRecord ? (
+                      <button className="primary-btn" title="Print Receipt" onClick={() => setShowReceipt(true)} style={{ background: 'rgba(34,197,94,0.2)', color: '#4ade80', border: '1px solid rgba(34,197,94,0.4)', padding: '7px 12px', fontSize: '0.82rem', gap: '6px' }}>
+                        <Printer size={15} /> Receipt
+                      </button>
+                    ) : (
+                      <span style={{ fontSize: '0.75rem', fontWeight: 700, padding: '6px 12px', borderRadius: 10, background: 'rgba(34,197,94,0.15)', color: '#4ade80', border: '1px solid rgba(34,197,94,0.3)' }}>
+                        {student.paidViaAdvance ? 'Advance Applied' : 'Settled (Prior)'}
+                      </span>
+                    )
                   ) : (
                     <div style={{ display: 'flex', gap: '6px' }}>
                       {onSendReminder && (
@@ -555,40 +583,48 @@ function StudentDetailCard({ student, selectedMonth, onClose, onRefresh, isMobil
           {/* TAB CONTENT 2: DOCUMENTS & FAMILY */}
           {activeTab === 'docs' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              {/* Aadhaar Card Document */}
-              <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 16, padding: '16px', border: '1px solid rgba(255,255,255,0.08)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                  <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <Shield size={18} color="var(--primary)" />
-                    <span>Aadhaar Card Attachment</span>
-                  </div>
-                </div>
-
-                {student.aadharCardUrl ? (
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(249,115,22,0.08)', border: '1px solid rgba(249,115,22,0.25)', borderRadius: 12, padding: '12px 16px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <div style={{ width: 38, height: 38, borderRadius: 10, background: 'rgba(249,115,22,0.2)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <FileText size={20} />
-                      </div>
-                      <div>
-                        <div style={{ fontWeight: 700, fontSize: '0.88rem', color: 'var(--text-main)' }}>Attached Aadhaar Document</div>
-                        <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Click to view or inspect image/PDF</div>
+              {/* Optional Identity Documents (Aadhaar & Student ID Card) */}
+              {[
+                { key: 'aadharCardUrl', title: 'Aadhaar Card Attachment', attachedTitle: 'Attached Aadhaar Document', emptyText: 'No Aadhaar document uploaded (optional).' },
+                { key: 'studentIdCardUrl', title: 'Student ID Card Attachment', attachedTitle: 'Attached Student ID Card', emptyText: 'No Student ID Card uploaded (optional).' }
+              ].map(doc => {
+                const docUrl = student[doc.key];
+                return (
+                  <div key={doc.key} style={{ background: 'rgba(128,128,128,0.04)', borderRadius: 16, padding: '16px', border: '1px solid var(--border-dim)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                      <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <Shield size={18} color="var(--primary)" />
+                        <span>{doc.title}</span>
                       </div>
                     </div>
-                    <button 
-                      type="button" 
-                      onClick={() => onPreviewDoc(student.aadharCardUrl)} 
-                      style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 14px', background: 'var(--primary)', color: '#fff', border: 'none', borderRadius: 10, fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 14px rgba(249,115,22,0.3)' }}
-                    >
-                      <Eye size={15} /> Preview
-                    </button>
+
+                    {docUrl ? (
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(249,115,22,0.08)', border: '1px solid rgba(249,115,22,0.25)', borderRadius: 12, padding: '12px 16px', gap: 10 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
+                          <div style={{ width: 38, height: 38, borderRadius: 10, background: 'rgba(249,115,22,0.2)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                            <FileText size={20} />
+                          </div>
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{ fontWeight: 700, fontSize: '0.88rem', color: 'var(--text-main)' }}>{doc.attachedTitle}</div>
+                            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Click to view or inspect image/PDF</div>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => onPreviewDoc(docUrl)}
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 14px', background: 'var(--primary)', color: '#fff', border: 'none', borderRadius: 10, fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}
+                        >
+                          <Eye size={15} /> Preview
+                        </button>
+                      </div>
+                    ) : (
+                      <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', fontStyle: 'italic', padding: '10px 0', textAlign: 'center', background: 'rgba(128,128,128,0.06)', borderRadius: 10 }}>
+                        {doc.emptyText}
+                      </div>
+                    )}
                   </div>
-                ) : (
-                  <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', fontStyle: 'italic', padding: '10px 0', textAlign: 'center', background: 'rgba(128,128,128,0.06)', borderRadius: 10 }}>
-                    No Aadhaar document uploaded for this student yet.
-                  </div>
-                )}
-              </div>
+                );
+              })}
 
               {/* Family Contact */}
               <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 16, padding: '16px', border: '1px solid rgba(255,255,255,0.08)' }}>
@@ -642,6 +678,50 @@ function StudentDetailCard({ student, selectedMonth, onClose, onRefresh, isMobil
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {/* Advance Held Settlement Summary (for 1-month vacate notice or manual adjustment) */}
+                {((student.securityDeposit || 0) > 0 || (student.totalPendingAmount || 0) > 0) && (() => {
+                  const held = Number(student.securityDeposit) || 0;
+                  const due = Number(student.totalPendingAmount) || 0;
+                  const net = held - due;
+                  return (
+                    <div style={{
+                      background: 'rgba(34,197,94,0.08)',
+                      border: '1px solid rgba(34,197,94,0.28)',
+                      borderRadius: 12,
+                      padding: '12px 14px',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      flexWrap: 'wrap',
+                      gap: '10px'
+                    }}>
+                      <div style={{ fontSize: '0.8rem', lineHeight: 1.5 }}>
+                        <div style={{ fontWeight: 700, color: 'var(--text-main)' }}>Advance & Vacate Settlement</div>
+                        <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
+                          Advance Held: <strong style={{ color: 'var(--success)' }}>₹{held.toLocaleString('en-IN')}</strong> · Pending Due: <strong style={{ color: due > 0 ? 'var(--danger)' : 'var(--success)' }}>₹{due.toLocaleString('en-IN')}</strong>
+                        </div>
+                        <div style={{ fontSize: '0.74rem', fontWeight: 700, marginTop: 2, color: net >= 0 ? 'var(--success)' : 'var(--primary)' }}>
+                          {net > 0
+                            ? `Net Refund to Student on Vacate: ₹${net.toLocaleString('en-IN')}`
+                            : net < 0
+                            ? `Collect ₹${Math.abs(net).toLocaleString('en-IN')} remaining after applying Advance`
+                            : 'Advance exactly settles pending dues (₹0 balance)'}
+                        </div>
+                      </div>
+                      {held > 0 && due > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setShowPayment(true)}
+                          className="primary-btn"
+                          style={{ padding: '7px 12px', fontSize: '0.76rem', minHeight: 0, background: 'var(--success)', color: '#ffffff', boxShadow: 'none' }}
+                        >
+                          Use Advance Toward Due
+                        </button>
+                      )}
+                    </div>
+                  );
+                })()}
+
                 <label className="student-detail-box" style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontSize: '0.88rem', fontWeight: 600, padding: '12px' }}>
                   <input 
                     type="checkbox" 
@@ -763,18 +843,106 @@ const F = ({ label, col, hint, error, children }: { label: string; col?: boolean
 
 function AdmissionForm({ student, onClose, onSave, isMobile, onPreviewDoc }: { student: any; onClose: () => void; onSave: () => void; isMobile: boolean; onPreviewDoc: (url: string) => void }) {
   const { showToast } = useToast();
+  const { settings } = useSettings();
+  const monthlyFee = Number(settings?.monthlyFee) || 6999;
+  const previousMonthlyFee = settings?.previousMonthlyFee !== undefined && settings?.previousMonthlyFee !== null
+    ? Number(settings.previousMonthlyFee)
+    : 6000;
+  const feeEffectiveMonth = settings?.feeEffectiveMonth || '2026-11';
+
+  const todayStr = new Date().toISOString().split('T')[0];
+
   const [form, setForm] = useState(
     student
       ? {
           ...EMPTY_FORM,
           ...student,
-          dateOfJoining: student.dateOfJoining ? student.dateOfJoining.split('T')[0] : new Date().toISOString().split('T')[0]
+          dateOfJoining: student.dateOfJoining ? student.dateOfJoining.split('T')[0] : todayStr
         }
-      : { ...EMPTY_FORM, dateOfJoining: new Date().toISOString().split('T')[0] }
+      : { ...EMPTY_FORM, dateOfJoining: todayStr }
   );
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [saving, setSaving] = useState(false);
-  const [uploadingAadhar, setUploadingAadhar] = useState(false);
+  const [uploadingDocs, setUploadingDocs] = useState<Record<string, boolean>>({});
+
+  // Simple 2-step setup: (1) Fee Due Till Today (3 choices) + (2) Advance Held (always available combo)
+  type DueChoice = 'cleared' | 'months_due' | 'custom_due';
+  const [feeChoice, setFeeChoice] = useState<DueChoice>('months_due');
+  const [customDueAmount, setCustomDueAmount] = useState<string>('');
+  const [advanceHeldInput, setAdvanceHeldInput] = useState<string>(
+    student?.securityDeposit ? String(student.securityDeposit) : ''
+  );
+
+  const isPastJoiningDate = Boolean(form.dateOfJoining && form.dateOfJoining < todayStr);
+
+  // Auto-select safe default: Paid (₹0) for old residents, This Month Due for today's new admissions
+  useEffect(() => {
+    if (student) return;
+    if (isPastJoiningDate) {
+      setFeeChoice('cleared');
+    } else {
+      setFeeChoice('months_due');
+    }
+  }, [isPastJoiningDate, student]);
+
+  // Compute plain-English live billing preview
+  const preview = (() => {
+    const joinStr = form.dateOfJoining || todayStr;
+    const [jy, jm, jd] = joinStr.split('-').map(Number);
+    const joinDate = (!isNaN(jy) && !isNaN(jm) && !isNaN(jd)) ? new Date(jy, jm - 1, jd) : new Date();
+    const joinDay = joinDate.getDate() || 1;
+    const joinMonthStr = `${joinDate.getFullYear()}-${String(joinDate.getMonth() + 1).padStart(2, '0')}`;
+
+    const now = new Date();
+    const refStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const refMonthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+    const addM = (ms: string, delta: number) => {
+      const [y, m] = ms.split('-').map(Number);
+      const t = y * 12 + (m - 1) + delta;
+      return `${Math.floor(t / 12)}-${String(((t % 12) + 12) % 12 + 1).padStart(2, '0')}`;
+    };
+    const clampD = (y: number, m0: number, target: number) => {
+      const maxD = new Date(y, m0 + 1, 0).getDate();
+      return new Date(y, m0, Math.min(target, maxD));
+    };
+    const fmtDate = (d: Date) => d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+    const rateFor = (ms: string) => (feeEffectiveMonth && ms < feeEffectiveMonth ? previousMonthlyFee : monthlyFee);
+
+    const refDue = clampD(now.getFullYear(), now.getMonth(), joinDay);
+    let latestDueMonth: string | null = refDue <= refStart ? refMonthStr : addM(refMonthStr, -1);
+    if (refStart < new Date(joinDate.getFullYear(), joinDate.getMonth(), joinDay) || latestDueMonth < joinMonthStr) {
+      latestDueMonth = null;
+    }
+
+    const nextUpcomingMonth = latestDueMonth ? addM(latestDueMonth, 1) : joinMonthStr;
+    const [ny, nm] = nextUpcomingMonth.split('-').map(Number);
+    const nextDueDateLabel = fmtDate(clampD(ny, nm - 1, joinDay));
+    const nextMonthFee = rateFor(nextUpcomingMonth);
+    const currentDueFee = latestDueMonth ? rateFor(latestDueMonth) : nextMonthFee;
+
+    const vOrd = joinDay % 100;
+    const sOrd = ['th', 'st', 'nd', 'rd'];
+    const dueOrdSuffix = sOrd[(vOrd - 20) % 10] || sOrd[vOrd] || sOrd[0];
+
+    const parsedDue = feeChoice === 'custom_due'
+      ? Math.max(0, Math.round(Number(customDueAmount) || 0))
+      : feeChoice === 'months_due' && latestDueMonth
+      ? currentDueFee
+      : 0;
+    const parsedAdvance = Math.max(0, Math.round(Number(advanceHeldInput) || 0));
+
+    return {
+      joinDay,
+      dueDayLabel: `${joinDay}${dueOrdSuffix}`,
+      latestDueMonth,
+      currentDueFee,
+      nextDueDateLabel,
+      nextMonthFee,
+      parsedDue,
+      parsedAdvance
+    };
+  })();
 
   const validateSingleField = (key: string, val: any): string => {
     const v = (val || '').toString().trim();
@@ -823,7 +991,11 @@ function AdmissionForm({ student, onClose, onSave, isMobile, onPreviewDoc }: { s
     setTouched(prev => ({ ...prev, [key]: true }));
   };
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (
+    fieldKey: 'aadharCardUrl' | 'studentIdCardUrl',
+    docLabel: string,
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -832,12 +1004,12 @@ function AdmissionForm({ student, onClose, onSave, isMobile, onPreviewDoc }: { s
       return;
     }
 
-    setUploadingAadhar(true);
+    setUploadingDocs(prev => ({ ...prev, [fieldKey]: true }));
     try {
       const reader = new FileReader();
       reader.onload = async () => {
         const base64Data = reader.result as string;
-        f('aadharCardUrl', base64Data);
+        f(fieldKey, base64Data);
 
         const res = await fetch('/api/upload', {
           method: 'POST',
@@ -846,17 +1018,17 @@ function AdmissionForm({ student, onClose, onSave, isMobile, onPreviewDoc }: { s
         });
         if (res.ok) {
           const data = await res.json();
-          f('aadharCardUrl', data.url);
-          showToast('Aadhaar photo attached successfully!', 'success');
+          f(fieldKey, data.url);
+          showToast(`${docLabel} attached successfully!`, 'success');
         } else {
           showToast('Failed to upload file to server', 'error');
         }
-        setUploadingAadhar(false);
+        setUploadingDocs(prev => ({ ...prev, [fieldKey]: false }));
       };
       reader.readAsDataURL(file);
     } catch (err: any) {
       showToast('Upload error: ' + err.message, 'error');
-      setUploadingAadhar(false);
+      setUploadingDocs(prev => ({ ...prev, [fieldKey]: false }));
     }
   };
 
@@ -880,16 +1052,30 @@ function AdmissionForm({ student, onClose, onSave, isMobile, onPreviewDoc }: { s
       return;
     }
 
+    if (!student && feeChoice === 'custom_due' && preview.parsedDue <= 0) {
+      showToast('Please enter or tap the exact pending ₹ amount due (> ₹0)', 'error');
+      return;
+    }
+
     setSaving(true);
     try {
       const url = student ? `/api/students/${student.dbId || student.id}` : '/api/students';
-      const payload = {
+      const payload: any = {
         ...form,
         branch: 'General',
         year: '1st Year',
         state: 'Hyderabad',
-        dateOfJoining: form.dateOfJoining || new Date().toISOString().split('T')[0]
+        dateOfJoining: form.dateOfJoining || todayStr,
+        securityDeposit: preview.parsedAdvance
       };
+      if (!student) {
+        payload.feeStatusPreset = feeChoice;
+        if (feeChoice === 'months_due') {
+          payload.unpaidMonthsCount = 1;
+        } else if (feeChoice === 'custom_due') {
+          payload.openingAmount = preview.parsedDue;
+        }
+      }
       const res = await fetch(url, {
         method: student ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -951,8 +1137,9 @@ function AdmissionForm({ student, onClose, onSave, isMobile, onPreviewDoc }: { s
                 maxHeight: 'calc(100dvh - 3rem)',
                 padding: '1.75rem',
                 position: 'relative',
-                boxShadow: '0 24px 64px rgba(0,0,0,0.6)',
-                background: 'rgba(22, 26, 38, 0.96)',
+                border: '1px solid var(--border-light)',
+                boxShadow: 'var(--modal-shadow)',
+                background: 'var(--modal-bg)',
                 backdropFilter: 'blur(20px)',
                 display: 'flex',
                 flexDirection: 'column',
@@ -1063,7 +1250,7 @@ function AdmissionForm({ student, onClose, onSave, isMobile, onPreviewDoc }: { s
               </select>
             </F>
 
-            <F label="Date of Joining *" error={getFieldError('dateOfJoining')} hint="Anchors billing (e.g. 10th-10th)">
+            <F label="Joining Date *" error={getFieldError('dateOfJoining')}>
               <input
                 required
                 type="date"
@@ -1072,110 +1259,366 @@ function AdmissionForm({ student, onClose, onSave, isMobile, onPreviewDoc }: { s
                 onChange={e => f('dateOfJoining', e.target.value)}
                 onBlur={() => handleFieldBlur('dateOfJoining')}
               />
+              {!getFieldError('dateOfJoining') && (
+                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: 4 }}>
+                  Monthly bill day: <strong>{preview.dueDayLabel}</strong>
+                </div>
+              )}
             </F>
           </div>
 
-          {/* Aadhaar Card Photo Upload */}
-          <F label="Aadhaar Card Photo" col>
+          {/* Unified 2-Step Fee & Advance Setup (Always visible — works for New, Old & Any Combo) */}
+          {student ? (
             <div style={{
-              background: 'rgba(255,255,255,0.03)',
-              border: '1px dashed var(--border-light)',
+              background: 'rgba(128,128,128,0.06)',
+              border: '1px solid var(--border-light)',
               borderRadius: 14,
-              padding: '14px 16px',
+              padding: '14px',
               display: 'flex',
-              alignItems: 'center',
+              flexDirection: 'column',
+              gap: '10px'
+            }}>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: '0.88rem', color: 'var(--text-main)' }}>Advance Held (₹)</div>
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Held until 1-month vacate notice, or adjustable anytime from Pay.</div>
+              </div>
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                {[0, 2000, 5000, 10000].map(amt => {
+                  const active = preview.parsedAdvance === amt;
+                  return (
+                    <button
+                      key={amt}
+                      type="button"
+                      onClick={() => setAdvanceHeldInput(amt === 0 ? '' : String(amt))}
+                      style={{
+                        padding: '6px 11px',
+                        borderRadius: 8,
+                        fontSize: '0.76rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        border: active ? '1.5px solid var(--success)' : '1px solid var(--border-dim)',
+                        background: active ? 'var(--success)' : 'rgba(128,128,128,0.08)',
+                        color: active ? '#ffffff' : 'var(--text-main)'
+                      }}
+                    >
+                      {amt === 0 ? 'None (₹0)' : `₹${amt.toLocaleString('en-IN')}`}
+                    </button>
+                  );
+                })}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--success)' }}>₹</span>
+                <input
+                  type="number"
+                  min={0}
+                  className="custom-input"
+                  value={advanceHeldInput}
+                  onChange={e => setAdvanceHeldInput(e.target.value)}
+                  placeholder="Enter advance amount (e.g. 5000)"
+                  style={{ flex: 1 }}
+                />
+              </div>
+            </div>
+          ) : (
+            <div style={{
+              background: 'rgba(128,128,128,0.06)',
+              border: '1px solid var(--border-light)',
+              borderRadius: 14,
+              padding: '14px',
+              display: 'flex',
+              flexDirection: 'column',
               gap: '12px'
             }}>
-              {form.aadharCardUrl ? (
-                <div style={{ position: 'relative', flexShrink: 0 }}>
-                  <img
-                    src={form.aadharCardUrl}
-                    alt="Aadhaar Document Preview"
-                    onClick={() => onPreviewDoc(form.aadharCardUrl)}
-                    title="Click to inspect photo"
-                    style={{
-                      width: 64,
-                      height: 64,
-                      borderRadius: 12,
-                      objectFit: 'cover',
-                      border: '2px solid var(--primary)',
-                      cursor: 'pointer'
-                    }}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => f('aadharCardUrl', '')}
-                    style={{
-                      position: 'absolute',
-                      top: -6,
-                      right: -6,
-                      background: '#ef4444',
-                      color: '#fff',
-                      border: 'none',
-                      borderRadius: '50%',
-                      width: 20,
-                      height: 20,
-                      cursor: 'pointer',
-                      fontSize: 12,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center'
-                    }}
-                    title="Remove Aadhaar Photo"
-                  >
-                    ✕
-                  </button>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-main)' }}>
+                  1. Fee Due Till Today
                 </div>
-              ) : (
-                <div style={{
-                  width: 50,
-                  height: 50,
-                  borderRadius: 12,
-                  background: 'rgba(249,115,22,0.12)',
-                  border: '1px solid rgba(249,115,22,0.3)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: 'var(--primary)',
-                  flexShrink: 0
-                }}>
-                  <Camera size={24} />
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 2 }}>
+                  {isPastJoiningDate
+                    ? 'Old resident: defaults to Paid (₹0) so settled past months are not charged.'
+                    : 'Choose starting rent status — tap Paid (₹0) if already collected today.'}
+                </div>
+              </div>
+
+              {/* Step 1: 3 High-Contrast Simple Buttons */}
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: '8px' }}>
+                {[
+                  { id: 'cleared' as const, title: '✓ Paid (₹0)', sub: 'No fee due now' },
+                  { id: 'months_due' as const, title: 'This Month Due', sub: `₹${preview.currentDueFee.toLocaleString('en-IN')}` },
+                  { id: 'custom_due' as const, title: 'Other Amount (₹)', sub: '2k / 5k / 10k / custom' },
+                ].map(opt => {
+                  const active = feeChoice === opt.id;
+                  const disabled = opt.id === 'months_due' && !preview.latestDueMonth;
+                  return (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      disabled={disabled}
+                      onClick={() => setFeeChoice(opt.id)}
+                      style={{
+                        padding: '10px 12px',
+                        borderRadius: 10,
+                        border: active ? '2px solid var(--primary)' : '1px solid var(--border-dim)',
+                        background: active ? 'var(--primary)' : 'rgba(128,128,128,0.08)',
+                        color: disabled ? 'var(--text-muted)' : (active ? '#ffffff' : 'var(--text-main)'),
+                        opacity: disabled ? 0.45 : 1,
+                        cursor: disabled ? 'not-allowed' : 'pointer',
+                        textAlign: 'left',
+                        transition: 'all 0.15s'
+                      }}
+                    >
+                      <div style={{ fontSize: '0.8rem', fontWeight: 800 }}>{opt.title}</div>
+                      <div style={{ fontSize: '0.69rem', color: active ? 'rgba(255,255,255,0.92)' : 'var(--text-muted)', marginTop: 2 }}>{opt.sub}</div>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Quick Chips + Manual Input for Other Due Amount */}
+              {feeChoice === 'custom_due' && (
+                <div style={{ background: 'rgba(128,128,128,0.06)', border: '1px solid var(--border-dim)', padding: '10px 12px', borderRadius: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-main)' }}>
+                    Enter or tap pending due amount (₹):
+                  </div>
+                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                    {[2000, 5000, 10000].map(amt => {
+                      const chipActive = preview.parsedDue === amt;
+                      return (
+                        <button
+                          key={amt}
+                          type="button"
+                          onClick={() => setCustomDueAmount(String(amt))}
+                          style={{
+                            padding: '5px 11px',
+                            borderRadius: 8,
+                            fontSize: '0.75rem',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            border: chipActive ? '1.5px solid var(--primary)' : '1px solid var(--border-dim)',
+                            background: chipActive ? 'var(--primary)' : 'rgba(128,128,128,0.08)',
+                            color: chipActive ? '#ffffff' : 'var(--text-main)'
+                          }}
+                        >
+                          ₹{amt.toLocaleString('en-IN')}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--primary)' }}>₹</span>
+                    <input
+                      type="number"
+                      min={1}
+                      className="custom-input"
+                      value={customDueAmount}
+                      onChange={e => setCustomDueAmount(e.target.value)}
+                      placeholder="Type exact ₹ due (e.g. 3500)"
+                      style={{ flex: 1 }}
+                    />
+                  </div>
                 </div>
               )}
 
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontWeight: 700, fontSize: '0.86rem', color: 'var(--text-main)', marginBottom: 2 }}>
-                  {form.aadharCardUrl ? 'Aadhaar Photo Attached' : 'Upload Aadhaar Card Photo'}
+              {/* Step 2: Independent Advance Held Combo (Always visible with Paid / Due / Custom) */}
+              <div style={{ borderTop: '1px dashed var(--border-dim)', paddingTop: '10px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: '0.86rem', color: 'var(--text-main)' }}>
+                    2. Advance Paid / Held (₹) <span style={{ fontWeight: 500, fontSize: '0.72rem', color: 'var(--text-muted)' }}>(Optional)</span>
+                  </div>
+                  <div style={{ fontSize: '0.71rem', color: 'var(--text-muted)', marginTop: 1 }}>
+                    Normally held until 1-month vacate notice — works with Paid, Due, or Custom.
+                  </div>
                 </div>
-                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: 8 }}>
-                  JPG, PNG or WebP formats accepted (under 12MB)
+                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                  {[0, 2000, 5000, 10000].map(amt => {
+                    const chipActive = preview.parsedAdvance === amt;
+                    return (
+                      <button
+                        key={amt}
+                        type="button"
+                        onClick={() => setAdvanceHeldInput(amt === 0 ? '' : String(amt))}
+                        style={{
+                          padding: '5px 11px',
+                          borderRadius: 8,
+                          fontSize: '0.75rem',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          border: chipActive ? '1.5px solid var(--success)' : '1px solid var(--border-dim)',
+                          background: chipActive ? 'var(--success)' : 'rgba(128,128,128,0.08)',
+                          color: chipActive ? '#ffffff' : 'var(--text-main)'
+                        }}
+                      >
+                        {amt === 0 ? 'None (₹0)' : `₹${amt.toLocaleString('en-IN')}`}
+                      </button>
+                    );
+                  })}
                 </div>
-                <label style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '6px 14px',
-                  background: 'rgba(249,115,22,0.15)',
-                  border: '1px solid rgba(249,115,22,0.4)',
-                  borderRadius: 8,
-                  color: 'var(--primary)',
-                  fontSize: '0.78rem',
-                  fontWeight: 700,
-                  cursor: 'pointer'
-                }}>
-                  <Upload size={13} />
-                  <span>{uploadingAadhar ? 'Uploading photo…' : form.aadharCardUrl ? 'Change Photo' : 'Select Photo File'}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--success)' }}>₹</span>
                   <input
-                    type="file"
-                    accept="image/*,application/pdf"
-                    onChange={handleFileUpload}
-                    style={{ display: 'none' }}
-                    disabled={uploadingAadhar}
+                    type="number"
+                    min={0}
+                    className="custom-input"
+                    value={advanceHeldInput}
+                    onChange={e => setAdvanceHeldInput(e.target.value)}
+                    placeholder="Or type any advance amount (e.g. 5000)"
+                    style={{ flex: 1 }}
                   />
-                </label>
+                </div>
+              </div>
+
+              {/* Clean Theme-Adaptive Summary Strip */}
+              <div style={{
+                background: 'rgba(128,128,128,0.08)',
+                borderRadius: 10,
+                padding: '9px 12px',
+                fontSize: '0.76rem',
+                lineHeight: 1.55,
+                color: 'var(--text-main)',
+                borderLeft: `3px solid ${preview.parsedDue > 0 ? 'var(--primary)' : 'var(--success)'}`
+              }}>
+                <div>
+                  <strong>Due Now:</strong>{' '}
+                  <span style={{ fontWeight: 800, color: preview.parsedDue > 0 ? 'var(--primary)' : 'var(--success)' }}>
+                    ₹{preview.parsedDue.toLocaleString('en-IN')}
+                  </span>
+                  {' · '}
+                  <strong>Advance Held:</strong>{' '}
+                  <span style={{ fontWeight: 800, color: 'var(--success)' }}>
+                    ₹{preview.parsedAdvance.toLocaleString('en-IN')}
+                  </span>
+                </div>
+                <div style={{ color: 'var(--text-muted)', fontSize: '0.72rem' }}>
+                  Next monthly fee (₹{preview.nextMonthFee.toLocaleString('en-IN')}) starts on <strong>{preview.nextDueDateLabel}</strong>
+                </div>
               </div>
             </div>
-          </F>
+          )}
+
+          {/* Optional Identity Document Uploads (Aadhaar Card & Student ID Card) */}
+          <div className="responsive-grid-2" style={{ gap: '0.85rem' }}>
+            {[
+              {
+                key: 'aadharCardUrl' as const,
+                fieldLabel: 'Aadhaar Card Photo (Optional)',
+                attachedLabel: 'Aadhaar Photo Attached',
+                emptyLabel: 'Upload Aadhaar Photo',
+                toastLabel: 'Aadhaar photo'
+              },
+              {
+                key: 'studentIdCardUrl' as const,
+                fieldLabel: 'Student ID Card Photo (Optional)',
+                attachedLabel: 'Student ID Card Attached',
+                emptyLabel: 'Upload Student ID Card',
+                toastLabel: 'Student ID card'
+              }
+            ].map(doc => {
+              const docUrl = form[doc.key];
+              const isUploading = Boolean(uploadingDocs[doc.key]);
+              return (
+                <F key={doc.key} label={doc.fieldLabel}>
+                  <div style={{
+                    background: 'rgba(128,128,128,0.04)',
+                    border: '1px dashed var(--border-light)',
+                    borderRadius: 14,
+                    padding: '12px 14px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px'
+                  }}>
+                    {docUrl ? (
+                      <div style={{ position: 'relative', flexShrink: 0 }}>
+                        <img
+                          src={docUrl}
+                          alt={`${doc.toastLabel} preview`}
+                          onClick={() => onPreviewDoc(docUrl)}
+                          title="Click to inspect photo"
+                          style={{
+                            width: 56,
+                            height: 56,
+                            borderRadius: 10,
+                            objectFit: 'cover',
+                            border: '2px solid var(--primary)',
+                            cursor: 'pointer'
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => f(doc.key, '')}
+                          style={{
+                            position: 'absolute',
+                            top: -6,
+                            right: -6,
+                            background: 'var(--danger)',
+                            color: '#fff',
+                            border: 'none',
+                            borderRadius: '50%',
+                            width: 20,
+                            height: 20,
+                            cursor: 'pointer',
+                            fontSize: 12,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}
+                          title={`Remove ${doc.toastLabel}`}
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ) : (
+                      <div style={{
+                        width: 46,
+                        height: 46,
+                        borderRadius: 12,
+                        background: 'rgba(249,115,22,0.12)',
+                        border: '1px solid rgba(249,115,22,0.3)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: 'var(--primary)',
+                        flexShrink: 0
+                      }}>
+                        <Camera size={22} />
+                      </div>
+                    )}
+
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 700, fontSize: '0.82rem', color: 'var(--text-main)', marginBottom: 2 }}>
+                        {docUrl ? doc.attachedLabel : doc.emptyLabel}
+                      </div>
+                      <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginBottom: 8 }}>
+                        JPG, PNG, WebP or PDF (under 12MB)
+                      </div>
+                      <label style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        padding: '5px 12px',
+                        background: 'rgba(249,115,22,0.15)',
+                        border: '1px solid rgba(249,115,22,0.4)',
+                        borderRadius: 8,
+                        color: 'var(--primary)',
+                        fontSize: '0.74rem',
+                        fontWeight: 700,
+                        cursor: 'pointer'
+                      }}>
+                        <Upload size={13} />
+                        <span>{isUploading ? 'Uploading…' : docUrl ? 'Change File' : 'Select Photo File'}</span>
+                        <input
+                          type="file"
+                          accept="image/*,application/pdf"
+                          onChange={e => handleFileUpload(doc.key, doc.toastLabel, e)}
+                          style={{ display: 'none' }}
+                          disabled={isUploading}
+                        />
+                      </label>
+                    </div>
+                  </div>
+                </F>
+              );
+            })}
+          </div>
 
           {/* Action Buttons */}
           <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem', flexShrink: 0 }}>
@@ -1191,7 +1634,7 @@ function AdmissionForm({ student, onClose, onSave, isMobile, onPreviewDoc }: { s
               type="submit"
               className="primary-btn"
               style={{ flex: 1.5, minHeight: 42, justifyContent: 'center' }}
-              disabled={saving || uploadingAadhar}
+              disabled={saving || Object.values(uploadingDocs).some(Boolean)}
             >
               {saving ? 'Saving…' : student ? '✓ Update Student' : '+ Add Student'}
             </button>
@@ -1274,10 +1717,16 @@ export default function Students() {
   } | null>(null);
 
   const handleVacateStudent = (student: any) => {
+    const heldAdv = Number(student.securityDeposit) || 0;
+    const pendingDue = Number(student.totalPendingAmount) || 0;
+    const net = heldAdv - pendingDue;
+    const settleNote = (heldAdv > 0 || pendingDue > 0)
+      ? ` [Settlement: Advance Held ₹${heldAdv.toLocaleString('en-IN')} vs Due ₹${pendingDue.toLocaleString('en-IN')} → ${net > 0 ? `Refund ₹${net.toLocaleString('en-IN')}` : net < 0 ? `Collect ₹${Math.abs(net).toLocaleString('en-IN')}` : 'Balanced ₹0'}]`
+      : '';
     setConfirmState({
       isOpen: true,
       title: 'Remove Student from Hostel',
-      message: `Remove ${student.name} from hostel? They will be unallocated from room ${student.room} and moved to the Vacated Residents tab.`,
+      message: `Remove ${student.name} from hostel? They will be unallocated from room ${student.room} and moved to the Vacated Residents tab.${settleNote}`,
       confirmText: 'Remove & Vacate',
       variant: 'warning',
       onConfirm: async () => {
@@ -1708,6 +2157,16 @@ export default function Students() {
                           Paid
                         </span>
                       )}
+                      {(student.securityDeposit || 0) > 0 && (
+                        <span style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--success)', background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.28)', padding: '2px 6px', borderRadius: 4, width: 'fit-content' }}>
+                          Advance Held: ₹{Number(student.securityDeposit).toLocaleString('en-IN')}
+                        </span>
+                      )}
+                      {(student.advanceCredit || 0) > 0 && (
+                        <span style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--success)', background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.28)', padding: '2px 6px', borderRadius: 4, width: 'fit-content' }}>
+                          Rent Credit: ₹{Number(student.advanceCredit).toLocaleString('en-IN')}
+                        </span>
+                      )}
                     </div>
                   </td>
                   <td data-label="Actions">
@@ -1839,7 +2298,7 @@ export default function Students() {
                         position: 'absolute', bottom: -3, right: -3,
                         width: 12, height: 12, borderRadius: '50%',
                         background: student.feeStatus === 'Paid' ? 'var(--success)' : 'var(--warning)',
-                        border: '2px solid #090b10',
+                        border: '2px solid var(--surface-2)',
                         boxShadow: `0 0 6px ${student.feeStatus === 'Paid' ? 'var(--success)' : 'var(--warning)'}`
                       }} />
                     )}
@@ -1897,6 +2356,34 @@ export default function Students() {
                       <span style={{ fontSize: '0.73rem', color: 'var(--text-muted)' }}>
                         {student.course}{student.branch ? ` · ${student.branch}` : ''}
                       </span>
+
+                      {(student.securityDeposit || 0) > 0 && (
+                        <span style={{
+                          fontSize: '0.68rem',
+                          fontWeight: 700,
+                          color: 'var(--success)',
+                          background: 'rgba(34,197,94,0.12)',
+                          border: '1px solid rgba(34,197,94,0.28)',
+                          padding: '2px 7px',
+                          borderRadius: 6
+                        }}>
+                          Advance Held: ₹{Number(student.securityDeposit).toLocaleString('en-IN')}
+                        </span>
+                      )}
+
+                      {(student.advanceCredit || 0) > 0 && (
+                        <span style={{
+                          fontSize: '0.68rem',
+                          fontWeight: 700,
+                          color: 'var(--success)',
+                          background: 'rgba(34,197,94,0.12)',
+                          border: '1px solid rgba(34,197,94,0.28)',
+                          padding: '2px 7px',
+                          borderRadius: 6
+                        }}>
+                          Rent Credit: ₹{Number(student.advanceCredit).toLocaleString('en-IN')}
+                        </span>
+                      )}
 
                       {student.isOnNotice && (
                         <span style={{

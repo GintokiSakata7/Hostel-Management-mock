@@ -89,17 +89,23 @@ function BedRow({
         {isOccupied ? (
           <>
             {isPaid ? (
-              <>
-                <button onClick={onPrint}
-                  style={{ padding: '3px 7px', fontSize: '0.62rem', borderRadius: 5, background: 'rgba(255,255,255,0.05)', color: 'var(--text-muted)', border: '1px solid rgba(255,255,255,0.08)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '3px', transition: 'all 0.15s' }}
-                  onMouseOver={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.12)'; e.currentTarget.style.color = '#fff'; }}
-                  onMouseOut={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.color = 'var(--text-muted)'; }}>
-                  <Printer size={9} /> Receipt
-                </button>
-                <button onClick={onUnpay} title="Undo Fee Payment" className="icon-btn-micro danger">
-                  <XCircle size={10} />
-                </button>
-              </>
+              bed.studentObj?.feeRecord ? (
+                <>
+                  <button onClick={onPrint}
+                    style={{ padding: '3px 7px', fontSize: '0.62rem', borderRadius: 5, background: 'rgba(255,255,255,0.05)', color: 'var(--text-muted)', border: '1px solid rgba(255,255,255,0.08)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '3px', transition: 'all 0.15s' }}
+                    onMouseOver={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.12)'; e.currentTarget.style.color = '#fff'; }}
+                    onMouseOut={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.color = 'var(--text-muted)'; }}>
+                    <Printer size={9} /> Receipt
+                  </button>
+                  <button onClick={onUnpay} title="Undo Fee Payment" className="icon-btn-micro danger">
+                    <XCircle size={10} />
+                  </button>
+                </>
+              ) : (
+                <span style={{ fontSize: '0.62rem', fontWeight: 700, color: '#4ade80', padding: '2px 7px', background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.25)', borderRadius: 5, whiteSpace: 'nowrap' }}>
+                  {bed.paidViaAdvance ? 'Advance' : 'Settled'}
+                </span>
+              )
             ) : isNotEnrolled ? (
               <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)', padding: '2px 6px', background: 'rgba(255,255,255,0.04)', borderRadius: 4, whiteSpace: 'nowrap' }}>
                 Joined later
@@ -459,6 +465,7 @@ function QuickPayModal({ bed, selectedMonth, onClose, onSuccess }: { bed: any; s
     ? Number(bed.totalPendingAmount)
     : (bed.studentObj?.totalPendingAmount !== undefined ? Number(bed.studentObj.totalPendingAmount) : monthlyFee);
   const initialAmount = totalPending > 0 ? totalPending : (Number(bed.amountDue || bed.studentObj?.amountDue) || monthlyFee);
+  const heldAdvance = Number(bed.securityDeposit ?? bed.studentObj?.securityDeposit ?? 0);
 
   const [form, setForm] = useState({ amount: initialAmount, method: 'Cash', upiProvider: 'PhonePe', transactionRef: '', date: new Date().toISOString().split('T')[0] });
   const [saving, setSaving] = useState(false);
@@ -471,7 +478,12 @@ function QuickPayModal({ bed, selectedMonth, onClose, onSuccess }: { bed: any; s
   }, [bed, monthlyFee]);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault(); setSaving(true);
+    e.preventDefault();
+    if (form.method === 'Advance' && Number(form.amount) > heldAdvance) {
+      showToast(`Amount ₹${Number(form.amount).toLocaleString('en-IN')} exceeds Advance Held (₹${heldAdvance.toLocaleString('en-IN')})`, 'error');
+      return;
+    }
+    setSaving(true);
     try {
       const studentId = bed.studentObj?.dbId || bed.studentDbId;
       if (!studentId) { showToast('Student not found', 'error'); return; }
@@ -579,14 +591,25 @@ function QuickPayModal({ bed, selectedMonth, onClose, onSuccess }: { bed: any; s
         <div className="form-group"><label>Amount (₹)</label>
           <input type="number" required className="custom-input" value={form.amount} onChange={e => setForm({ ...form, amount: Number(e.target.value) })} /></div>
         <div className="form-group"><label>Payment Method</label>
-          <div style={{ display: 'flex', gap: '1rem' }}>
-            {['Cash', 'UPI'].map(m => (
-              <button key={m} type="button" onClick={() => setForm({ ...form, method: m })}
-                style={{ flex: 1, padding: '10px', borderRadius: 10, border: '2px solid', borderColor: form.method === m ? 'var(--primary)' : 'var(--border-dim)', background: form.method === m ? 'rgba(249,115,22,0.1)' : 'transparent', color: form.method === m ? 'var(--primary)' : 'var(--text-muted)', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
-                {m === 'Cash' ? <><Banknote size={16} /> Cash</> : <><Smartphone size={16} /> UPI</>}
+          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+            {(['Cash', 'UPI', ...(heldAdvance > 0 ? ['Advance'] : [])] as string[]).map(m => (
+              <button key={m} type="button" onClick={() => {
+                if (m === 'Advance') {
+                  setForm(prev => ({ ...prev, method: 'Advance', amount: Math.min(Number(prev.amount) || initialAmount, heldAdvance) }));
+                } else {
+                  setForm(prev => ({ ...prev, method: m }));
+                }
+              }}
+                style={{ flex: 1, minWidth: 96, padding: '10px', borderRadius: 10, border: '2px solid', borderColor: form.method === m ? (m === 'Advance' ? 'var(--success)' : 'var(--primary)') : 'var(--border-dim)', background: form.method === m ? (m === 'Advance' ? 'var(--success)' : 'var(--primary)') : 'transparent', color: form.method === m ? '#ffffff' : 'var(--text-muted)', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontSize: '0.84rem' }}>
+                {m === 'Cash' ? <><Banknote size={16} /> Cash</> : m === 'UPI' ? <><Smartphone size={16} /> UPI</> : <>🏦 Advance (₹{heldAdvance.toLocaleString('en-IN')})</>}
               </button>
             ))}
           </div>
+          {form.method === 'Advance' && heldAdvance > 0 && (
+            <div style={{ marginTop: 8, padding: '8px 12px', borderRadius: 8, background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.28)', fontSize: '0.76rem', color: 'var(--success)', fontWeight: 600 }}>
+              Adjusts ₹{Math.min(Number(form.amount) || 0, heldAdvance).toLocaleString('en-IN')} from Advance Held · Remaining Advance: ₹{Math.max(0, heldAdvance - (Number(form.amount) || 0)).toLocaleString('en-IN')}
+            </div>
+          )}
         </div>
         {form.method === 'UPI' && (<>
           <div className="form-group"><label>UPI Provider</label>
@@ -726,7 +749,7 @@ function AllocateModal({ bed, onClose, onSuccess }: { bed: any; onClose: () => v
                 zIndex: 100,
                 marginTop: isMobile ? 8 : 4,
                 marginBottom: isMobile ? 8 : 0,
-                background: 'var(--modal-bg, #141721)',
+                background: 'var(--modal-bg)',
                 backdropFilter: 'blur(12px)',
                 border: '1px solid var(--border-light)',
                 borderRadius: 12,

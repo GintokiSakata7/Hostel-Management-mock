@@ -84,31 +84,20 @@ export default function AdminLockScreen({ onUnlock }: AdminLockScreenProps) {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      background: 'radial-gradient(circle at 50% 30%, #1e1b4b 0%, #090a10 60%, #030407 100%)',
+      background: '#000000',
       padding: '1.25rem',
       fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif"
     }}>
-      {/* Background ambient orbs */}
+      {/* Background ambient orb */}
       <div style={{
         position: 'absolute',
         width: 320,
         height: 320,
         borderRadius: '50%',
-        background: 'radial-gradient(circle, rgba(249,115,22,0.18) 0%, transparent 70%)',
+        background: 'radial-gradient(circle, rgba(249,115,22,0.12) 0%, transparent 70%)',
         top: '20%',
         left: '20%',
         filter: 'blur(50px)',
-        pointerEvents: 'none'
-      }} />
-      <div style={{
-        position: 'absolute',
-        width: 380,
-        height: 380,
-        borderRadius: '50%',
-        background: 'radial-gradient(circle, rgba(99,102,241,0.18) 0%, transparent 70%)',
-        bottom: '20%',
-        right: '20%',
-        filter: 'blur(60px)',
         pointerEvents: 'none'
       }} />
 
@@ -117,13 +106,11 @@ export default function AdminLockScreen({ onUnlock }: AdminLockScreenProps) {
         position: 'relative',
         width: '100%',
         maxWidth: 420,
-        background: 'rgba(18, 20, 29, 0.82)',
-        backdropFilter: 'blur(30px)',
-        WebkitBackdropFilter: 'blur(30px)',
-        border: '1px solid rgba(255, 255, 255, 0.12)',
+        background: '#111111',
+        border: '1px solid rgba(255, 255, 255, 0.14)',
         borderRadius: 24,
         padding: '2.5rem 2rem',
-        boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.7), 0 0 40px rgba(249, 115, 22, 0.15)',
+        boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.85)',
         animation: shake ? 'shake 0.45s ease-in-out' : 'fadeIn 0.4s ease-out',
         textAlign: 'center'
       }}>
@@ -154,7 +141,7 @@ export default function AdminLockScreen({ onUnlock }: AdminLockScreenProps) {
             position: 'absolute',
             bottom: -4,
             right: -4,
-            background: '#090a10',
+            background: '#000000',
             border: '2px solid #f97316',
             borderRadius: '50%',
             width: 24,
