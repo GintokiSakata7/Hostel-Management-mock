@@ -10,11 +10,11 @@
     },
     {
       "source": "/api/:match*",
-      "destination": "https://hostel-management-mock.onrender.com/api/:match*"
+      "destination": "https://vmr-website.onrender.com/api/:match*"
     },
     {
       "source": "/uploads/:match*",
-      "destination": "https://hostel-management-mock.onrender.com/uploads/:match*"
+      "destination": "https://vmr-website.onrender.com/uploads/:match*"
     },
     {
       "source": "/((?!assets/|favicon.svg|.*\\..*).*)",
